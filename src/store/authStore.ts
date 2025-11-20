@@ -39,6 +39,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
 
+    // ⚠️ 개발 모드: 인증 우회 (백엔드 없이 개발용)
+    if (import.meta.env.DEV) {
+      // 개발 환경에서는 더미 사용자로 자동 로그인
+      const dummyUser: AuthUser = {
+        officeId: "DEV",
+        empCode: "DEV001",
+        empName: "개발자",
+        deptCode: "DEV",
+        useYn: "Y",
+        emailId: "dev@example.com",
+      };
+      set({
+        user: dummyUser,
+        isAuthenticated: true,
+        isInitialized: true,
+      });
+      console.log("🔧 개발 모드: 인증 우회 활성화 (더미 사용자로 로그인됨)");
+      return;
+    }
+
     const token = getAccessToken();
     // 토큰이 없으면 초기화 완료
     if (!token) {

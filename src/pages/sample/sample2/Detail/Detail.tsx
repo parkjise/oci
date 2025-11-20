@@ -1,3 +1,4 @@
+import { Splitter } from "antd";
 import { DetailStyles } from "@/pages/sample/sample2/Detail/Detail.styles";
 
 type SplitLayoutProps = {
@@ -6,9 +7,15 @@ type SplitLayoutProps = {
 };
 const Detail: React.FC<SplitLayoutProps> = ({ left, right }) => {
   return (
-    <DetailStyles>
-      <div className="detail__pane-left">{left}</div>
-      <div className="detail__pane-right">{right}</div>
+    <DetailStyles className="page-layout__detail">
+      <Splitter>
+        <Splitter.Panel defaultSize="20%" min="15%" max="40%">
+          <div className="detail__pane-left">{left}</div>
+        </Splitter.Panel>
+        <Splitter.Panel>
+          <div className="detail__pane-right">{right}</div>
+        </Splitter.Panel>
+      </Splitter>
     </DetailStyles>
   );
 };
