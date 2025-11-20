@@ -217,7 +217,7 @@ const Sample3: React.FC = () => {
         rowData={rowData}
         headerHeight={32}
         columnDefs={columnDefs}
-        height={400}
+        height="100%"
         onGridReady={onGridReady}
         gridOptions={{
           rowSelection: "multiple",
