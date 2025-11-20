@@ -51,3 +51,10 @@ export const grid = (options: GridOptions | string = {}) => {
     ${justifyItems ? `justify-items: ${justifyItems};` : ""}
   `;
 };
+
+export const Card = (padding: string = "15px", radius: string = "8px") => css`
+  background-color: ${({ theme }) => theme.colors.white};
+  border: 1px solid ${({ theme }) => theme.colors.grey[200]};
+  border-radius: ${radius};
+  padding: ${padding};
+`;

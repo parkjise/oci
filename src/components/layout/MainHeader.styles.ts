@@ -8,7 +8,6 @@ export const StyledHeader = styled(Header)`
   justify-content: space-between;
   align-items: center;
   background-color: #ffffff;
-  color: #000000;
   padding: 0 16px;
   border-bottom: 1px solid #e8e8e8;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
@@ -20,11 +19,6 @@ export const StyledHeader = styled(Header)`
   box-sizing: border-box;
   flex-shrink: 0;
   position: relative;
-
-  * {
-    color: #000000;
-    box-sizing: border-box;
-  }
 `;
 
 export const StyledHeaderLeft = styled.div`
@@ -35,12 +29,6 @@ export const StyledHeaderLeft = styled.div`
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  color: #000000;
-
-  * {
-    color: #000000;
-    box-sizing: border-box;
-  }
 `;
 
 export const StyledLogo = styled.div<{ $logoSrc?: string }>`

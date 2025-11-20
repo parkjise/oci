@@ -11,6 +11,8 @@ const SettingsPage = lazy(() => import("@pages/settings/Settings"));
 const SamplePage1 = lazy(() => import("@pages/sample/sample1/Sample1"));
 const SamplePage2 = lazy(() => import("@pages/sample/sample2/Sample2"));
 const SamplePage3 = lazy(() => import("@pages/sample/sample3/Sample3"));
+//
+const Split = lazy(() => import("@pages/sample/split/Sample2"));
 
 /**
  * 애플리케이션 라우트 설정
@@ -95,6 +97,14 @@ export const routesConfig: RouteConfig[] = [
                 element: SamplePage3, // Pass component type
                 meta: {
                   title: "menu.sample3",
+                  requiresAuth: true,
+                },
+              },
+              {
+                path: "split",
+                element: Split, // Pass component type
+                meta: {
+                  title: "menu.sample2",
                   requiresAuth: true,
                 },
               },

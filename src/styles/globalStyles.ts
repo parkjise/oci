@@ -14,7 +14,6 @@ export const GlobalStyle = createGlobalStyle`
     overflow-y: auto;
     max-width: 100vw !important;
     box-sizing: border-box;
-    font-family:"Pretendard";
     background-color:#F2F4F6;
     font-weight: 400;
     letter-spacing: -0.5px;
@@ -32,5 +31,10 @@ export const GlobalStyle = createGlobalStyle`
   *::before,
   *::after {
     box-sizing: border-box;
+  }
+  .ant-tabs,.ant-col {
+    font-family:"Pretendard" ;
+    color: ${({ theme }) => theme.colors.neutral[800]};
+    font-weight: 400;
   }
 `;

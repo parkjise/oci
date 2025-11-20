@@ -32,9 +32,4 @@ export const StyledLayoutSubcontent = styled(Layout)`
   box-sizing: border-box;
   background: #ffffff;
   color: #000000;
-
-  * {
-    color: #000000;
-    box-sizing: border-box;
-  }
 `;

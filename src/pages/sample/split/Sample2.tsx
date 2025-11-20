@@ -3,7 +3,7 @@ import FilterPanel from "@/pages/sample/sample2/FelterPanel/FilterPanel";
 import RecordList from "@/pages/sample/sample2/RecordList/RecordList";
 import DetailView from "@/pages/sample/sample2/DetailView/DetailView";
 import DetaiGrid from "@/pages/sample/sample2/DetailGrid/DetailGrid";
-import Detail from "@/pages/sample/sample2/Detail/Detail";
+import Detail from "@/pages/sample/split/Detail/Detail";
 
 const Sample2: React.FC = () => {
   return (
@@ -13,14 +13,8 @@ const Sample2: React.FC = () => {
       {/* 조회 결과 */}
       <Detail
         left={<RecordList className="page-layout__record-list" />} // 상세 리스트
-        right={
-          <>
-            {/*상세 화면 */}
-            <DetailView className="page-layout__detail-view" />
-            {/*상세 Grid */}
-            <DetaiGrid className="page-layout__detail-grid" />
-          </>
-        }
+        rightTop={<DetailView className="page-layout__detail-view" />}
+        rightBottom={<DetaiGrid className="page-layout__detail-grid" />}
       />
     </Article>
   );
