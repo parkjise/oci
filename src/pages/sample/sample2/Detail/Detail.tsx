@@ -9,7 +9,7 @@ const Detail: React.FC<SplitLayoutProps> = ({ left, right }) => {
 	return (
 		<DetailStyles className="page-layout__detail">
 			<Splitter>
-				<Splitter.Panel defaultSize={250} min={250} max="40%">
+				<Splitter.Panel defaultSize={250} min={350} max="40%">
 					<div className="detail__pane-left">{left}</div>
 				</Splitter.Panel>
 				<Splitter.Panel>
