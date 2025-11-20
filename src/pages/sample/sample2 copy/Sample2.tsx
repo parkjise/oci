@@ -14,7 +14,7 @@ const Sample2: React.FC = () => {
 			<Detail
 				left={<RecordList className="page-layout__record-list" />} // 상세 리스트
 				right={
-					<Splitter layout="vertical">
+					<Splitter layout="vertical" style={{ height: "100%" }}>
 						<Splitter.Panel defaultSize={179} min={80} max="30%">
 							{/*상세 화면 */}
 							<DetailView className="page-layout__detail-view" />
