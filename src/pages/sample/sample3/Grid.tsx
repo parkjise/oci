@@ -236,7 +236,12 @@ const Sample3: React.FC = () => {
         rowData={rowData}
         headerHeight={32}
         columnDefs={columnDefs}
+<<<<<<< HEAD
         height={400}
+=======
+        height="100%"
+        onGridReady={onGridReady}
+>>>>>>> 91e8a46ae562b458484506a504bb948ae58e3490
         gridOptions={{
           rowSelection: "multiple",
           animateRows: true,

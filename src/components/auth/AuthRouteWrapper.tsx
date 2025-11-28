@@ -16,18 +16,21 @@ const AuthRouteWrapper: React.FC<AuthRouteWrapperProps> = ({
   const { meta } = route;
   const { isAuthenticated, isInitialized } = useAuthStore();
 
+  // ⚠️ 개발 모드: 인증 우회 (백엔드 없이 개발용)
+  const BYPASS_AUTH = import.meta.env.DEV; // 개발 환경에서만 인증 우회
+
   // 초기화가 완료되지 않았으면 로딩 표시
-  if (!isInitialized) {
+  if (!isInitialized && !BYPASS_AUTH) {
     return <LoadingSpinner />;
   }
 
   // 로그인 페이지로 접근 시 인증된 상태면 메인 페이지로 리다이렉트
-  if (route.path === "/" && isAuthenticated) {
+  if (route.path === "/" && (isAuthenticated || BYPASS_AUTH)) {
     return <Navigate to="/app" replace />;
   }
 
-  // 인증이 필요한 라우트 처리
-  if (meta?.requiresAuth && !isAuthenticated) {
+  // 인증이 필요한 라우트 처리 (개발 모드에서는 우회)
+  if (meta?.requiresAuth && !isAuthenticated && !BYPASS_AUTH) {
     return <Navigate to="/" replace />;
   }
 

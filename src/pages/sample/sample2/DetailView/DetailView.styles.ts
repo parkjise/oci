@@ -37,6 +37,10 @@ export const DetailViewStyles = styled.div`
     }
     &__table {
       width: 100%;
+<<<<<<< HEAD
+=======
+      overflow: hidden;
+>>>>>>> 91e8a46ae562b458484506a504bb948ae58e3490
       table {
         width: 100%;
         border: 1px solid ${({ theme }) => theme.colors.grey[100]};

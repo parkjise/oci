@@ -6,24 +6,10 @@ type SplitLayoutProps = {
 	right: React.ReactNode;
 };
 const Detail: React.FC<SplitLayoutProps> = ({ left, right }) => {
-<<<<<<< HEAD
-  return (
-    <DetailStyles className="page-layout__detail">
-      <Splitter>
-        <Splitter.Panel defaultSize={250} min={250} max="40%">
-          <div className="detail__pane-left">{left}</div>
-        </Splitter.Panel>
-        <Splitter.Panel>
-          <div className="detail__pane-right">{right}</div>
-        </Splitter.Panel>
-      </Splitter>
-    </DetailStyles>
-  );
-=======
 	return (
 		<DetailStyles className="page-layout__detail">
 			<Splitter>
-				<Splitter.Panel defaultSize={250} min={350} max="40%">
+				<Splitter.Panel defaultSize={250} min={250} max="40%">
 					<div className="detail__pane-left">{left}</div>
 				</Splitter.Panel>
 				<Splitter.Panel>
@@ -32,7 +18,6 @@ const Detail: React.FC<SplitLayoutProps> = ({ left, right }) => {
 			</Splitter>
 		</DetailStyles>
 	);
->>>>>>> 91e8a46ae562b458484506a504bb948ae58e3490
 };
 
 export default Detail;
