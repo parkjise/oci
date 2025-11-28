@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { Card, Typography, Space, Button, Tag, Row, Col } from "antd";
-import type { ColDef, GridReadyEvent, GridApi } from "ag-grid-community";
-import CommonAgGrid from "@components/common/form/CustomAgGrid";
-
+import { Tag, Tooltip } from "antd";
+import type { ColDef } from "ag-grid-community";
+import { FormAgGrid } from "@components/ui/form";
+import { DataGridStyles } from "@/pages/sample/sample3/DataGrid.styles";
+import { FormButton } from "@components/ui/form";
 // 그리드 데이터 타입 정의
 interface UserData {
   id: number;
@@ -15,8 +16,6 @@ interface UserData {
 }
 
 const Sample3: React.FC = () => {
-  const [gridApi, setGridApi] = useState<GridApi | null>(null);
-
   // 샘플 데이터
   const [rowData] = useState<UserData[]>([
     {
@@ -163,62 +162,81 @@ const Sample3: React.FC = () => {
   ];
 
   // 그리드 준비 완료 이벤트
-  const onGridReady = (params: GridReadyEvent) => {
-    setGridApi(params.api);
-  };
-
-  // 선택된 행 가져오기
-  const handleGetSelectedRows = () => {
-    if (!gridApi) return;
-    const selectedRows = gridApi.getSelectedRows();
-    console.log("선택된 행:", selectedRows);
-    alert(`선택된 행: ${selectedRows.length}개`);
-  };
-
-  // 모든 행 선택
-  const handleSelectAll = () => {
-    if (!gridApi) return;
-    gridApi.selectAll();
-  };
-
-  // 선택 해제
-  const handleDeselectAll = () => {
-    if (!gridApi) return;
-    gridApi.deselectAll();
-  };
-
-  // 필터 초기화
-  const handleClearFilters = () => {
-    if (!gridApi) return;
-    gridApi.setFilterModel(null);
-  };
-
-  // 활성 상태인 사용자만 필터링
-  const handleFilterActive = () => {
-    if (!gridApi) return;
-    gridApi.setFilterModel({
-      status: {
-        type: "equals",
-        filter: "활성",
-      },
-    });
-  };
 
   return (
-    <>
-      <div>
-        <Button onClick={handleSelectAll}>전체 선택</Button>
-        <Button onClick={handleDeselectAll}>선택 해제</Button>
-        <Button onClick={handleClearFilters}>필터 초기화</Button>
-        <Button onClick={handleFilterActive}>활성 사용자만 보기</Button>
+    <DataGridStyles className="data-grid-panel">
+      <div className="data-grid-panel__toolbar">
+        <div className="data-grid-panel-left">
+          <div className="data-grid-panel__count">
+            전체 <span className="data-grid-panel__count-number">5</span> 건
+          </div>
+          <div className="data-grid-panel__divider"></div>
+          <FormButton
+            size="small"
+            className="data-grid-panel__button data-grid-panel__button--search"
+          >
+            구매요청 검색
+          </FormButton>
+          <Tooltip title="더보기">
+            <FormButton
+              icon={<i className="ri-more-2-line" style={{ fontSize: 16 }} />}
+              size="small"
+              className="data-grid-panel__button  data-grid-panel__button--more ghost"
+            />
+          </Tooltip>
+        </div>
+        <div className="data-grid-panel-right">
+          <Tooltip title="행추가">
+            <FormButton
+              icon={<i className="ri-file-add-line" style={{ fontSize: 20 }} />}
+              className="data-grid-panel__button  data-grid-panel__button--add-row ghost"
+            />
+          </Tooltip>
+          <Tooltip title="행복사">
+            <FormButton
+              icon={
+                <i className="ri-file-copy-line" style={{ fontSize: 20 }} />
+              }
+              className="data-grid-panel__button data-grid-panel__button--copy-row ghost"
+            />
+          </Tooltip>
+          <Tooltip title="행삭제">
+            <FormButton
+              icon={
+                <i className="ri-delete-bin-line" style={{ fontSize: 20 }} />
+              }
+              className="data-grid-panel__button data-grid-panel__button--delete-row ghost"
+            />
+          </Tooltip>
+          <div className="data-grid-panel__divider"></div>
+          <Tooltip title="엑셀다운로드">
+            <FormButton
+              icon={<i className="ri-download-line" style={{ fontSize: 20 }} />}
+              className="data-grid-panel__button  data-grid-panel__button--excel-download ghost"
+            />
+          </Tooltip>
+          <Tooltip title="엑셀업로드">
+            <FormButton
+              icon={<i className="ri-upload-line" style={{ fontSize: 20 }} />}
+              className="data-grid-panel__button  data-grid-panel__button--excel-upload ghost"
+            />
+          </Tooltip>
+          <div className="data-grid-panel__divider"></div>
+          <FormButton
+            size="small"
+            type="primary"
+            className="data-grid-panel__button data-grid-panel__button--save navy"
+          >
+            저장
+          </FormButton>
+        </div>
       </div>
       {/* 그리드 */}
-      <CommonAgGrid<UserData>
+      <FormAgGrid<UserData>
         rowData={rowData}
         headerHeight={32}
         columnDefs={columnDefs}
         height={400}
-        onGridReady={onGridReady}
         gridOptions={{
           rowSelection: "multiple",
           animateRows: true,
@@ -228,16 +246,18 @@ const Sample3: React.FC = () => {
           paginationPageSizeSelector: [10, 20, 50, 100],
           suppressRowClickSelection: true,
           onCellValueChanged: (params) => {
-            console.log("셀 값 변경:", {
-              field: params.colDef.field,
-              oldValue: params.oldValue,
-              newValue: params.newValue,
-              data: params.data,
-            });
+            if (import.meta.env.DEV) {
+              console.log("셀 값 변경:", {
+                field: params.colDef.field,
+                oldValue: params.oldValue,
+                newValue: params.newValue,
+                data: params.data,
+              });
+            }
           },
         }}
       />
-    </>
+    </DataGridStyles>
   );
 };
 

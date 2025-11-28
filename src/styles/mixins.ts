@@ -58,3 +58,33 @@ export const Card = (padding: string = "15px", radius: string = "8px") => css`
   border-radius: ${radius};
   padding: ${padding};
 `;
+
+export const scrollbar = () => css`
+  scrollbar-width: thin; /* auto | thin | none */
+  scrollbar-color: transparent transparent;
+
+  &:hover {
+    scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+  }
+
+  &::-webkit-scrollbar {
+    width: 2px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background-color: transparent;
+  }
+
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.25);
+  }
+
+  &:hover::-webkit-scrollbar-track {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+`;

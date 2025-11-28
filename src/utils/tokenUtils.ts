@@ -2,10 +2,11 @@
 // 토큰 관리 유틸리티
 // ============================================================================
 import Cookies from "js-cookie";
-
-const TOKEN_KEY = "access_token";
-const REFRESH_TOKEN_KEY = "refresh_token";
-const REFRESH_TOKEN_COOKIE_KEY = "refreshToken";
+import {
+  TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+  REFRESH_TOKEN_COOKIE_KEY,
+} from "@/constants";
 
 /**
  * Access Token을 localStorage에 저장

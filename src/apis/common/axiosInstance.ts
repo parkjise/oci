@@ -6,16 +6,12 @@ import axios, {
   type AxiosInstance,
   type InternalAxiosRequestConfig,
 } from "axios";
-import {
-  getAccessToken,
-  getRefreshToken,
-  setAccessToken,
-  setRefreshToken,
-} from "@utils/tokenUtils";
-import type { ApiRequestConfig, ApiErrorResponse } from "../../model/axios";
-import { refreshTokenApi } from "../authApi";
+import { getAccessToken, setAccessToken } from "@utils/tokenUtils";
+import type { ApiRequestConfig, ApiErrorResponse } from "@/types/axios.types";
+import { refreshTokenApi } from "../auth/authApi";
 import { useAuthStore } from "@store/authStore";
-import { showError } from "@/components/common/message";
+import { showError } from "@/components/ui/feedback/Message";
+import i18n from "@/i18n";
 
 // --------------------------------------------------------------------------
 // 상수
@@ -60,6 +56,7 @@ const axiosInstance: AxiosInstance = axios.create({
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
+    "X-User-Locale": i18n.language || "ko",
   },
   withCredentials: true,
 });
@@ -82,7 +79,9 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   (error: AxiosError) => {
-    console.error("[API Request Error]", error);
+    if (import.meta.env.DEV) {
+      console.error("[API Request Error]", error);
+    }
     return Promise.reject(error);
   }
 );
@@ -124,16 +123,8 @@ axiosInstance.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) {
-        // 리프레시 토큰이 없는 경우
-        useAuthStore.getState().logout();
-        if (window.location.pathname !== "/") {
-          window.location.href = "/";
-        }
-        showError("로그인이 만료되었습니다. 다시 로그인해주세요.");
-        return Promise.reject(error);
-      }
+      // refreshToken은 HttpOnly 쿠키로 저장되어 JavaScript에서 읽을 수 없지만,
+      // withCredentials: true로 설정되어 있어 쿠키가 자동으로 전송됨
 
       // 이미 갱신 중인 경우, 대기 큐에 추가
       if (isRefreshing) {
@@ -155,16 +146,15 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshResponse = await refreshTokenApi(refreshToken);
+        const refreshResponse = await refreshTokenApi();
+
         if (refreshResponse.success && refreshResponse.data?.accessToken) {
           const newAccessToken = refreshResponse.data.accessToken;
           // 새 액세스 토큰 저장
           setAccessToken(newAccessToken);
 
-          // 새 리프레시 토큰이 있으면 저장 (토큰 로테이션)
-          if (refreshResponse.data.refreshToken) {
-            setRefreshToken(refreshResponse.data.refreshToken);
-          }
+          // refreshToken은 쿠키로 자동 설정되므로 별도 저장 불필요
+          // (백엔드에서 HttpOnly 쿠키로 설정됨)
 
           // 대기 중인 요청들 처리
           processQueue(null, newAccessToken);
@@ -179,14 +169,10 @@ axiosInstance.interceptors.response.use(
           // 갱신 실패 (응답은 받았지만 토큰이 없는 경우)
           throw new Error("Token refresh failed: No access token in response");
         }
-      } catch (refreshError) {
+      } catch (error) {
         // 갱신 실패 시 대기 중인 요청들 모두 실패 처리
-        processQueue(error, null);
+        processQueue(error as AxiosError, null);
         isRefreshing = false;
-
-        if (import.meta.env.DEV) {
-          console.error("Unable to refresh token", refreshError);
-        }
 
         // 토큰 갱신 실패
         useAuthStore.getState().logout();

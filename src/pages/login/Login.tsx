@@ -1,10 +1,6 @@
 import React from "react";
 // Barrel 파일을 통해 컴포넌트들을 한번에 가져옵니다.
-import {
-  LanguageSwitcher,
-  LoginForm,
-  LoginTitle,
-} from "@components/login/Index";
+import { LanguageSwitcher, LoginForm, LoginTitle } from "@components/features/login";
 import { StyledLoginPage, StyledLoginCard } from "./Login.styles";
 
 const Login: React.FC = () => {

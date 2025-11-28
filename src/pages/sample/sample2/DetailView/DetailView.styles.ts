@@ -5,6 +5,8 @@ export const DetailViewStyles = styled.div`
   &.page-layout__detail-view {
     ${mixins.flex("flex-start", "flex-start", "column", "10px")}
     ${mixins.Card()}
+    height: fit-content;
+    box-sizing: border-box;
   }
   .detail-view {
     &__divider {
@@ -34,6 +36,7 @@ export const DetailViewStyles = styled.div`
       }
     }
     &__table {
+      width: 100%;
       table {
         width: 100%;
         border: 1px solid ${({ theme }) => theme.colors.grey[100]};

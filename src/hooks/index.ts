@@ -1,0 +1,1 @@
+export { usePageModal } from "./usePageModal";

@@ -1,11 +1,16 @@
-import { useEffect } from "react";
-import { BrowserRouter } from "react-router-dom";
-import { routesConfig } from "@config/routes";
-import { renderRoutes } from "@utils/routeUtils";
-import ErrorBoundary from "@components/common/errorBoundary/ErrorBoundary";
-import { GlobalStyle } from "./styles/globalStyles";
+import { useEffect, lazy } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ErrorBoundary } from "@components/providers";
+import { GlobalStyle } from "@/styles/globalStyles";
 import { useAuthStore } from "@store/authStore";
+import { AuthRouteWrapper } from "@components/features";
 import "@ant-design/v5-patch-for-react-19";
+
+// 페이지 컴포넌트 lazy loading
+const LoginPage = lazy(() => import("@pages/login/Login"));
+const MainLayout = lazy(() =>
+  import("@components/layout").then((module) => ({ default: module.MainLayout }))
+);
 
 function AppContent() {
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
@@ -15,7 +20,34 @@ function AppContent() {
     initializeAuth();
   }, [initializeAuth]);
 
-  return <>{renderRoutes(routesConfig)}</>;
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <AuthRouteWrapper
+            route={{
+              path: "/",
+              meta: { title: "menu.login", requiresAuth: false },
+            }}
+            Component={LoginPage}
+          />
+        }
+      />
+      <Route
+        path="/app/*"
+        element={
+          <AuthRouteWrapper
+            route={{
+              path: "/app",
+              meta: { title: "menu.main", requiresAuth: true },
+            }}
+            Component={MainLayout}
+          />
+        }
+      />
+    </Routes>
+  );
 }
 
 function App() {

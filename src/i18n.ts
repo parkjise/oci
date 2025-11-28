@@ -20,8 +20,16 @@ i18n
         translation: koTranslation,
       },
     },
+    // 기본 언어를 한국어로 설정
+    lng: "ko",
     // 초기 언어 설정 (브라우저 감지 실패 시)
     fallbackLng: "ko",
+    // 언어 감지 옵션: 기본값을 한국어로 설정
+    detection: {
+      order: ["localStorage", "navigator"],
+      lookupLocalStorage: "i18nextLng",
+      caches: ["localStorage"],
+    },
     interpolation: {
       escapeValue: false,
     },

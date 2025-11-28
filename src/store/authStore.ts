@@ -1,16 +1,8 @@
 import { create } from "zustand";
 import { clearAllTokens, getAccessToken } from "../utils/tokenUtils";
-import { getUserInfoApi } from "../apis/authApi";
-
-export interface AuthUser {
-  officeId: string; //회사코드
-  empCode: string; //사원 코드
-  empName?: string; //사원 이름
-  deptCode?: string; //부서 코드
-  password?: string; //비밀번호
-  useYn?: string | "Y"; //사용 여부 (Y/N)
-  emailId?: string | null; //이메일 ID
-}
+import { getUserInfoApi } from "@apis/auth";
+import { clearMenuCache } from "../utils/menuCache";
+import type { AuthUser } from "@/types/auth.types";
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -30,6 +22,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user, isAuthenticated: !!user, isInitialized: true }),
   logout: () => {
     clearAllTokens(); // 토큰 삭제
+    clearMenuCache(); // 메뉴 캐시 삭제
     set({ user: null, isAuthenticated: false });
   },
   setInitialized: (isInitialized: boolean) => set({ isInitialized }), // 함수 구현

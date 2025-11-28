@@ -1,5 +1,5 @@
 import React from "react";
-import { MainLayout } from "@components/layout/Index";
+import { MainLayout } from "@components/layout";
 import { StyledMainPage } from "./Main.styles";
 
 const Main: React.FC = () => {
@@ -11,3 +11,4 @@ const Main: React.FC = () => {
 };
 
 export default Main;
+

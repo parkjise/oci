@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { RouteConfig } from "@/model/routes";
+import type { RouteConfig } from "@/types/routes.types";
 
 interface UiState {
   openTabs: RouteConfig[];

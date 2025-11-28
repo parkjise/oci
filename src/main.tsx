@@ -8,6 +8,7 @@ import { ThemeProvider } from "styled-components";
 import { theme } from "./theme";
 // remix icon
 import "remixicon/fonts/remixicon.css";
+import "pretendard/dist/web/static/pretendard.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider theme={theme}>

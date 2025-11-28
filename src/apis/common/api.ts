@@ -7,7 +7,7 @@ import type {
   ApiResponse,
   ApiRequestConfig,
   PaginatedResponse,
-} from "@model/axios";
+} from "@/types/axios.types";
 
 /**
  * GET 요청

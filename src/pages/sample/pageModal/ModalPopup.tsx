@@ -1,47 +1,54 @@
-import React from "react";
+import { useState, useCallback } from "react";
+import type { FC } from "react";
 import { Button, Space, Input } from "antd";
-import { type InjectedProps } from "@/components/common/pageModal";
+import { type InjectedProps } from "@/components/ui/feedback/Modal";
+import { showError } from "@/components/ui/feedback/Message";
 
-// Sample.tsx에서 AppPageModal에 전달하는 pageProps의 타입
-interface SettingsPageProps {
+/**
+ * 반환할 사용자 데이터 타입
+ */
+export type User = { id: string; name: string };
+
+/**
+ * ModalPopup 컴포넌트의 Props 타입
+ */
+interface ModalPopupProps {
+  /** 초기 사용자 ID (선택적) */
   initialId?: string;
 }
 
-// AppPageModal의 R (Return Value) 타입과 일치해야 함
-type User = { id: string; name: string };
-
-const ModalPopup: React.FC<SettingsPageProps & InjectedProps<User>> = ({
+/**
+ * 사용자 선택 모달 팝업 컴포넌트
+ * usePageModal 훅과 함께 사용됩니다.
+ */
+const ModalPopup: FC<ModalPopupProps & InjectedProps<User>> = ({
   initialId,
-  returnValue, // AppPageModal에서 주입된 함수 (값을 리턴하고 모달 닫음)
-  close, // AppPageModal에서 주입된 함수 (값 없이 모달 닫음)
+  returnValue,
+  close,
 }) => {
-  const [selectedUserId, setSelectedUserId] = React.useState(initialId || "");
-  const [selectedUserName, setSelectedUserName] = React.useState("");
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedUserName, setSelectedUserName] = useState("");
 
-  React.useEffect(() => {
-    if (initialId) {
-      // 실제 환경에서는 initialId로 사용자 정보를 불러오는 API 호출
-      setSelectedUserName(`User ${initialId}`);
-    }
-  }, [initialId]);
-
-  const handleSelectUser = () => {
+  const handleSelectUser = useCallback(() => {
     if (selectedUserId && selectedUserName) {
       returnValue({ id: selectedUserId, name: selectedUserName });
     } else {
-      alert("사용자 ID와 이름을 입력해주세요.");
+      showError("사용자 ID와 이름을 입력해주세요.");
     }
-  };
+  }, [selectedUserId, selectedUserName, returnValue]);
 
   return (
     <div style={{ padding: "20px" }}>
-      <h2>사용자 선택 (Settings Page)</h2>
-      <p>이 페이지는 AppPageModal 내부에 렌더링됩니다.</p>
-      {initialId && <p>초기 사용자 ID: {initialId}</p>}
+      <h2>사용자 선택</h2>
+      <p>사용자 ID와 이름을 입력한 후 선택 버튼을 클릭하세요.</p>
+      {initialId && (
+        <p style={{ color: "#666" }}>부모 파라미터 사용자 ID: {initialId}</p>
+      )}
 
       <Space
         direction="vertical"
         style={{ width: "100%", marginBottom: "20px" }}
+        size="middle"
       >
         <Input
           placeholder="사용자 ID 입력"
@@ -66,4 +73,3 @@ const ModalPopup: React.FC<SettingsPageProps & InjectedProps<User>> = ({
 };
 
 export default ModalPopup;
-

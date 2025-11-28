@@ -32,9 +32,32 @@ export const GlobalStyle = createGlobalStyle`
   *::after {
     box-sizing: border-box;
   }
-  .ant-tabs,.ant-col {
+  .ant-tabs,.ant-col,.ant-splitter {
     font-family:"Pretendard" ;
     color: ${({ theme }) => theme.colors.neutral[800]};
     font-weight: 400;
+  }
+  .ant-tooltip{
+    font-size: 11px;
+    .ant-tooltip-inner{
+      min-height: 24px;
+    padding: 4px 8px;
+      
+    }
+  }
+
+  .helptext{
+    i{
+      padding-left: 5px;
+      vertical-align: middle;
+    }
+  }
+  .asterisk{
+    i{
+      color: ${({ theme }) => theme.colors.error};
+      font-size: 8px;
+      vertical-align: text-top;
+
+    }
   }
 `;
