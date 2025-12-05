@@ -33,6 +33,13 @@ i18n
     interpolation: {
       escapeValue: false,
     },
+    // 키가 없으면 키를 반환하도록 설정
+    returnEmptyString: false,
+    returnNull: false,
+    // 키가 없을 때 키 자체를 반환
+    missingKeyHandler: (_lng, _ns, key) => {
+      return key;
+    },
     // 이 옵션은 Suspense를 사용할 때 기본값이 true입니다.
     // 명시적으로 false로 설정하지 않았다면 문제 없습니다.
     react: {

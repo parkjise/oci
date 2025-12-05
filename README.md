@@ -21,13 +21,20 @@
 9. Ant Design 모듈 설치 : `npm install antd` <br />
 
    - React 19 적용 패치 : `npm install @ant-design/v5-patch-for-react-19`<br />
+   - runes 함수 모듈 설치 : `npm install runes2`<br />
 
 10. CSS 스타일링을 위한 SASS/SCSS 설치: `npm install -D sass` <br />
 
 - className을 조건부 모듈 설치 : `npm install --save clsx` <br />
 - Styled Components 모듈 설치 : `npm i styled-components` <br />
 
-11. js-cookie 모듈 설치 : `npm install js-cookie @types/js-cookie`
+11. js-cookie 모듈 설치 : `npm install js-cookie @types/js-cookie` <br />
+
+12. 무료 아이콘 모듈 설치 : `npm install @remixicon/react` <br />
+
+13 웹폰트 Pretendard : `npm install pretendard --save` <br />
+
+14. xlsx 모듈 설치 : `npm install xlsx npm install --save-dev @types/xlsx` <br />
 
 설치
 npm i

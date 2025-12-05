@@ -13,7 +13,7 @@ import {
 
 const { Text } = Typography;
 
-type FormInputNumberProps = Omit<InputNumberProps, "addonAfter"> & {
+export type FormInputNumberProps = Omit<InputNumberProps, "addonAfter" | "mode"> & {
   name: string;
   label: string;
   rules?: Rule[];
@@ -56,6 +56,9 @@ const FormInputNumber: React.FC<FormInputNumberProps> = ({
   parser,
   ...rest
 }) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const inputNumberRef = React.useRef<any>(null);
+
   // 모든 hooks를 early return 이전에 호출
   const processedRules = React.useMemo(() => {
     if (!rules || !useModalMessage) return rules;
@@ -79,6 +82,10 @@ const FormInputNumber: React.FC<FormInputNumberProps> = ({
                   content: errorMessage,
                   onOk: () => {
                     resetModalFlag();
+                    // 모달 닫힌 후 해당 InputNumber로 포커스 이동
+                    setTimeout(() => {
+                      inputNumberRef.current?.focus();
+                    }, 500);
                   },
                 });
               }
@@ -109,7 +116,10 @@ const FormInputNumber: React.FC<FormInputNumberProps> = ({
             const displayValue =
               value !== undefined && value !== null
                 ? formatter
-                  ? formatter(value, { userTyping: false, input: String(value) })
+                  ? formatter(value, {
+                      userTyping: false,
+                      input: String(value),
+                    })
                   : formatNumberWithCommas(value)
                 : emptyText;
             return (
@@ -138,7 +148,7 @@ const FormInputNumber: React.FC<FormInputNumberProps> = ({
       getValueFromEvent={(value) => {
         return value ?? undefined;
       }}
-      {...(useModalMessage ? { validateStatus: "", help: "" } : {})}
+      {...(useModalMessage ? { validateStatus: "", help: "" } : { help: "" })}
     >
       <Form.Item
         noStyle
@@ -162,7 +172,11 @@ const FormInputNumber: React.FC<FormInputNumberProps> = ({
           };
 
           const inputNumberElement = (
-            <InputNumber {...inputNumberProps} style={FULL_WIDTH_STYLE} />
+            <InputNumber
+              ref={inputNumberRef}
+              {...inputNumberProps}
+              style={FULL_WIDTH_STYLE}
+            />
           );
 
           return propAddonAfter ? (

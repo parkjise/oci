@@ -89,7 +89,14 @@ export const validateCorporateNumber = (value: string): string => {
 
 export const validateEmail = (value: string): string => {
   if (!value) return "";
-  if (!isValidEmail(value)) {
+  
+  // 공백 제거 후 검증
+  const trimmedValue = value.trim();
+  if (trimmedValue !== value) {
+    return "이메일에는 앞뒤 공백을 사용할 수 없습니다.";
+  }
+  
+  if (!isValidEmail(trimmedValue)) {
     return "올바른 이메일 형식이 아닙니다.";
   }
   return "";

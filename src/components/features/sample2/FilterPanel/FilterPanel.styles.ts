@@ -1,11 +1,10 @@
 import styled from "styled-components";
 import * as mixins from "@/styles/mixins";
 
-export const FilterPanelStyles = styled.section`
+export const FilterPanelStyles = styled.div`
   &.page-layout__filter-panel {
-    padding: 1.4rem 2rem;
+    /* padding: 1.4rem 2rem; */
     ${mixins.flex("center", "space-between")}
-    ${mixins.Card()}
     width: 100%;
   }
   .filter-panel {
@@ -43,11 +42,15 @@ export const FilterPanelStyles = styled.section`
         margin-bottom: 0;
       }
       .ant-form-item .ant-form-item-label > label,
-      .ant-form-item .ant-form-item-control-input {
+      .ant-form-item .ant-form-item-control-input,
+      .ant-input {
         height: 28px;
       }
       .ant-form-item .ant-form-item-control-input {
         min-height: 28px;
+      }
+      .ant-input-search-btn {
+        height: 28px;
       }
     }
     &__actions {
@@ -62,4 +65,3 @@ export const FilterPanelStyles = styled.section`
     }
   }
 `;
-

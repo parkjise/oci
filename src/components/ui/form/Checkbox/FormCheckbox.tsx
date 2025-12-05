@@ -61,6 +61,9 @@ const FormCheckboxBase: React.FC<FormCheckboxProps> = ({
   children,
   ...rest
 }) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const checkboxRef = React.useRef<any>(null);
+
   const handleChange = (e: { target: { checked: boolean } }) => {
     onChange?.(e.target.checked);
   };
@@ -90,6 +93,33 @@ const FormCheckboxBase: React.FC<FormCheckboxProps> = ({
                   content: errorMessage,
                   onOk: () => {
                     resetModalFlag();
+                    // 모달 닫힌 후 해당 Checkbox로 포커스 이동
+                    requestAnimationFrame(() => {
+                      setTimeout(() => {
+                        if (checkboxRef.current) {
+                          const checkboxInput =
+                            checkboxRef.current.querySelector(
+                              'input[type="checkbox"]:not([disabled])'
+                            ) as HTMLInputElement;
+
+                          if (checkboxInput) {
+                            // 스크롤하여 요소가 보이도록 함
+                            checkboxInput.scrollIntoView({
+                              behavior: "smooth",
+                              block: "center",
+                            });
+
+                            // 포커스 이동
+                            requestAnimationFrame(() => {
+                              checkboxInput.focus();
+                            });
+                          } else {
+                            // querySelector가 실패하면 직접 focus 시도
+                            checkboxRef.current?.focus();
+                          }
+                        }
+                      }, 100);
+                    });
                   },
                 });
               }
@@ -120,9 +150,11 @@ const FormCheckboxBase: React.FC<FormCheckboxProps> = ({
         layout={layout as FormItemLayout}
         colon={false}
         valuePropName="checked"
-        {...(useModalMessage ? { validateStatus: "", help: "" } : {})}
+        {...(useModalMessage
+          ? { validateStatus: "", help: null }
+          : { help: null })}
       >
-        <Checkbox {...rest} onChange={handleChange}>
+        <Checkbox ref={checkboxRef} {...rest} onChange={handleChange}>
           {children}
         </Checkbox>
       </Form.Item>
@@ -158,6 +190,8 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
     propOptions || []
   );
   const [loading, setLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const checkboxGroupRef = React.useRef<any>(null);
 
   // name이 없을 때만 사용하는 내부 상태
   const [checkedValues, setCheckedValues] = useState<Array<string | number>>(
@@ -238,6 +272,30 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
                   content: errorMessage,
                   onOk: () => {
                     resetModalFlag();
+                    // 모달 닫힌 후 해당 CheckboxGroup의 첫 번째 Checkbox로 포커스 이동
+                    requestAnimationFrame(() => {
+                      setTimeout(() => {
+                        if (checkboxGroupRef.current) {
+                          const firstCheckbox =
+                            checkboxGroupRef.current.querySelector(
+                              'input[type="checkbox"]:not([disabled])'
+                            ) as HTMLInputElement;
+
+                          if (firstCheckbox) {
+                            // 스크롤하여 요소가 보이도록 함
+                            firstCheckbox.scrollIntoView({
+                              behavior: "smooth",
+                              block: "center",
+                            });
+
+                            // 포커스 이동
+                            requestAnimationFrame(() => {
+                              firstCheckbox.focus();
+                            });
+                          }
+                        }
+                      }, 100);
+                    });
                   },
                 });
               }
@@ -291,7 +349,9 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
         <Form.Item shouldUpdate={(prev, curr) => prev[name] !== curr[name]}>
           {({ getFieldValue }) => {
             const value = getFieldValue(name) || [];
-            const selectedOptions = options.filter((opt) => value.includes(opt.value));
+            const selectedOptions = options.filter((opt) =>
+              value.includes(opt.value)
+            );
             const displayValue =
               selectedOptions.length > 0
                 ? selectedOptions.map((opt) => opt.label).join(", ")
@@ -417,7 +477,9 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
         rules={processedRules}
         layout={layout as FormItemLayout}
         colon={false}
-        {...(useModalMessage ? { validateStatus: "", help: "" } : {})}
+        {...(useModalMessage
+          ? { validateStatus: "", help: null }
+          : { help: null })}
       >
         <Form.Item
           noStyle
@@ -456,7 +518,7 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
             };
 
             return (
-              <div>
+              <div ref={checkboxGroupRef}>
                 {enableSelectAll && (
                   <Checkbox
                     indeterminate={someChecked}

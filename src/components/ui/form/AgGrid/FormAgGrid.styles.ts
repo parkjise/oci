@@ -1,4 +1,5 @@
 import styled, { css } from "styled-components";
+import * as mixins from "@/styles/mixins";
 
 // AG-Grid 스타일 커스터마이징 옵션 인터페이스
 export interface AgGridStyleOptions {
@@ -91,149 +92,329 @@ const defaultStyleOptions: AgGridStyleOptions = {
 };
 
 // 스타일 옵션을 CSS 변수로 변환
-const getStyleVariables = (options: AgGridStyleOptions = {}) => {
-  const merged = { ...defaultStyleOptions, ...options };
+const getStyleVariables = (options?: AgGridStyleOptions) => {
+  const merged: AgGridStyleOptions = {
+    ...defaultStyleOptions,
+    ...(options || {}),
+  };
   return css`
     /* General */
-    --ag-background-color: ${merged.backgroundColor};
-    --ag-foreground-color: ${merged.color};
-    --ag-font-size: ${merged.fontSize};
-    --ag-font-family: ${merged.fontFamily};
+    --ag-background-color: ${merged.backgroundColor ||
+    defaultStyleOptions.backgroundColor};
+    --ag-foreground-color: ${merged.color || defaultStyleOptions.color};
+    --ag-font-size: ${merged.fontSize || defaultStyleOptions.fontSize};
+    --ag-font-family: ${merged.fontFamily || defaultStyleOptions.fontFamily};
 
     /* Border */
-    --ag-border-color: ${merged.borderColor};
-    --ag-border-width: ${merged.borderWidth};
-    --ag-border-radius: ${merged.borderRadius};
+    --ag-border-color: ${merged.borderColor || defaultStyleOptions.borderColor};
+    --ag-border-width: ${merged.borderWidth || defaultStyleOptions.borderWidth};
+    --ag-border-radius: ${merged.borderRadius ||
+    defaultStyleOptions.borderRadius};
 
     /* Spacing */
-    --ag-row-height: ${merged.rowHeight};
-    --ag-header-height: ${merged.headerHeight};
-    --ag-cell-horizontal-padding: ${merged.cellPadding};
-    --ag-header-cell-horizontal-padding: ${merged.headerPadding};
+    --ag-row-height: ${merged.rowHeight || defaultStyleOptions.rowHeight};
+    --ag-header-height: ${merged.headerHeight ||
+    defaultStyleOptions.headerHeight};
+    --ag-cell-horizontal-padding: ${merged.cellPadding ||
+    defaultStyleOptions.cellPadding};
+    --ag-header-cell-horizontal-padding: ${merged.headerPadding ||
+    defaultStyleOptions.headerPadding};
 
     /* Header */
-    --ag-header-background-color: ${merged.headerBackgroundColor};
-    --ag-header-foreground-color: ${merged.headerColor};
-    --ag-header-font-size: ${merged.headerFontSize};
-    --ag-header-font-weight: ${merged.headerFontWeight};
-    --ag-header-cell-hover-background-color: ${merged.hoverRowBackgroundColor};
+    --ag-header-background-color: ${merged.headerBackgroundColor ||
+    defaultStyleOptions.headerBackgroundColor};
+    --ag-header-foreground-color: ${merged.headerColor ||
+    defaultStyleOptions.headerColor};
+    --ag-header-font-size: ${merged.headerFontSize ||
+    defaultStyleOptions.headerFontSize};
+    --ag-header-font-weight: ${merged.headerFontWeight ||
+    defaultStyleOptions.headerFontWeight};
+    --ag-header-cell-hover-background-color: ${merged.hoverRowBackgroundColor ||
+    defaultStyleOptions.hoverRowBackgroundColor};
 
     /* Cells */
-    --ag-odd-row-background-color: ${merged.oddRowBackgroundColor};
-    --ag-row-hover-color: ${merged.hoverRowBackgroundColor};
-    --ag-selected-row-background-color: ${merged.selectedRowBackgroundColor};
-    --ag-range-selection-background-color: ${merged.selectedRowBackgroundColor};
+    --ag-odd-row-background-color: ${merged.oddRowBackgroundColor ||
+    defaultStyleOptions.oddRowBackgroundColor};
+    --ag-row-hover-color: ${merged.hoverRowBackgroundColor ||
+    defaultStyleOptions.hoverRowBackgroundColor};
+    --ag-selected-row-background-color: ${merged.selectedRowBackgroundColor ||
+    defaultStyleOptions.selectedRowBackgroundColor};
+    --ag-range-selection-background-color: ${merged.selectedRowBackgroundColor ||
+    defaultStyleOptions.selectedRowBackgroundColor};
 
     /* Icons */
-    --ag-icon-color: ${merged.iconColor};
-    --ag-icon-size: ${merged.iconSize};
-    --ag-icon-hover-color: ${merged.iconHoverColor};
+    --ag-icon-color: ${merged.iconColor || defaultStyleOptions.iconColor};
+    --ag-icon-size: ${merged.iconSize || defaultStyleOptions.iconSize};
+    --ag-icon-hover-color: ${merged.iconHoverColor ||
+    defaultStyleOptions.iconHoverColor};
   `;
 };
 
 export const StyledAgGridContainer = styled.div<{
   $styleOptions?: AgGridStyleOptions;
 }>`
-  ${({ $styleOptions }) => getStyleVariables($styleOptions)}
+  ${({ $styleOptions }) => getStyleVariables($styleOptions || undefined)}
+
+  /* 높이 계산에 패딩과 보더 포함 */
+  box-sizing: border-box;
+
+  /* 넘치는 내용 숨기기 (그리드는 내부에서 스크롤 처리) */
+  overflow: hidden;
+
+  /* 플렉스 레이아웃으로 툴바와 그리드 분리 */
+  display: flex;
+  flex-direction: column;
 
   padding: ${({ $styleOptions }) =>
-    $styleOptions?.padding || defaultStyleOptions.padding};
+    $styleOptions?.padding ?? defaultStyleOptions.padding};
   border: ${({ $styleOptions }) =>
-      $styleOptions?.borderWidth || defaultStyleOptions.borderWidth}
+      $styleOptions?.borderWidth ?? defaultStyleOptions.borderWidth}
     ${({ $styleOptions }) =>
-      $styleOptions?.borderStyle || defaultStyleOptions.borderStyle}
+      $styleOptions?.borderStyle ?? defaultStyleOptions.borderStyle}
     ${({ $styleOptions }) =>
-      $styleOptions?.borderColor || defaultStyleOptions.borderColor};
+      $styleOptions?.borderColor ?? defaultStyleOptions.borderColor};
   border-radius: ${({ $styleOptions }) =>
-    $styleOptions?.borderRadius || defaultStyleOptions.borderRadius};
+    $styleOptions?.borderRadius ?? defaultStyleOptions.borderRadius};
+
+  /* AgGrid 루트 요소가 컨테이너 내부에서 올바르게 크기 조정되도록 */
+  .ag-root-wrapper {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+  }
 
   /* AG-Grid 셀 스타일 커스터마이징 */
   .ag-cell {
     background-color: ${({ $styleOptions }) =>
-      $styleOptions?.cellBackgroundColor ||
+      $styleOptions?.cellBackgroundColor ??
       defaultStyleOptions.cellBackgroundColor};
     color: ${({ $styleOptions }) =>
-      $styleOptions?.cellColor || defaultStyleOptions.cellColor};
+      $styleOptions?.cellColor ?? defaultStyleOptions.cellColor};
     border-color: ${({ $styleOptions }) =>
-      $styleOptions?.cellBorderColor || defaultStyleOptions.cellBorderColor};
+      $styleOptions?.cellBorderColor ?? defaultStyleOptions.cellBorderColor};
     border-width: ${({ $styleOptions }) =>
-      $styleOptions?.cellBorderWidth || defaultStyleOptions.cellBorderWidth};
+      $styleOptions?.cellBorderWidth ?? defaultStyleOptions.cellBorderWidth};
   }
 
-  /* 짝수 행 배경색 */
-  .ag-row-even {
+  /* 짝수 행 배경색 (클릭되지 않은 경우만) */
+  .ag-row-even:not(.ag-row-clicked) {
     background-color: ${({ $styleOptions }) =>
-      $styleOptions?.evenRowBackgroundColor ||
+      $styleOptions?.evenRowBackgroundColor ??
       defaultStyleOptions.evenRowBackgroundColor};
   }
 
-  /* 홀수 행 배경색 */
-  .ag-row-odd {
+  /* 홀수 행 배경색 (클릭되지 않은 경우만) */
+  .ag-row-odd:not(.ag-row-clicked) {
     background-color: ${({ $styleOptions }) =>
-      $styleOptions?.oddRowBackgroundColor ||
+      $styleOptions?.oddRowBackgroundColor ??
       defaultStyleOptions.oddRowBackgroundColor};
   }
 
   /* 헤더 스타일 */
   .ag-header-cell {
     background-color: ${({ $styleOptions }) =>
-      $styleOptions?.headerBackgroundColor ||
+      $styleOptions?.headerBackgroundColor ??
       defaultStyleOptions.headerBackgroundColor};
     color: ${({ $styleOptions }) =>
-      $styleOptions?.headerColor || defaultStyleOptions.headerColor};
+      $styleOptions?.headerColor ?? defaultStyleOptions.headerColor};
     font-size: ${({ $styleOptions }) =>
-      $styleOptions?.headerFontSize || defaultStyleOptions.headerFontSize};
+      $styleOptions?.headerFontSize ?? defaultStyleOptions.headerFontSize};
     font-weight: ${({ $styleOptions }) =>
-      $styleOptions?.headerFontWeight || defaultStyleOptions.headerFontWeight};
+      $styleOptions?.headerFontWeight ?? defaultStyleOptions.headerFontWeight};
     border-color: ${({ $styleOptions }) =>
-      $styleOptions?.headerBorderColor ||
+      $styleOptions?.headerBorderColor ??
       defaultStyleOptions.headerBorderColor};
     border-width: ${({ $styleOptions }) =>
-      $styleOptions?.headerBorderWidth ||
+      $styleOptions?.headerBorderWidth ??
       defaultStyleOptions.headerBorderWidth};
+  }
+
+  /* ag-grid 헤더 필수 표시 */
+  .ag-header-cell.required-header .ag-header-cell-text::before,
+  .ag-theme-quartz .ag-header-cell.required-header .ag-header-cell-text::before,
+  .ag-theme-legacy
+    .ag-header-cell.required-header
+    .ag-header-cell-text::before {
+    content: "*";
+    color: #ff4d4f;
+    margin-right: 4px;
+    font-weight: bold;
+    display: inline-block;
   }
 
   /* 아이콘 스타일 */
   .ag-icon {
     color: ${({ $styleOptions }) =>
-      $styleOptions?.iconColor || defaultStyleOptions.iconColor};
+      $styleOptions?.iconColor ?? defaultStyleOptions.iconColor};
     font-size: ${({ $styleOptions }) =>
-      $styleOptions?.iconSize || defaultStyleOptions.iconSize};
+      $styleOptions?.iconSize ?? defaultStyleOptions.iconSize};
   }
 
   .ag-icon:hover {
     color: ${({ $styleOptions }) =>
-      $styleOptions?.iconHoverColor || defaultStyleOptions.iconHoverColor};
+      $styleOptions?.iconHoverColor ?? defaultStyleOptions.iconHoverColor};
+  }
+
+  /* 그리드 선택 행 스타일 (클릭되지 않은 경우만) - 최고 우선순위 */
+  .ag-row-selected:not(.ag-row-clicked),
+  .ag-row.ag-row-selected:not(.ag-row-clicked),
+  .ag-row-even.ag-row-selected:not(.ag-row-clicked),
+  .ag-row-odd.ag-row-selected:not(.ag-row-clicked),
+  .ag-theme-quartz .ag-row-selected:not(.ag-row-clicked),
+  .ag-theme-legacy .ag-row-selected:not(.ag-row-clicked),
+  .ag-theme-quartz .ag-row.ag-row-selected:not(.ag-row-clicked),
+  .ag-theme-legacy .ag-row.ag-row-selected:not(.ag-row-clicked),
+  .ag-theme-quartz .ag-row-even.ag-row-selected:not(.ag-row-clicked),
+  .ag-theme-legacy .ag-row-even.ag-row-selected:not(.ag-row-clicked),
+  .ag-theme-quartz .ag-row-odd.ag-row-selected:not(.ag-row-clicked),
+  .ag-theme-legacy .ag-row-odd.ag-row-selected:not(.ag-row-clicked) {
+    background-color: #e6f7ff !important;
+  }
+
+  /* 선택된 행의 셀에도 색상 적용 */
+  .ag-row-selected:not(.ag-row-clicked) .ag-cell,
+  .ag-row.ag-row-selected:not(.ag-row-clicked) .ag-cell,
+  .ag-row-even.ag-row-selected:not(.ag-row-clicked) .ag-cell,
+  .ag-row-odd.ag-row-selected:not(.ag-row-clicked) .ag-cell,
+  .ag-theme-quartz .ag-row-selected:not(.ag-row-clicked) .ag-cell,
+  .ag-theme-legacy .ag-row-selected:not(.ag-row-clicked) .ag-cell {
+    background-color: #e6f7ff !important;
+  }
+
+  .ag-row-selected:not(.ag-row-clicked):hover,
+  .ag-row-even.ag-row-selected:not(.ag-row-clicked):hover,
+  .ag-row-odd.ag-row-selected:not(.ag-row-clicked):hover,
+  .ag-theme-quartz .ag-row-selected:not(.ag-row-clicked):hover,
+  .ag-theme-legacy .ag-row-selected:not(.ag-row-clicked):hover,
+  .ag-theme-quartz .ag-row-even.ag-row-selected:not(.ag-row-clicked):hover,
+  .ag-theme-legacy .ag-row-even.ag-row-selected:not(.ag-row-clicked):hover,
+  .ag-theme-quartz .ag-row-odd.ag-row-selected:not(.ag-row-clicked):hover,
+  .ag-theme-legacy .ag-row-odd.ag-row-selected:not(.ag-row-clicked):hover {
+    background-color: #bae7ff !important;
+  }
+
+  /* 그리드 클릭된 행 스타일 (선택 여부와 관계없이) - 최고 우선순위 */
+  /* 짝수/홀수 행과 선택된 행 스타일보다 우선하도록 더 구체적인 선택자 사용 */
+  /* 모든 가능한 선택자 조합을 사용하여 확실하게 적용 */
+  .ag-row.ag-row-clicked,
+  .ag-row-clicked,
+  .ag-row-even.ag-row-clicked,
+  .ag-row-odd.ag-row-clicked,
+  .ag-row-selected.ag-row-clicked,
+  .ag-row-even.ag-row-selected.ag-row-clicked,
+  .ag-row-odd.ag-row-selected.ag-row-clicked,
+  .ag-theme-quartz .ag-row.ag-row-clicked,
+  .ag-theme-legacy .ag-row.ag-row-clicked,
+  .ag-theme-quartz .ag-row-clicked,
+  .ag-theme-legacy .ag-row-clicked,
+  .ag-theme-quartz .ag-row-even.ag-row-clicked,
+  .ag-theme-legacy .ag-row-even.ag-row-clicked,
+  .ag-theme-quartz .ag-row-odd.ag-row-clicked,
+  .ag-theme-legacy .ag-row-odd.ag-row-clicked,
+  .ag-theme-quartz .ag-row-selected.ag-row-clicked,
+  .ag-theme-legacy .ag-row-selected.ag-row-clicked {
+    background-color: #e6f7ff !important;
+    color: #1890ff !important;
+  }
+
+  /* 셀에도 색상 적용 */
+  .ag-row.ag-row-clicked .ag-cell,
+  .ag-row-clicked .ag-cell,
+  .ag-row-even.ag-row-clicked .ag-cell,
+  .ag-row-odd.ag-row-clicked .ag-cell,
+  .ag-row-selected.ag-row-clicked .ag-cell,
+  .ag-theme-quartz .ag-row.ag-row-clicked .ag-cell,
+  .ag-theme-legacy .ag-row.ag-row-clicked .ag-cell {
+    background-color: #e6f7ff !important;
+    color: #1890ff !important;
+  }
+
+  .ag-row.ag-row-clicked:hover,
+  .ag-row-clicked:hover,
+  .ag-row-even.ag-row-clicked:hover,
+  .ag-row-odd.ag-row-clicked:hover,
+  .ag-theme-quartz .ag-row.ag-row-clicked:hover,
+  .ag-theme-legacy .ag-row.ag-row-clicked:hover,
+  .ag-theme-quartz .ag-row-clicked:hover,
+  .ag-theme-legacy .ag-row-clicked:hover,
+  .ag-theme-quartz .ag-row-even.ag-row-clicked:hover,
+  .ag-theme-legacy .ag-row-even.ag-row-clicked:hover,
+  .ag-theme-quartz .ag-row-odd.ag-row-clicked:hover,
+  .ag-theme-legacy .ag-row-odd.ag-row-clicked:hover {
+    background-color: #bae7ff !important;
+  }
+
+  /* 선택된 행이면서 클릭된 행인 경우 - 클릭 스타일이 우선 (더 구체적인 선택자) */
+  .ag-row.ag-row-selected.ag-row-clicked,
+  .ag-row-selected.ag-row-clicked,
+  .ag-row-even.ag-row-selected.ag-row-clicked,
+  .ag-row-odd.ag-row-selected.ag-row-clicked,
+  .ag-theme-quartz .ag-row.ag-row-selected.ag-row-clicked,
+  .ag-theme-legacy .ag-row.ag-row-selected.ag-row-clicked,
+  .ag-theme-quartz .ag-row-selected.ag-row-clicked,
+  .ag-theme-legacy .ag-row-selected.ag-row-clicked,
+  .ag-theme-quartz .ag-row-even.ag-row-selected.ag-row-clicked,
+  .ag-theme-legacy .ag-row-even.ag-row-selected.ag-row-clicked,
+  .ag-theme-quartz .ag-row-odd.ag-row-selected.ag-row-clicked,
+  .ag-theme-legacy .ag-row-odd.ag-row-selected.ag-row-clicked {
+    background-color: #e6f7ff !important;
+    color: #1890ff !important;
+  }
+
+  .ag-row.ag-row-selected.ag-row-clicked:hover,
+  .ag-row-selected.ag-row-clicked:hover,
+  .ag-row-even.ag-row-selected.ag-row-clicked:hover,
+  .ag-row-odd.ag-row-selected.ag-row-clicked:hover,
+  .ag-theme-quartz .ag-row.ag-row-selected.ag-row-clicked:hover,
+  .ag-theme-legacy .ag-row.ag-row-selected.ag-row-clicked:hover,
+  .ag-theme-quartz .ag-row-selected.ag-row-clicked:hover,
+  .ag-theme-legacy .ag-row-selected.ag-row-clicked:hover,
+  .ag-theme-quartz .ag-row-even.ag-row-selected.ag-row-clicked:hover,
+  .ag-theme-legacy .ag-row-even.ag-row-selected.ag-row-clicked:hover,
+  .ag-theme-quartz .ag-row-odd.ag-row-selected.ag-row-clicked:hover,
+  .ag-theme-legacy .ag-row-odd.ag-row-selected.ag-row-clicked:hover {
+    background-color: #bae7ff !important;
   }
 `;
 
 // 그리드 툴바 스타일
 export const StyledGridToolbar = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 8px 12px;
-  border-bottom: 1px solid #e5e7eb;
-  background-color: #fafafa;
-  gap: 4px;
-
-  .ant-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border: none;
-    box-shadow: none;
-
-    &:hover {
-      background-color: #f0f0f0;
+  width: 100%;
+  flex-shrink: 0; /* 툴바가 축소되지 않도록 */
+  .data-grid-panel {
+    &__divider {
+      width: 1px;
+      height: 20px;
+      background-color: ${({ theme }) => theme.colors.neutral[300]};
+      margin: 0 10px;
     }
-
-    .anticon {
-      font-size: 16px;
+    &__toolbar {
+      ${mixins.flex("center", "space-between", "row")}
+      margin-bottom: 10px;
+    }
+    &-left {
+      ${mixins.flex("center", "flex-start", "row")}
+      .data-grid-panel__button {
+        & + .data-grid-panel__button:not(.data-grid-panel__button--more) {
+          margin-left: 5px;
+        }
+      }
+    }
+    &-right {
+      ${mixins.flex("center", "flex-start", "row", "5px")}
+      .ant-btn-icon {
+        i {
+          color: ${({ theme }) => theme.colors.grey[500]};
+        }
+      }
+    }
+    &__count {
+      white-space: nowrap;
+      font-size: 11px;
+      color: ${({ theme }) => theme.colors.neutral[500]};
+      &-number {
+        color: ${({ theme }) => theme.colors.neutral[800]};
+      }
     }
   }
 `;
-

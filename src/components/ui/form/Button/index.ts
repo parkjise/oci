@@ -8,3 +8,8 @@ export {
   default as ActionButtonGroup,
   type ActionButtonGroupProps,
 } from "./ActionButtonGroup";
+export {
+  SearchActions,
+  default as SearchActionsDefault,
+  type SearchActionsProps,
+} from "./SearchActions";

@@ -20,9 +20,17 @@ RUN if [ -f translations.json ] && [ -s translations.json ]; then \
 
 # 빌드 시 환경 변수는 ARG로 전달받아 사용
 ARG VITE_API_BASE_URL
+ARG VITE_API_PROXY_TARGET
 ARG VITE_ENV
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_API_PROXY_TARGET=$VITE_API_PROXY_TARGET
 ENV VITE_ENV=$VITE_ENV
+
+# 빌드 시 환경변수 확인 로그
+RUN echo "🔨 Building for environment: $VITE_ENV" && \
+    echo "   API Base URL: $VITE_API_BASE_URL" && \
+    echo "   Proxy Target: $VITE_API_PROXY_TARGET"
+
 RUN npm run build
 
 # Stage 2: Production

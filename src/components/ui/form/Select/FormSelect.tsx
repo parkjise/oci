@@ -21,7 +21,8 @@ interface SelectOption {
   layout?: "vertical" | "horizontal" | "inline";
 }
 
-interface FormSelectProps extends Omit<SelectProps, "options" | "loading" | "mode"> {
+interface FormSelectProps
+  extends Omit<SelectProps, "options" | "loading" | "mode"> {
   name: string;
   label: string;
   rules?: Rule[];
@@ -55,6 +56,8 @@ const FormSelect: React.FC<FormSelectProps> = ({
 }) => {
   const [options, setOptions] = useState<SelectOption[]>(propOptions || []);
   const [loading, setLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const selectRef = React.useRef<any>(null);
 
   // 모든 hooks를 early return 이전에 호출
   useEffect(() => {
@@ -142,14 +145,21 @@ const FormSelect: React.FC<FormSelectProps> = ({
     if (!rules || !useModalMessage) return rules;
 
     return rules.map((rule) => {
-      if ('required' in rule && rule.required) {
-        const ruleWithRequired = rule as Rule & { required: boolean; message?: string };
+      if ("required" in rule && rule.required) {
+        const ruleWithRequired = rule as Rule & {
+          required: boolean;
+          message?: string;
+        };
         return {
           ...rule,
-          validator: (_: unknown, value: string | number | (string | number)[] | undefined) => {
+          validator: (
+            _: unknown,
+            value: string | number | (string | number)[] | undefined
+          ) => {
             if (!value || (Array.isArray(value) && value.length === 0)) {
-              const errorMessage = ruleWithRequired.message || `${label}을(를) 선택해주세요.`;
-              
+              const errorMessage =
+                ruleWithRequired.message || `${label}을(를) 선택해주세요.`;
+
               // 첫 번째 모달만 표시
               if (canShowModal()) {
                 MessageModal.error({
@@ -157,10 +167,14 @@ const FormSelect: React.FC<FormSelectProps> = ({
                   content: errorMessage,
                   onOk: () => {
                     resetModalFlag();
+                    // 모달 닫힌 후 해당 Select로 포커스 이동
+                    setTimeout(() => {
+                      selectRef.current?.focus();
+                    }, 500);
                   },
                 });
               }
-              
+
               return Promise.reject(new Error(errorMessage));
             }
             return Promise.resolve();
@@ -181,21 +195,25 @@ const FormSelect: React.FC<FormSelectProps> = ({
         colon={false}
         noStyle
       >
-        <Form.Item shouldUpdate={(prev, curr) => prev[name] !== curr[name]}>
+        <Form.Item
+          help={null}
+          shouldUpdate={(prev, curr) => prev[name] !== curr[name]}
+        >
           {({ getFieldValue }) => {
             const value = getFieldValue(name);
             const selectedOption = options.find((opt) => opt.value === value);
             const displayValue = selectedOption
               ? selectedOption.label
               : value !== undefined && value !== null
-                ? String(value)
-                : emptyText;
+              ? String(value)
+              : emptyText;
             return (
               <Form.Item
                 name={name}
                 label={label}
                 layout={layout as FormItemLayout}
                 colon={false}
+                help={null}
               >
                 <Text>{displayValue}</Text>
               </Form.Item>
@@ -213,9 +231,14 @@ const FormSelect: React.FC<FormSelectProps> = ({
       layout={layout as FormItemLayout}
       colon={false}
       rules={processedRules}
-      {...(useModalMessage ? { validateStatus: "", help: "" } : {})}
+      {...(useModalMessage ? { validateStatus: "", help: "" } : { help: "" })}
     >
-      <Select placeholder={placeholder} loading={loading} {...selectProps}>
+      <Select
+        ref={selectRef}
+        placeholder={placeholder}
+        loading={loading}
+        {...selectProps}
+      >
         {options.map((option) => (
           <Option key={option.value} value={option.value} label={option.label}>
             {option.label}

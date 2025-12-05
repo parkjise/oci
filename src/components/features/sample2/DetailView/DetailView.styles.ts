@@ -4,7 +4,6 @@ import * as mixins from "@/styles/mixins";
 export const DetailViewStyles = styled.div`
   &.page-layout__detail-view {
     ${mixins.flex("flex-start", "flex-start", "column", "10px")}
-    ${mixins.Card()}
     height: fit-content;
     box-sizing: border-box;
   }
@@ -15,6 +14,29 @@ export const DetailViewStyles = styled.div`
       background-color: ${({ theme }) => theme.colors.neutral[300]};
       margin: 0 10px;
     }
+    &__status {
+      &-tag {
+        font-size: 11px;
+        border: none;
+        border-radius: 4px;
+        margin-inline-end: 0;
+        padding-inline: 8px;
+        padding-block: 2px;
+        font-weight: 500;
+        &--done {
+          background-color: #f0f9ff;
+          color: #005eac;
+        }
+        &--approved {
+          background-color: #fef4e4;
+          color: #f7b84b;
+        }
+        &--pending {
+          background-color: #fff1ee;
+          color: #f06548;
+        }
+      }
+    }
     &__actions {
       width: 100%;
       ${mixins.flex("center", "space-between")}
@@ -23,6 +45,20 @@ export const DetailViewStyles = styled.div`
           ${mixins.flex("center", "flex-start", "row", "5px")}
           .detail-view__divider {
             height: 10px;
+          }
+          .form-input {
+            &--search {
+              .ant-input {
+                padding-block: 2px;
+                &::placeholder {
+                  font-size: 11px;
+                }
+              }
+              .ant-btn {
+                height: 28px;
+                width: 28px;
+              }
+            }
           }
         }
         &--right {
@@ -33,6 +69,9 @@ export const DetailViewStyles = styled.div`
     &__button {
       &--more {
         border: none;
+        &:hover {
+          border: none !important;
+        }
       }
     }
     &__table {

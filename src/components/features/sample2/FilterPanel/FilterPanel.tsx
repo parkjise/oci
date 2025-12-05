@@ -19,6 +19,14 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ className }) => {
         />
         <FormInput name="번호" label="번호" className="filter-panel__field" />
         <FormInput name="ID" label="ID" className="filter-panel__field" />
+        <FormInput
+          type="search"
+          name="search"
+          label="검색"
+          className="filter-panel__field"
+          showReadOnlyBoxName="selectedValue"
+          width={150}
+        />
       </Form>
       <div className="filter-panel__actions">
         <Tooltip title="조회">
@@ -41,4 +49,3 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ className }) => {
 };
 
 export default FilterPanel;
-

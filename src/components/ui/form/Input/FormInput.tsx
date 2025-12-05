@@ -1,5 +1,5 @@
 import React from "react";
-import { Form, Space, Input, Typography, Tooltip } from "antd";
+import { Form, Space, Typography, Tooltip } from "antd";
 import { CloseCircleOutlined } from "@ant-design/icons";
 import type { Rule } from "antd/es/form";
 import type { InputProps, InputRef } from "antd";
@@ -11,6 +11,7 @@ import { addonAfterStyle } from "./AddonAfter.styles";
 import MessageModal from "@/components/ui/feedback/Message/MessageModal";
 import { canShowModal, resetModalFlag } from "@/utils/formModalUtils";
 import FormInputNumber from "./FormInputNumber";
+import FormSearchInput from "./FormSearchInput";
 import {
   formatBusinessNumber,
   formatPhoneNumber,
@@ -20,12 +21,11 @@ import {
 } from "@/utils/stringUtils";
 import { useInputValidation, type InputType } from "./FormInputValidation";
 
-const { Search } = Input;
 const { Text } = Typography;
 
 type FormInputProps = Omit<InputProps, "addonAfter"> & {
   name: string;
-  label: string;
+  label?: string | "";
   rules?: Rule[];
   layout?: "vertical" | "horizontal" | "inline";
   max?: number;
@@ -35,13 +35,15 @@ type FormInputProps = Omit<InputProps, "addonAfter"> & {
   onSearch?: SearchProps["onSearch"];
   mode?: "view" | "edit";
   emptyText?: string;
+  onPopupOpen?: (searchValue: string) => void; // 팝업 열기 콜백 (type="search"일 때 사용)
+  showReadOnlyBoxName?: string; // readOnly 박스의 name (값이 있으면 활성화, 없으면 비활성화)
 };
 
 const FULL_WIDTH_STYLE: React.CSSProperties = { width: "100%" };
 
 const FormInput: React.FC<FormInputProps> = ({
   name,
-  label,
+  label = "",
   rules,
   addonAfter: propAddonAfter,
   layout,
@@ -50,6 +52,7 @@ const FormInput: React.FC<FormInputProps> = ({
   useModalMessage = true,
   mode = "edit",
   emptyText = "-",
+  width,
   ...rest
 }) => {
   const isBusinessNumber = type === "businessNumber";
@@ -72,6 +75,7 @@ const FormInput: React.FC<FormInputProps> = ({
   const inputRef = React.useRef<InputRef>(null);
   const previousValidationErrorRef = React.useRef<string>("");
   const wasFocusedRef = React.useRef(false);
+  const blurTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const {
     onChange: restOnChange,
@@ -143,6 +147,10 @@ const FormInput: React.FC<FormInputProps> = ({
                   content: errorMessage,
                   onOk: () => {
                     resetModalFlag();
+                    // 모달 닫힌 후 해당 입력 필드로 포커스 이동
+                    setTimeout(() => {
+                      inputRef.current?.input?.focus();
+                    }, 500);
                   },
                 });
               }
@@ -163,11 +171,26 @@ const FormInput: React.FC<FormInputProps> = ({
   }, []);
 
   const handleBlur = React.useCallback(() => {
-    setTimeout(() => {
+    // 이전 timeout이 있으면 정리
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+    }
+
+    blurTimeoutRef.current = setTimeout(() => {
       if (document.activeElement !== inputRef.current?.input) {
         wasFocusedRef.current = false;
       }
+      blurTimeoutRef.current = null;
     }, 100);
+  }, []);
+
+  // 컴포넌트 언마운트 시 timeout 정리
+  React.useEffect(() => {
+    return () => {
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+      }
+    };
   }, []);
 
   const handleInputChange = React.useCallback(
@@ -220,30 +243,18 @@ const FormInput: React.FC<FormInputProps> = ({
 
   if (mode === "view" && type !== "number" && type !== "search") {
     return (
-      <Form.Item
-        name={name}
-        label={label}
-        layout={layout as FormItemLayout}
-        colon={false}
-        noStyle
-      >
-        <Form.Item shouldUpdate={(prev, curr) => prev[name] !== curr[name]}>
+      <Form.Item name={name} colon={false} noStyle>
+        <Form.Item
+          shouldUpdate={(prev, curr) => prev[name] !== curr[name]}
+          noStyle
+        >
           {({ getFieldValue }) => {
             const value = getFieldValue(name);
             const displayValue =
               value !== undefined && value !== null && value !== ""
                 ? String(value)
                 : emptyText;
-            return (
-              <Form.Item
-                name={name}
-                label={label}
-                layout={layout as FormItemLayout}
-                colon={false}
-              >
-                <Text>{displayValue}</Text>
-              </Form.Item>
-            );
+            return <Text>{displayValue}</Text>;
           }}
         </Form.Item>
       </Form.Item>
@@ -287,26 +298,24 @@ const FormInput: React.FC<FormInputProps> = ({
   }
 
   if (type === "search") {
-    const searchElement = <Search {...rest} />;
-
+    // FormSearchInput이 Form.Item과 addonAfter 처리를 포함하므로 직접 반환
     return (
-      <Form.Item
+      <FormSearchInput
         name={name}
         label={label}
         rules={processedRules}
-        layout={layout as FormItemLayout}
-        colon={false}
-        {...(useModalMessage ? { validateStatus: "", help: "" } : {})}
-      >
-        {propAddonAfter ? (
-          <Space.Compact style={FULL_WIDTH_STYLE}>
-            {searchElement}
-            <span style={addonAfterStyle}>{propAddonAfter}</span>
-          </Space.Compact>
-        ) : (
-          searchElement
-        )}
-      </Form.Item>
+        layout={layout}
+        useModalMessage={useModalMessage}
+        addonAfter={propAddonAfter}
+        showReadOnlyBoxName={rest.showReadOnlyBoxName}
+        style={
+          rest.showReadOnlyBoxName !== undefined
+            ? { width: width, paddingRight: 10 }
+            : undefined
+        }
+        onPopupOpen={rest.onPopupOpen}
+        {...rest}
+      />
     );
   }
 
@@ -378,6 +387,7 @@ const FormInput: React.FC<FormInputProps> = ({
       validateStatus={validationError ? "error" : ""}
       help=""
       hasFeedback={false}
+      style={{ marginBottom: 0 }}
     >
       {propAddonAfter ? (
         <Space.Compact style={FULL_WIDTH_STYLE}>

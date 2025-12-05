@@ -3,9 +3,6 @@ import * as mixins from "@/styles/mixins";
 
 export const RecordListStyles = styled.div`
   height: 100%;
-  ${mixins.Card()}
-  padding-right: 5px;
-
   .record-list {
     ${mixins.flex("flex-start", "flex-start", "column", "10px")}
     width: 100%;
@@ -30,6 +27,9 @@ export const RecordListStyles = styled.div`
         width: auto;
         height: auto;
         border: none;
+        &:hover {
+          border: none !important;
+        }
         i {
           color: ${({ theme }) => theme.colors.neutral[500]};
         }

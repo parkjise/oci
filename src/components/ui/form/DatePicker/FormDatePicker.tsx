@@ -60,6 +60,10 @@ const FormDatePicker: React.FC<FormDatePickerProps> = ({
   ...rest
 }) => {
   const form = Form.useFormInstance();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const datePickerRef = React.useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rangePickerRef = React.useRef<any>(null);
 
   // useModalMessage가 true일 때만 required 규칙을 모달로 변환
   const processedRules = React.useMemo(() => {
@@ -90,6 +94,14 @@ const FormDatePicker: React.FC<FormDatePickerProps> = ({
                   content: errorMessage,
                   onOk: () => {
                     resetModalFlag();
+                    // 모달 닫힌 후 해당 DatePicker로 포커스 이동
+                    setTimeout(() => {
+                      if (isRange && rangePickerRef.current) {
+                        rangePickerRef.current.focus();
+                      } else if (!isRange && datePickerRef.current) {
+                        datePickerRef.current.focus();
+                      }
+                    }, 500);
                   },
                 });
               }
@@ -108,6 +120,12 @@ const FormDatePicker: React.FC<FormDatePickerProps> = ({
                   content: errorMessage,
                   onOk: () => {
                     resetModalFlag();
+                    // 모달 닫힌 후 해당 RangePicker로 포커스 이동
+                    setTimeout(() => {
+                      if (rangePickerRef.current) {
+                        rangePickerRef.current.focus();
+                      }
+                    }, 500);
                   },
                 });
               }
@@ -120,7 +138,7 @@ const FormDatePicker: React.FC<FormDatePickerProps> = ({
       }
       return rule;
     });
-  }, [rules, label, useModalMessage]);
+  }, [rules, label, useModalMessage, isRange]);
 
   // View 모드일 때 (모든 hooks 호출 후)
   if (mode === "view") {
@@ -180,6 +198,7 @@ const FormDatePicker: React.FC<FormDatePickerProps> = ({
   // 범위 선택 모드
   if (isRange) {
     // rest에서 mode를 제외 (우리가 정의한 mode와 충돌 방지)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { mode: _, ...rangePickerRest } = rest as RangePickerProps;
     return (
       <Form.Item
@@ -190,7 +209,11 @@ const FormDatePicker: React.FC<FormDatePickerProps> = ({
         colon={false}
         {...(useModalMessage ? { validateStatus: "", help: "" } : {})}
       >
-        <RangePicker style={{ width: "100%" }} {...rangePickerRest} />
+        <RangePicker
+          ref={rangePickerRef}
+          style={{ width: "100%" }}
+          {...rangePickerRest}
+        />
       </Form.Item>
     );
   }
@@ -223,6 +246,7 @@ const FormDatePicker: React.FC<FormDatePickerProps> = ({
   };
 
   // rest에서 onChange와 onOk를 제외하고 나머지만 전달 (Form.Item이 onChange를 관리)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { onChange: _, onOk: __, ...datePickerRest } = rest as DatePickerProps;
 
   return (
@@ -235,6 +259,7 @@ const FormDatePicker: React.FC<FormDatePickerProps> = ({
       {...(useModalMessage ? { validateStatus: "", help: "" } : {})}
     >
       <DatePickerStyles
+        ref={datePickerRef}
         style={{ width: "100%" }}
         disabledDate={disabledDate}
         {...datePickerRest}

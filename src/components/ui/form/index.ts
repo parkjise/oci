@@ -32,9 +32,11 @@ export {
 export {
   ActionButton,
   ActionButtonGroup,
+  SearchActions,
   type ActionButtonProps,
   type ActionButtonType,
   type ActionButtonGroupProps,
+  type SearchActionsProps,
 } from "./Button";
 
 // Tree

@@ -27,6 +27,7 @@ const SplitLayout: React.FC<SplitLayoutProps> = ({
           min={leftPanelMin}
           max={leftPanelMax}
           style={{ overflow: "hidden" }}
+          className="split-layout__panel split-layout__panel--left"
         >
           <div className="split-layout__pane-left">{left}</div>
         </Splitter.Panel>

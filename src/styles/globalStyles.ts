@@ -41,8 +41,10 @@ export const GlobalStyle = createGlobalStyle`
     font-size: 11px;
     .ant-tooltip-inner{
       min-height: 24px;
-    padding: 4px 8px;
-      
+      padding: 4px 8px;
+    }
+    .ant-tooltip-container{
+      min-height: 24px;
     }
   }
 
@@ -59,5 +61,41 @@ export const GlobalStyle = createGlobalStyle`
       vertical-align: text-top;
 
     }
+  }
+
+  /* AG Grid 클릭된 행 스타일 - 전역 스타일로 추가하여 확실하게 적용 */
+  .ag-row.ag-row-clicked,
+  .ag-row-clicked,
+  .ag-row-even.ag-row-clicked,
+  .ag-row-odd.ag-row-clicked,
+  .ag-row-selected.ag-row-clicked,
+  .ag-row-even.ag-row-selected.ag-row-clicked,
+  .ag-row-odd.ag-row-selected.ag-row-clicked,
+  .ag-theme-quartz .ag-row.ag-row-clicked,
+  .ag-theme-legacy .ag-row.ag-row-clicked,
+  .ag-theme-quartz .ag-row-clicked,
+  .ag-theme-legacy .ag-row-clicked,
+  .ag-theme-quartz .ag-row-even.ag-row-clicked,
+  .ag-theme-legacy .ag-row-even.ag-row-clicked,
+  .ag-theme-quartz .ag-row-odd.ag-row-clicked,
+  .ag-theme-legacy .ag-row-odd.ag-row-clicked,
+  .ag-theme-quartz .ag-row-selected.ag-row-clicked,
+  .ag-theme-legacy .ag-row-selected.ag-row-clicked {
+    background-color: #e6f7ff !important;
+    color: #1890ff !important;
+  }
+
+  /* 클릭된 행의 셀에도 색상 적용 */
+  .ag-row.ag-row-clicked .ag-cell,
+  .ag-row-clicked .ag-cell,
+  .ag-row-even.ag-row-clicked .ag-cell,
+  .ag-row-odd.ag-row-clicked .ag-cell,
+  .ag-row-selected.ag-row-clicked .ag-cell,
+  .ag-theme-quartz .ag-row.ag-row-clicked .ag-cell,
+  .ag-theme-legacy .ag-row.ag-row-clicked .ag-cell,
+  .ag-theme-quartz .ag-row-clicked .ag-cell,
+  .ag-theme-legacy .ag-row-clicked .ag-cell {
+    background-color: #e6f7ff !important;
+    color: #1890ff !important;
   }
 `;

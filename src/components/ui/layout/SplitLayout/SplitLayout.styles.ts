@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import * as mixins from "@/styles/mixins";
 
 export const SplitLayoutStyles = styled.section`
   width: 100%;
@@ -24,6 +25,7 @@ export const SplitLayoutStyles = styled.section`
       height: 100%;
       min-width: 0;
       min-height: 0;
+      ${mixins.flex("flex-start", "flex-start", "column", "10px")}
     }
   }
 
@@ -45,4 +47,3 @@ export const SplitLayoutStyles = styled.section`
     width: 0px;
   }
 `;
-

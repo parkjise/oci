@@ -83,9 +83,10 @@ const { Title, Paragraph, Text } = Typography;
 // ============================================================================
 // Lazy Imports
 // ============================================================================
-const Sample2 = React.lazy(() => import("../sample2/Sample2"));
+const PageLayout = React.lazy(() => import("../sample2/PageLayout"));
 const Sample3 = React.lazy(() => import("../sample3/Sample3"));
 const Sample4 = React.lazy(() => import("../sample4/Sample4"));
+const Test2 = React.lazy(() => import("../test/Test2"));
 
 // ============================================================================
 // 컴포넌트
@@ -405,25 +406,94 @@ const Sample1: React.FC = () => {
                         </Text>
                         <ul>
                           <li>
-                            <Text code>type</Text>: "text" | "number" |
-                            "password" | "email" (기본값: "text")
+                            <Text code>type</Text>: 입력 필드 타입
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>"text"</Text>: 일반 텍스트 (기본값)
+                              </li>
+                              <li>
+                                <Text code>"number"</Text>: 숫자 입력
+                                (InputNumber 컴포넌트로 자동 전환)
+                              </li>
+                              <li>
+                                <Text code>"password"</Text>: 비밀번호 입력
+                              </li>
+                              <li>
+                                <Text code>"email"</Text>: 이메일 입력 (자동
+                                검증)
+                              </li>
+                              <li>
+                                <Text code>"tel"</Text> 또는{" "}
+                                <Text code>"phone"</Text>: 전화번호 입력 (자동
+                                포맷팅)
+                              </li>
+                              <li>
+                                <Text code>"search"</Text>: 검색 입력 (Search
+                                컴포넌트로 자동 전환)
+                              </li>
+                              <li>
+                                <Text code>"residentNumber"</Text>: 주민번호
+                                (자동 검증 및 포맷팅)
+                              </li>
+                              <li>
+                                <Text code>"businessNumber"</Text>: 사업자번호
+                                (자동 검증 및 포맷팅)
+                              </li>
+                              <li>
+                                <Text code>"corporateNumber"</Text>: 법인번호
+                                (자동 검증 및 포맷팅)
+                              </li>
+                            </ul>
                           </li>
                           <li>
                             <Text code>placeholder</Text>: 안내 문구
                           </li>
                           <li>
-                            <Text code>rules</Text>: 검증 규칙 배열
+                            <Text code>rules</Text>: 검증 규칙 배열 (Ant Design
+                            Form Rule)
                           </li>
                           <li>
                             <Text code>useModalMessage</Text>: 모달 메시지 사용
                             여부 (기본값: true)
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>true</Text>: 필수 입력 검증 실패 시
+                                모달로 표시
+                              </li>
+                              <li>
+                                <Text code>false</Text>: 인라인 메시지로 표시
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>layout</Text>: 레이블과 입력 필드의 배치
+                            방식
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>"vertical"</Text>: 레이블이 위에 배치
+                                (기본값)
+                              </li>
+                              <li>
+                                <Text code>"horizontal"</Text>: 레이블이 왼쪽에
+                                배치
+                              </li>
+                              <li>
+                                <Text code>"inline"</Text>: 인라인 배치
+                              </li>
+                            </ul>
                           </li>
                           <li>
                             <Text code>addonAfter</Text>: 입력 필드 뒤 텍스트
-                            (예: "원", "개")
+                            또는 ReactNode (예: "원", "개")
                           </li>
                           <li>
                             <Text code>max</Text>: 최대값/최대 글자 수
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>type="number"일 때: 최대 숫자 값</li>
+                              <li>
+                                그 외: 최대 글자 수 (한글/이모지 정확히 카운팅)
+                              </li>
+                            </ul>
                           </li>
                           <li>
                             <Text code>min</Text>: 최소값 (type="number"일 때)
@@ -432,7 +502,157 @@ const Sample1: React.FC = () => {
                             <Text code>step</Text>: 증감 간격 (type="number"일
                             때)
                           </li>
+                          <li>
+                            <Text code>mode</Text>: "view" | "edit" (기본값:
+                            "edit")
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>edit</Text>: 편집 모드 (검증 활성화)
+                              </li>
+                              <li>
+                                <Text code>view</Text>: 조회 모드 (읽기 전용,
+                                검증 비활성화)
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>emptyText</Text>: view 모드에서 빈 값일
+                            때 표시할 텍스트 (기본값: "-")
+                          </li>
+                          <li>
+                            <Text code>disabled</Text>: 입력 비활성화 여부
+                          </li>
+                          <li>
+                            <Text code>readOnly</Text>: 읽기 전용 여부
+                          </li>
+                          <li>
+                            <Text code>suffix</Text>: 입력 필드 뒤에 표시할
+                            ReactNode (예: 아이콘)
+                          </li>
                         </ul>
+
+                        <div
+                          style={{
+                            background: "#eff6ff",
+                            padding: "12px",
+                            borderRadius: "6px",
+                            marginTop: "16px",
+                          }}
+                        >
+                          <Text strong style={{ fontSize: "13px" }}>
+                            💡 Ant Design Input Props 지원:
+                          </Text>
+                          <ul style={{ marginTop: "8px", marginBottom: 0 }}>
+                            <li>
+                              Ant Design의 Input 컴포넌트의 모든 props를
+                              지원합니다
+                            </li>
+                            <li>
+                              <Text code>onChange</Text>,{" "}
+                              <Text code>onFocus</Text>,{" "}
+                              <Text code>onBlur</Text>,{" "}
+                              <Text code>onPressEnter</Text> 등 이벤트 핸들러
+                              사용 가능
+                            </li>
+                            <li>
+                              <Text code>className</Text>,{" "}
+                              <Text code>style</Text>, <Text code>id</Text>,{" "}
+                              <Text code>autoFocus</Text> 등 스타일 및 속성
+                              props 사용 가능
+                            </li>
+                          </ul>
+                        </div>
+
+                        <Text
+                          strong
+                          style={{ display: "block", marginTop: "16px" }}
+                        >
+                          자동 검증 및 포맷팅 타입 (type prop):
+                        </Text>
+                        <ul>
+                          <li>
+                            <Text code>type="residentNumber"</Text>: 주민번호
+                            검증
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>13자리 숫자 검증</li>
+                              <li>체크섬 검증 포함</li>
+                              <li>자동 포맷팅 (000000-0000000)</li>
+                              <li>검증 실패 시 툴팁으로 에러 표시</li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>type="businessNumber"</Text>: 사업자번호
+                            검증
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>10자리 숫자 검증</li>
+                              <li>체크섬 검증 포함</li>
+                              <li>자동 포맷팅 (000-00-00000)</li>
+                              <li>검증 실패 시 툴팁으로 에러 표시</li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>type="corporateNumber"</Text>: 법인번호
+                            검증
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>13자리 숫자 검증</li>
+                              <li>체크섬 검증 포함</li>
+                              <li>자동 포맷팅 (000000-0000000)</li>
+                              <li>검증 실패 시 툴팁으로 에러 표시</li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>type="email"</Text>: 이메일 검증
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>이메일 형식 검증</li>
+                              <li>실시간 검증 (입력 중)</li>
+                              <li>검증 실패 시 툴팁으로 에러 표시</li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>type="tel"</Text> 또는{" "}
+                            <Text code>type="phone"</Text>: 전화번호 포맷팅
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>자동 포맷팅 (010-0000-0000)</li>
+                              <li>최대 11자리 숫자 입력</li>
+                              <li>숫자만 입력 가능</li>
+                            </ul>
+                          </li>
+                        </ul>
+
+                        <div
+                          style={{
+                            background: "#eff6ff",
+                            padding: "12px",
+                            borderRadius: "6px",
+                            marginTop: "16px",
+                          }}
+                        >
+                          <Text strong style={{ fontSize: "13px" }}>
+                            💡 자동 검증 기능:
+                          </Text>
+                          <ul style={{ marginTop: "8px", marginBottom: 0 }}>
+                            <li>
+                              위의 특수 타입을 사용하면 자동으로 실시간 검증이
+                              수행됩니다
+                            </li>
+                            <li>
+                              검증 실패 시 입력 필드 오른쪽에 빨간색 아이콘이
+                              표시되고, 툴팁으로 에러 메시지가 표시됩니다
+                            </li>
+                            <li>
+                              <Text code>useInputValidation</Text> 훅이
+                              내부적으로 사용됩니다
+                            </li>
+                            <li>
+                              주민번호, 사업자번호, 법인번호는 체크섬
+                              알고리즘으로 유효성을 검증합니다
+                            </li>
+                            <li>
+                              검증 중에도 포커스가 유지되어 사용자 경험이
+                              향상됩니다
+                            </li>
+                          </ul>
+                        </div>
 
                         <div
                           style={{
@@ -446,9 +666,59 @@ const Sample1: React.FC = () => {
                             💡 type="number" 사용 시:
                           </Text>
                           <ul style={{ marginTop: "8px", marginBottom: 0 }}>
-                            <li>InputNumber 컴포넌트가 자동으로 사용됩니다</li>
+                            <li>
+                              FormInputNumber 컴포넌트가 자동으로 사용됩니다
+                            </li>
                             <li>천 단위 구분자(쉼표)가 자동 적용됩니다</li>
                             <li>증감 버튼이 표시됩니다</li>
+                            <li>min, max, step props를 사용할 수 있습니다</li>
+                          </ul>
+                        </div>
+
+                        <div
+                          style={{
+                            background: "#fef3c7",
+                            padding: "12px",
+                            borderRadius: "6px",
+                            marginTop: "16px",
+                          }}
+                        >
+                          <Text strong style={{ fontSize: "13px" }}>
+                            💡 type="search" 사용 시:
+                          </Text>
+                          <ul style={{ marginTop: "8px", marginBottom: 0 }}>
+                            <li>
+                              Ant Design의 Search 컴포넌트가 자동으로 사용됩니다
+                            </li>
+                            <li>검색 버튼이 포함된 입력 필드가 표시됩니다</li>
+                            <li>
+                              onSearch prop을 사용하여 검색 기능을 구현할 수
+                              있습니다
+                            </li>
+                          </ul>
+                        </div>
+
+                        <div
+                          style={{
+                            background: "#fef3c7",
+                            padding: "12px",
+                            borderRadius: "6px",
+                            marginTop: "16px",
+                          }}
+                        >
+                          <Text strong style={{ fontSize: "13px" }}>
+                            💡 글자 수 제한 (max prop):
+                          </Text>
+                          <ul style={{ marginTop: "8px", marginBottom: 0 }}>
+                            <li>
+                              max prop을 설정하면 자동으로 글자 수 카운터가
+                              표시됩니다
+                            </li>
+                            <li>
+                              한글, 이모지, 유니코드 문자도 정확하게 글자 수를
+                              계산합니다 (runes 라이브러리 사용)
+                            </li>
+                            <li>최대 글자 수를 초과하면 자동으로 잘립니다</li>
                           </ul>
                         </div>
                       </Paragraph>
@@ -632,6 +902,224 @@ const Sample1: React.FC = () => {
                             ]}
                           />
                         </div>
+
+                        <div style={{ marginTop: "16px" }}>
+                          <Text
+                            strong
+                            style={{ fontSize: "13px", color: "#10b981" }}
+                          >
+                            예제 7: 자동 검증 (주민번호)
+                          </Text>
+                          <Text
+                            type="secondary"
+                            style={{
+                              fontSize: "11px",
+                              display: "block",
+                              marginBottom: "4px",
+                            }}
+                          >
+                            type="residentNumber" 사용 시 자동으로 검증됩니다.
+                            잘못된 주민번호를 입력하면 툴팁으로 에러가
+                            표시됩니다.
+                          </Text>
+                          <FormInput
+                            name="residentNumber"
+                            label="주민번호"
+                            type="residentNumber"
+                            placeholder="주민번호를 입력하세요 (예: 123456-1234567)"
+                            rules={[
+                              {
+                                required: true,
+                                message: "주민번호를 입력해주세요!",
+                              },
+                            ]}
+                          />
+                        </div>
+
+                        <div style={{ marginTop: "16px" }}>
+                          <Text
+                            strong
+                            style={{ fontSize: "13px", color: "#10b981" }}
+                          >
+                            예제 8: 자동 검증 (사업자번호)
+                          </Text>
+                          <Text
+                            type="secondary"
+                            style={{
+                              fontSize: "11px",
+                              display: "block",
+                              marginBottom: "4px",
+                            }}
+                          >
+                            type="businessNumber" 사용 시 자동으로 검증됩니다.
+                            체크섬 알고리즘으로 유효성을 검증합니다.
+                          </Text>
+                          <FormInput
+                            name="businessNumber"
+                            label="사업자번호"
+                            type="businessNumber"
+                            placeholder="사업자번호를 입력하세요 (예: 123-45-67890)"
+                            rules={[
+                              {
+                                required: true,
+                                message: "사업자번호를 입력해주세요!",
+                              },
+                            ]}
+                          />
+                        </div>
+
+                        <div style={{ marginTop: "16px" }}>
+                          <Text
+                            strong
+                            style={{ fontSize: "13px", color: "#10b981" }}
+                          >
+                            예제 9: 자동 검증 (법인번호)
+                          </Text>
+                          <Text
+                            type="secondary"
+                            style={{
+                              fontSize: "11px",
+                              display: "block",
+                              marginBottom: "4px",
+                            }}
+                          >
+                            type="corporateNumber" 사용 시 자동으로 검증됩니다.
+                          </Text>
+                          <FormInput
+                            name="corporateNumber"
+                            label="법인번호"
+                            type="corporateNumber"
+                            placeholder="법인번호를 입력하세요 (예: 123456-1234567)"
+                            rules={[
+                              {
+                                required: true,
+                                message: "법인번호를 입력해주세요!",
+                              },
+                            ]}
+                          />
+                        </div>
+
+                        <div style={{ marginTop: "16px" }}>
+                          <Text
+                            strong
+                            style={{ fontSize: "13px", color: "#10b981" }}
+                          >
+                            예제 10: 자동 검증 (이메일)
+                          </Text>
+                          <Text
+                            type="secondary"
+                            style={{
+                              fontSize: "11px",
+                              display: "block",
+                              marginBottom: "4px",
+                            }}
+                          >
+                            type="email" 사용 시 실시간으로 이메일 형식을
+                            검증합니다.
+                          </Text>
+                          <FormInput
+                            name="emailAuto"
+                            label="이메일 (자동 검증)"
+                            type="email"
+                            placeholder="이메일을 입력하세요"
+                            rules={[
+                              {
+                                required: true,
+                                message: "이메일을 입력해주세요!",
+                              },
+                            ]}
+                          />
+                        </div>
+
+                        <div style={{ marginTop: "16px" }}>
+                          <Text
+                            strong
+                            style={{ fontSize: "13px", color: "#10b981" }}
+                          >
+                            예제 11: 전화번호 자동 포맷팅
+                          </Text>
+                          <Text
+                            type="secondary"
+                            style={{
+                              fontSize: "11px",
+                              display: "block",
+                              marginBottom: "4px",
+                            }}
+                          >
+                            type="tel" 또는 type="phone" 사용 시 자동으로
+                            전화번호 형식으로 포맷팅됩니다.
+                          </Text>
+                          <FormInput
+                            name="phoneNumber"
+                            label="전화번호"
+                            type="tel"
+                            placeholder="전화번호를 입력하세요 (예: 010-1234-5678)"
+                            rules={[
+                              {
+                                required: true,
+                                message: "전화번호를 입력해주세요!",
+                              },
+                            ]}
+                          />
+                        </div>
+
+                        <div style={{ marginTop: "16px" }}>
+                          <Text
+                            strong
+                            style={{ fontSize: "13px", color: "#10b981" }}
+                          >
+                            예제 12: 글자 수 제한 (한글/이모지 지원)
+                          </Text>
+                          <Text
+                            type="secondary"
+                            style={{
+                              fontSize: "11px",
+                              display: "block",
+                              marginBottom: "4px",
+                            }}
+                          >
+                            max prop을 설정하면 글자 수 카운터가 표시되고,
+                            한글과 이모지도 정확하게 카운팅됩니다.
+                          </Text>
+                          <FormInput
+                            name="limitedText"
+                            label="제한된 텍스트"
+                            placeholder="최대 20자까지 입력 가능합니다"
+                            max={20}
+                            rules={[
+                              {
+                                required: true,
+                                message: "텍스트를 입력해주세요!",
+                              },
+                            ]}
+                          />
+                        </div>
+
+                        <div style={{ marginTop: "16px" }}>
+                          <Text
+                            strong
+                            style={{ fontSize: "13px", color: "#8b5cf6" }}
+                          >
+                            예제 13: 조회 모드 (view mode)
+                          </Text>
+                          <Text
+                            type="secondary"
+                            style={{
+                              fontSize: "11px",
+                              display: "block",
+                              marginBottom: "4px",
+                            }}
+                          >
+                            mode="view" 사용 시 읽기 전용으로 표시되며, 빈 값은
+                            emptyText로 표시됩니다.
+                          </Text>
+                          <FormInput
+                            name="viewMode"
+                            label="조회 모드"
+                            mode="view"
+                            emptyText="데이터 없음"
+                          />
+                        </div>
                       </Form>
                     </Col>
                   </Row>
@@ -643,7 +1131,9 @@ const Sample1: React.FC = () => {
               label: (
                 <Space>
                   <Tag color="blue">FormSearchInput</Tag>
-                  <Text type="secondary">검색 입력 필드</Text>
+                  <Text type="secondary">
+                    검색 입력 필드(FormInput type="search" 컴포넌트 사용)
+                  </Text>
                 </Space>
               ),
               children: (
@@ -3557,6 +4047,163 @@ import { FormButton } from "@components/ui/form";
           defaultActiveKey={[]}
           items={[
             {
+              key: "input-components",
+              label: (
+                <Space>
+                  <Tag color="green">Input 컴포넌트</Tag>
+                  <Text type="secondary">FormInput, FormSearchInput</Text>
+                </Space>
+              ),
+              children: (
+                <div id="input-components">
+                  <Row gutter={24}>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>
+                        <BulbOutlined /> 개요
+                      </Title>
+                      <Paragraph>
+                        <Text>
+                          프로젝트에서 사용하는 Input 관련 컴포넌트입니다. Form
+                          컴포넌트와 함께 사용되며, Ant Design의 Input
+                          컴포넌트를 기반으로 만들어졌습니다.
+                        </Text>
+
+                        <Text
+                          strong
+                          style={{ display: "block", marginTop: "16px" }}
+                        >
+                          주요 컴포넌트:
+                        </Text>
+                        <ul>
+                          <li>
+                            <Text code>FormInput</Text>: 일반 텍스트 입력 필드
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                텍스트, 숫자, 이메일, 비밀번호 등 다양한 타입
+                                지원
+                              </li>
+                              <li>검증 규칙 및 모달/인라인 메시지 지원</li>
+                              <li>숫자 입력 시 자동 천 단위 구분자 적용</li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>FormSearchInput</Text>: 검색 입력 필드
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>검색 버튼이 포함된 입력 필드</li>
+                              <li>onSearch 콜백 함수 지원</li>
+                              <li>커스텀 버튼 텍스트 및 아이콘 지원</li>
+                            </ul>
+                          </li>
+                        </ul>
+
+                        <div
+                          style={{
+                            background: "#eff6ff",
+                            padding: "12px",
+                            borderRadius: "6px",
+                            marginTop: "16px",
+                          }}
+                        >
+                          <Text strong style={{ fontSize: "13px" }}>
+                            💡 상세 사용법:
+                          </Text>
+                          <ul style={{ marginTop: "8px", marginBottom: 0 }}>
+                            <li>
+                              <Text code>FormInput</Text>의 상세 사용법은{" "}
+                              <Text code>📝 Form 컴포넌트</Text> 섹션의{" "}
+                              <Text code>FormInput</Text> 항목을 참조하세요.
+                            </li>
+                            <li>
+                              <Text code>FormSearchInput</Text>의 상세 사용법은{" "}
+                              <Text code>📝 Form 컴포넌트</Text> 섹션의{" "}
+                              <Text code>FormSearchInput</Text> 항목을
+                              참조하세요.
+                            </li>
+                          </ul>
+                        </div>
+                      </Paragraph>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>📋 간단 예제</Title>
+                      <pre
+                        style={{
+                          background: "#f5f5f5",
+                          padding: "16px",
+                          borderRadius: "6px",
+                          overflow: "auto",
+                          fontSize: "12px",
+                          lineHeight: "1.6",
+                        }}
+                      >
+                        {`import { FormInput, FormSearchInput } from "@components/ui/form";
+
+// FormInput 예제
+<FormInput
+  name="userName"
+  label="사용자명"
+  placeholder="사용자명을 입력하세요"
+  rules={[
+    { required: true, message: "사용자명을 입력해주세요!" },
+  ]}
+/>
+
+// 숫자 입력 (자동 천 단위 구분자)
+<FormInput
+  name="amount"
+  label="금액"
+  type="number"
+  addonAfter="원"
+  min={0}
+  max={100000000}
+/>
+
+// FormSearchInput 예제
+<FormSearchInput
+  name="search"
+  label="검색"
+  placeholder="검색어를 입력하세요"
+  onSearch={(value) => {
+    console.log("검색:", value);
+  }}
+  enterButton="검색"
+/>`}
+                      </pre>
+
+                      <div
+                        style={{
+                          background: "#fef3c7",
+                          padding: "12px",
+                          borderRadius: "6px",
+                          marginTop: "16px",
+                        }}
+                      >
+                        <Text strong style={{ fontSize: "13px" }}>
+                          ⚠️ 주의사항:
+                        </Text>
+                        <ul style={{ marginTop: "8px", marginBottom: 0 }}>
+                          <li>
+                            <Text code>FormInput</Text>과{" "}
+                            <Text code>FormSearchInput</Text>은 반드시{" "}
+                            <Text code>Form</Text> 컴포넌트 내부에서 사용해야
+                            합니다.
+                          </li>
+                          <li>
+                            <Text code>name</Text> prop은 필수이며, 폼 데이터의
+                            키로 사용됩니다.
+                          </li>
+                          <li>
+                            <Text code>type="number"</Text> 사용 시{" "}
+                            <Text code>InputNumber</Text> 컴포넌트가 자동으로
+                            사용되며, 천 단위 구분자가 자동 적용됩니다.
+                          </li>
+                        </ul>
+                      </div>
+                    </Col>
+                  </Row>
+                </div>
+              ),
+            },
+            {
               key: "loading-spinner",
               label: (
                 <Space>
@@ -4151,6 +4798,892 @@ userModal.openModal({ initialId: "123" });`}
           ]}
         />
       </Card>
+
+      {/* FormInputValidation 유틸리티 가이드 */}
+      <Card style={{ marginBottom: "24px" }}>
+        <Title level={2}>✅ FormInputValidation 유틸리티 가이드</Title>
+        <Divider />
+
+        <Collapse
+          defaultActiveKey={[]}
+          items={[
+            {
+              key: "input-validation-import",
+              label: (
+                <Space>
+                  <Tag color="cyan">Import</Tag>
+                  <Text type="secondary">FormInputValidation Import</Text>
+                </Space>
+              ),
+              children: (
+                <div id="input-validation-import">
+                  <Paragraph>
+                    <Text
+                      type="secondary"
+                      style={{ display: "block", marginBottom: "8px" }}
+                    >
+                      FormInputValidation 관련 함수와 훅은{" "}
+                      <Text code>
+                        @components/ui/form/Input/FormInputValidation
+                      </Text>
+                      에서 import합니다.
+                    </Text>
+                    <pre
+                      style={{
+                        background: "#f5f5f5",
+                        padding: "16px",
+                        borderRadius: "6px",
+                        overflow: "auto",
+                        fontSize: "13px",
+                        lineHeight: "1.6",
+                      }}
+                    >
+                      {`import {
+  validateResidentNumber,
+  validateBusinessNumber,
+  validateCorporateNumber,
+  validateEmail,
+  getValidator,
+  useInputValidation,
+  type InputType,
+} from "@components/ui/form/Input/FormInputValidation";`}
+                    </pre>
+                  </Paragraph>
+                </div>
+              ),
+            },
+            {
+              key: "input-validation-functions",
+              label: (
+                <Space>
+                  <Tag color="cyan">검증 함수</Tag>
+                  <Text type="secondary">개별 검증 함수</Text>
+                </Space>
+              ),
+              children: (
+                <div id="input-validation-functions">
+                  <Row gutter={24}>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>
+                        <BulbOutlined /> 사용법
+                      </Title>
+                      <Paragraph>
+                        <Text strong>검증 함수:</Text>
+                        <ul>
+                          <li>
+                            <Text code>validateResidentNumber(value)</Text>:
+                            주민번호 검증
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>value</Text>: 검증할 문자열
+                              </li>
+                              <li>
+                                반환값: 에러 메시지 (빈 문자열이면 검증 통과)
+                              </li>
+                              <li>13자리 숫자 및 체크섬 검증</li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>validateBusinessNumber(value)</Text>:
+                            사업자번호 검증
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>value</Text>: 검증할 문자열
+                              </li>
+                              <li>
+                                반환값: 에러 메시지 (빈 문자열이면 검증 통과)
+                              </li>
+                              <li>10자리 숫자 및 체크섬 검증</li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>validateCorporateNumber(value)</Text>:
+                            법인번호 검증
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>value</Text>: 검증할 문자열
+                              </li>
+                              <li>
+                                반환값: 에러 메시지 (빈 문자열이면 검증 통과)
+                              </li>
+                              <li>13자리 숫자 및 체크섬 검증</li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>validateEmail(value)</Text>: 이메일 검증
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>value</Text>: 검증할 문자열
+                              </li>
+                              <li>
+                                반환값: 에러 메시지 (빈 문자열이면 검증 통과)
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>getValidator(type)</Text>: 검증 함수
+                            가져오기
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>type</Text>: "residentNumber" |
+                                "businessNumber" | "corporateNumber" | "email"
+                              </li>
+                              <li>반환값: 검증 함수 또는 null</li>
+                            </ul>
+                          </li>
+                        </ul>
+                      </Paragraph>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>📋 사용 예제</Title>
+                      <pre
+                        style={{
+                          background: "#f5f5f5",
+                          padding: "16px",
+                          borderRadius: "6px",
+                          overflow: "auto",
+                          fontSize: "12px",
+                          lineHeight: "1.6",
+                        }}
+                      >
+                        {`import {
+  validateResidentNumber,
+  validateBusinessNumber,
+  validateCorporateNumber,
+  validateEmail,
+  getValidator,
+} from "@components/ui/form/Input/FormInputValidation";
+
+// 주민번호 검증
+const residentError = validateResidentNumber("123456-1234567");
+if (residentError) {
+  console.error(residentError); // "올바른 주민번호 형식이 아닙니다."
+}
+
+// 사업자번호 검증
+const businessError = validateBusinessNumber("123-45-67890");
+if (businessError) {
+  console.error(businessError);
+}
+
+// 법인번호 검증
+const corporateError = validateCorporateNumber("123456-1234567");
+if (corporateError) {
+  console.error(corporateError);
+}
+
+// 이메일 검증
+const emailError = validateEmail("test@example.com");
+if (emailError) {
+  console.error(emailError);
+}
+
+// getValidator 사용
+const validator = getValidator("residentNumber");
+if (validator) {
+  const error = validator("123456-1234567");
+  if (error) {
+    console.error(error);
+  }
+}`}
+                      </pre>
+                    </Col>
+                  </Row>
+                </div>
+              ),
+            },
+            {
+              key: "input-validation-hook",
+              label: (
+                <Space>
+                  <Tag color="cyan">useInputValidation 훅</Tag>
+                  <Text type="secondary">실시간 검증 훅</Text>
+                </Space>
+              ),
+              children: (
+                <div id="input-validation-hook">
+                  <Row gutter={24}>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>
+                        <BulbOutlined /> 사용법
+                      </Title>
+                      <Paragraph>
+                        <Text strong>useInputValidation 훅:</Text>
+                        <ul>
+                          <li>
+                            <Text code>
+                              useInputValidation(name, type, mode)
+                            </Text>
+                            : 실시간 검증 에러 메시지 반환
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>name</Text>: Form 필드명 (필수)
+                              </li>
+                              <li>
+                                <Text code>type</Text>: 검증 타입 (선택)
+                                <ul>
+                                  <li>
+                                    "residentNumber" | "businessNumber" |
+                                    "corporateNumber" | "email" | undefined
+                                  </li>
+                                </ul>
+                              </li>
+                              <li>
+                                <Text code>mode</Text>: "view" | "edit" (기본값:
+                                "edit")
+                                <ul>
+                                  <li>
+                                    <Text code>edit</Text>: 검증 활성화
+                                  </li>
+                                  <li>
+                                    <Text code>view</Text>: 검증 비활성화
+                                  </li>
+                                </ul>
+                              </li>
+                              <li>
+                                반환값: 에러 메시지 문자열 (빈 문자열이면 검증
+                                통과)
+                              </li>
+                            </ul>
+                          </li>
+                        </ul>
+
+                        <div
+                          style={{
+                            background: "#eff6ff",
+                            padding: "12px",
+                            borderRadius: "6px",
+                            marginTop: "16px",
+                          }}
+                        >
+                          <Text strong style={{ fontSize: "13px" }}>
+                            💡 주요 특징:
+                          </Text>
+                          <ul style={{ marginTop: "8px", marginBottom: 0 }}>
+                            <li>
+                              Form.useWatch를 사용하여 실시간으로 값 변경을
+                              감지합니다
+                            </li>
+                            <li>
+                              입력값이 변경될 때마다 자동으로 검증을 수행합니다
+                            </li>
+                            <li>
+                              mode가 "view"일 때는 검증을 수행하지 않습니다
+                            </li>
+                            <li>
+                              FormInput 컴포넌트 내부에서 자동으로 사용됩니다
+                            </li>
+                          </ul>
+                        </div>
+                      </Paragraph>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>📋 사용 예제</Title>
+                      <pre
+                        style={{
+                          background: "#f5f5f5",
+                          padding: "16px",
+                          borderRadius: "6px",
+                          overflow: "auto",
+                          fontSize: "12px",
+                          lineHeight: "1.6",
+                        }}
+                      >
+                        {`import { Form } from "antd";
+import { useInputValidation } from "@components/ui/form/Input/FormInputValidation";
+
+const MyComponent = () => {
+  const form = Form.useForm();
+
+  // 주민번호 실시간 검증
+  const residentError = useInputValidation(
+    "residentNumber",
+    "residentNumber",
+    "edit"
+  );
+
+  // 사업자번호 실시간 검증
+  const businessError = useInputValidation(
+    "businessNumber",
+    "businessNumber",
+    "edit"
+  );
+
+  // 이메일 실시간 검증
+  const emailError = useInputValidation("email", "email", "edit");
+
+  return (
+    <Form form={form}>
+      <Form.Item name="residentNumber">
+        <Input />
+        {residentError && (
+          <div style={{ color: "red" }}>{residentError}</div>
+        )}
+      </Form.Item>
+
+      <Form.Item name="businessNumber">
+        <Input />
+        {businessError && (
+          <div style={{ color: "red" }}>{businessError}</div>
+        )}
+      </Form.Item>
+
+      <Form.Item name="email">
+        <Input />
+        {emailError && (
+          <div style={{ color: "red" }}>{emailError}</div>
+        )}
+      </Form.Item>
+    </Form>
+  );
+};`}
+                      </pre>
+
+                      <div
+                        style={{
+                          background: "#fef3c7",
+                          padding: "12px",
+                          borderRadius: "6px",
+                          marginTop: "16px",
+                        }}
+                      >
+                        <Text strong style={{ fontSize: "13px" }}>
+                          ⚠️ 주의사항:
+                        </Text>
+                        <ul style={{ marginTop: "8px", marginBottom: 0 }}>
+                          <li>
+                            이 훅은 반드시 <Text code>Form</Text> 컴포넌트
+                            내부에서 사용해야 합니다
+                          </li>
+                          <li>
+                            <Text code>Form.useFormInstance()</Text>를
+                            내부적으로 사용하므로 Form context가 필요합니다
+                          </li>
+                          <li>
+                            일반적으로는 <Text code>FormInput</Text> 컴포넌트를
+                            사용하면 자동으로 처리되므로 직접 사용할 필요는
+                            없습니다
+                          </li>
+                        </ul>
+                      </div>
+                    </Col>
+                  </Row>
+                </div>
+              ),
+            },
+          ]}
+        />
+      </Card>
+
+      {/* AG-Grid 유틸리티 가이드 */}
+      <Card style={{ marginBottom: "24px" }}>
+        <Title level={2}>🔧 AG-Grid 유틸리티 가이드</Title>
+        <Divider />
+
+        <Collapse
+          defaultActiveKey={[]}
+          items={[
+            {
+              key: "aggrid-utils-import",
+              label: (
+                <Space>
+                  <Tag color="orange">Import</Tag>
+                  <Text type="secondary">AG-Grid 유틸리티 Import</Text>
+                </Space>
+              ),
+              children: (
+                <div id="aggrid-utils-import">
+                  <Paragraph>
+                    <Text
+                      type="secondary"
+                      style={{ display: "block", marginBottom: "8px" }}
+                    >
+                      AG-Grid 관련 유틸리티 함수는{" "}
+                      <Text code>@utils/agGridUtils</Text>에서 import합니다.
+                    </Text>
+                    <pre
+                      style={{
+                        background: "#f5f5f5",
+                        padding: "16px",
+                        borderRadius: "6px",
+                        overflow: "auto",
+                        fontSize: "13px",
+                        lineHeight: "1.6",
+                      }}
+                    >
+                      {`import {
+  createGridReadyHandlerRef,
+  addNewRow,
+  deleteSelectedRows,
+  formatCurrency,
+  formatNumber,
+  formatDateKorean,
+  createCheckboxColumn,
+  createTextColumn,
+  createSelectColumn,
+  createDateColumn,
+  createNumberColumn,
+  createTextAreaColumn,
+  createCheckboxColumnEditable,
+} from "@utils/agGridUtils";`}
+                    </pre>
+                  </Paragraph>
+                </div>
+              ),
+            },
+            {
+              key: "aggrid-formatters",
+              label: (
+                <Space>
+                  <Tag color="orange">포맷터 함수</Tag>
+                  <Text type="secondary">데이터 포맷팅 함수</Text>
+                </Space>
+              ),
+              children: (
+                <div id="aggrid-formatters">
+                  <Row gutter={24}>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>
+                        <BulbOutlined /> 사용법
+                      </Title>
+                      <Paragraph>
+                        <Text strong>포맷터 함수:</Text>
+                        <ul>
+                          <li>
+                            <Text code>formatCurrency(value)</Text>: 통화
+                            형식으로 포맷팅
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                예: <Text code>1000</Text> →{" "}
+                                <Text code>"₩1,000"</Text>
+                              </li>
+                              <li>
+                                <Text code>valueFormatter</Text> prop에 사용
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>formatNumber(value)</Text>: 숫자 형식으로
+                            포맷팅
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                예: <Text code>1000</Text> →{" "}
+                                <Text code>"1,000"</Text>
+                              </li>
+                              <li>
+                                <Text code>valueFormatter</Text> prop에 사용
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>formatDateKorean(value)</Text>: 한국어
+                            날짜 형식으로 포맷팅
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                예: <Text code>new Date()</Text> →{" "}
+                                <Text code>"2024년 1월 1일"</Text>
+                              </li>
+                              <li>
+                                <Text code>valueFormatter</Text> prop에 사용
+                              </li>
+                            </ul>
+                          </li>
+                        </ul>
+                      </Paragraph>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>📋 사용 예제</Title>
+                      <pre
+                        style={{
+                          background: "#f5f5f5",
+                          padding: "16px",
+                          borderRadius: "6px",
+                          overflow: "auto",
+                          fontSize: "12px",
+                          lineHeight: "1.6",
+                        }}
+                      >
+                        {`// 컬럼 정의에서 사용
+const columnDefs: ColDef[] = [
+  {
+    headerName: "금액",
+    field: "amount",
+    valueFormatter: formatCurrency, // ₩1,000 형식
+  },
+  {
+    headerName: "수량",
+    field: "quantity",
+    valueFormatter: formatNumber, // 1,000 형식
+  },
+  {
+    headerName: "날짜",
+    field: "date",
+    valueFormatter: formatDateKorean, // 2024년 1월 1일 형식
+  },
+];`}
+                      </pre>
+                    </Col>
+                  </Row>
+                </div>
+              ),
+            },
+            {
+              key: "aggrid-column-helpers",
+              label: (
+                <Space>
+                  <Tag color="orange">컬럼 생성 헬퍼</Tag>
+                  <Text type="secondary">컬럼 정의 헬퍼 함수</Text>
+                </Space>
+              ),
+              children: (
+                <div id="aggrid-column-helpers">
+                  <Row gutter={24}>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>
+                        <BulbOutlined /> 사용법
+                      </Title>
+                      <Paragraph>
+                        <Text strong>컬럼 생성 헬퍼 함수:</Text>
+                        <ul>
+                          <li>
+                            <Text code>
+                              createCheckboxColumn&lt;T&gt;(field, headerName,
+                              width)
+                            </Text>
+                            : 체크박스 선택 컬럼 생성
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>field</Text>: 필드명
+                              </li>
+                              <li>
+                                <Text code>headerName</Text>: 헤더 이름
+                              </li>
+                              <li>
+                                <Text code>width</Text>: 컬럼 너비
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>
+                              createTextColumn&lt;T&gt;(field, headerName,
+                              placeholder, flex)
+                            </Text>
+                            : 텍스트 입력 컬럼 생성
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>placeholder</Text>: 플레이스홀더
+                                (선택)
+                              </li>
+                              <li>
+                                <Text code>flex</Text>: 유연한 너비 (선택)
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>
+                              createSelectColumn&lt;T&gt;(field, headerName,
+                              options, width)
+                            </Text>
+                            : 셀렉트 박스 컬럼 생성
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>options</Text>: 선택 옵션 배열
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>
+                              createDateColumn&lt;T&gt;(field, headerName,
+                              width, min, max, formatter)
+                            </Text>
+                            : 날짜 선택 컬럼 생성
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>min</Text>: 최소 날짜 (선택)
+                              </li>
+                              <li>
+                                <Text code>max</Text>: 최대 날짜 (선택)
+                              </li>
+                              <li>
+                                <Text code>formatter</Text>: 날짜 포맷터 (선택)
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>
+                              createNumberColumn&lt;T&gt;(field, headerName,
+                              width, min, max, formatter)
+                            </Text>
+                            : 숫자 입력 컬럼 생성
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>min</Text>: 최소값 (선택)
+                              </li>
+                              <li>
+                                <Text code>max</Text>: 최대값 (선택)
+                              </li>
+                              <li>
+                                <Text code>formatter</Text>: 숫자 포맷터 (선택)
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>
+                              createTextAreaColumn&lt;T&gt;(field, headerName,
+                              placeholder, width)
+                            </Text>
+                            : 텍스트 영역 컬럼 생성
+                          </li>
+                          <li>
+                            <Text code>
+                              createCheckboxColumnEditable&lt;T&gt;(field,
+                              headerName, width)
+                            </Text>
+                            : 편집 가능한 체크박스 컬럼 생성
+                          </li>
+                        </ul>
+                      </Paragraph>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>📋 사용 예제</Title>
+                      <pre
+                        style={{
+                          background: "#f5f5f5",
+                          padding: "16px",
+                          borderRadius: "6px",
+                          overflow: "auto",
+                          fontSize: "12px",
+                          lineHeight: "1.6",
+                        }}
+                      >
+                        {`// 컬럼 정의 예제
+const columnDefs: ColDef<MyDataType>[] = [
+  // 체크박스 선택 컬럼
+  createCheckboxColumn<MyDataType>("id", "ID", 80),
+  
+  // 텍스트 입력 컬럼
+  createTextColumn<MyDataType>("name", "이름", "이름을 입력하세요", 1),
+  
+  // 셀렉트 박스 컬럼
+  createSelectColumn<MyDataType>(
+    "status",
+    "상태",
+    ["대기", "진행중", "완료"],
+    120
+  ),
+  
+  // 날짜 선택 컬럼
+  createDateColumn<MyDataType>(
+    "startDate",
+    "시작일",
+    150,
+    new Date(2020, 0, 1),
+    new Date(2030, 11, 31),
+    formatDateKorean
+  ),
+  
+  // 숫자 입력 컬럼
+  createNumberColumn<MyDataType>(
+    "amount",
+    "금액",
+    150,
+    0,
+    undefined,
+    formatCurrency
+  ),
+  
+  // 텍스트 영역 컬럼
+  createTextAreaColumn<MyDataType>(
+    "description",
+    "설명",
+    "설명을 입력하세요",
+    200
+  ),
+  
+  // 편집 가능한 체크박스 컬럼
+  createCheckboxColumnEditable<MyDataType>(
+    "isActive",
+    "활성화",
+    120
+  ),
+];`}
+                      </pre>
+                    </Col>
+                  </Row>
+                </div>
+              ),
+            },
+            {
+              key: "aggrid-grid-handlers",
+              label: (
+                <Space>
+                  <Tag color="orange">그리드 핸들러</Tag>
+                  <Text type="secondary">그리드 이벤트 핸들러</Text>
+                </Space>
+              ),
+              children: (
+                <div id="aggrid-grid-handlers">
+                  <Row gutter={24}>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>
+                        <BulbOutlined /> 사용법
+                      </Title>
+                      <Paragraph>
+                        <Text strong>그리드 핸들러 함수:</Text>
+                        <ul>
+                          <li>
+                            <Text code>
+                              createGridReadyHandlerRef&lt;T&gt;(gridApiRef)
+                            </Text>
+                            : 그리드 준비 완료 핸들러 생성
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>gridApiRef</Text>: GridApi ref 객체
+                              </li>
+                              <li>
+                                <Text code>onGridReady</Text> prop에 사용
+                              </li>
+                              <li>
+                                그리드가 준비되면 자동으로 gridApiRef에 API 할당
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>
+                              addNewRow&lt;T&gt;(data, createRow, setData,
+                              gridApi, focusField)
+                            </Text>
+                            : 새 행 추가
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>data</Text>: 현재 그리드 데이터 배열
+                              </li>
+                              <li>
+                                <Text code>createRow</Text>: 새 행 생성 함수
+                                (newId) =&gt; T
+                              </li>
+                              <li>
+                                <Text code>setData</Text>: 데이터 업데이트 함수
+                              </li>
+                              <li>
+                                <Text code>gridApi</Text>: GridApi 인스턴스
+                              </li>
+                              <li>
+                                <Text code>focusField</Text>: 포커스할 필드명
+                                (선택)
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>
+                              deleteSelectedRows&lt;T&gt;(gridApi, data,
+                              setData, getId, onNoSelection)
+                            </Text>
+                            : 선택된 행 삭제
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                <Text code>gridApi</Text>: GridApi 인스턴스
+                              </li>
+                              <li>
+                                <Text code>data</Text>: 현재 그리드 데이터 배열
+                              </li>
+                              <li>
+                                <Text code>setData</Text>: 데이터 업데이트 함수
+                              </li>
+                              <li>
+                                <Text code>getId</Text>: 행 ID 추출 함수 (row)
+                                =&gt; id
+                              </li>
+                              <li>
+                                <Text code>onNoSelection</Text>: 선택된 행이
+                                없을 때 콜백 (선택)
+                              </li>
+                            </ul>
+                          </li>
+                        </ul>
+                      </Paragraph>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>📋 사용 예제</Title>
+                      <pre
+                        style={{
+                          background: "#f5f5f5",
+                          padding: "16px",
+                          borderRadius: "6px",
+                          overflow: "auto",
+                          fontSize: "12px",
+                          lineHeight: "1.6",
+                        }}
+                      >
+                        {`import { useRef } from "react";
+import { GridApi } from "ag-grid-community";
+import {
+  createGridReadyHandlerRef,
+  addNewRow,
+  deleteSelectedRows,
+} from "@utils/agGridUtils";
+
+const MyComponent = () => {
+  const gridApiRef = useRef<GridApi | null>(null);
+  const [gridData, setGridData] = useState<MyDataType[]>([]);
+
+  // 그리드 준비 완료 핸들러
+  const onGridReady = createGridReadyHandlerRef<MyDataType>(gridApiRef);
+
+  // 새 행 추가
+  const handleAddRow = () => {
+    addNewRow(
+      gridData,
+      (newId) => ({
+        id: newId as number,
+        name: \`새 항목 \${newId}\`,
+        amount: 0,
+      }),
+      setGridData,
+      gridApiRef.current,
+      "name" // 포커스할 필드
+    );
+  };
+
+  // 선택된 행 삭제
+  const handleDeleteRows = () => {
+    deleteSelectedRows(
+      gridApiRef.current,
+      gridData,
+      setGridData,
+      (row) => row.id, // ID 추출 함수
+      () => {
+        showWarning("삭제할 행을 선택해주세요.");
+      }
+    );
+  };
+
+  return (
+    <>
+      <Space>
+        <Button onClick={handleAddRow}>행 추가</Button>
+        <Button onClick={handleDeleteRows}>선택 행 삭제</Button>
+      </Space>
+      <FormAgGrid
+        rowData={gridData}
+        columnDefs={columnDefs}
+        onGridReady={onGridReady}
+        gridOptions={{
+          rowSelection: "multiple",
+        }}
+      />
+    </>
+  );
+};`}
+                      </pre>
+                    </Col>
+                  </Row>
+                </div>
+              ),
+            },
+          ]}
+        />
+      </Card>
     </div>
   );
 
@@ -4171,7 +5704,7 @@ userModal.openModal({ initialId: "123" });`}
           label: "Sample 2",
           children: (
             <Suspense fallback={null}>
-              <Sample2 />
+              <PageLayout />
             </Suspense>
           ),
         },
@@ -4190,6 +5723,15 @@ userModal.openModal({ initialId: "123" });`}
           children: (
             <Suspense fallback={null}>
               <Sample4 />
+            </Suspense>
+          ),
+        },
+        {
+          key: "test 2",
+          label: "test 2",
+          children: (
+            <Suspense fallback={null}>
+              <Test2 />
             </Suspense>
           ),
         },

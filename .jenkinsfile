@@ -3,12 +3,19 @@ pipeline {
 
     parameters {
         booleanParam(name: 'CLEAN_DEPLOY', defaultValue: false, description: 'Docker 컨테이너와 볼륨을 완전히 제거하고 새로 배포합니다 (주의: 데이터 유실 가능)')
+        choice(name: 'DEPLOY_ENVIRONMENT', choices: ['dev', 'staging'], description: '배포 환경 선택')
+        string(name: 'API_URL_OVERRIDE', defaultValue: '', description: 'API URL 오버라이드 (비어있으면 환경별 기본값 사용)')
     }
 
     environment {
-        // 개발서버 API URL
-        API_URL = 'http://222.106.252.150:8081/api'
-        DEPLOY_ENV = 'dev'
+        // 환경별 기본 API URL 설정
+        DEV_API_URL = 'http://222.106.252.150:8081/api'
+        STAGING_API_URL = 'http://staging-server:8081/api'
+        
+        // 선택된 환경에 따라 API_URL 설정
+        API_URL = "${params.API_URL_OVERRIDE ?: (params.DEPLOY_ENVIRONMENT == 'dev' ? env.DEV_API_URL : env.STAGING_API_URL)}"
+        
+        DEPLOY_ENV = "${params.DEPLOY_ENVIRONMENT}"
     }
 
     stages {
@@ -42,7 +49,7 @@ pipeline {
                         // Backend API 호출하여 다국어 데이터 가져오기 (Public Endpoint)
                         // Docker 빌드 단계에서 이 파일을 사용하여 translation.json 생성
                         sh """
-                        curl -X GET "${API_URL}/system/language/translations" \\
+                        curl -X GET "${API_URL}/system/pgm/lang/label/translations" \\
                             -H "Content-Type: application/json" \\
                             -f -o frontend-project/translations.json || {
                             echo "Warning: Failed to fetch translations from API, will use default translation files during build"
@@ -58,12 +65,16 @@ pipeline {
             steps {
                 script {
                     dir('./') {
-                        echo "Building Docker image for development server..."
+                        echo "Building Docker image for ${DEPLOY_ENV} environment..."
                         echo "API URL: ${API_URL}"
+                        
+                        // Proxy target URL 추출 (API URL에서 /api 제거)
+                        def PROXY_TARGET = API_URL.replace('/api', '')
                         
                         sh """
                         docker build -t onerp-frontend-service:latest \
                             --build-arg VITE_API_BASE_URL='${API_URL}' \
+                            --build-arg VITE_API_PROXY_TARGET='${PROXY_TARGET}' \
                             --build-arg VITE_ENV='${DEPLOY_ENV}' \
                             -f frontend-project/Dockerfile \
                             frontend-project
@@ -83,7 +94,7 @@ pipeline {
                         docker network inspect onerp-network > /dev/null 2>&1 || docker network create onerp-network
                         """
                         
-                        echo "Deploying frontend service to development server (port 8090)..."
+                        echo "Deploying frontend service to ${DEPLOY_ENV} server (port 8090)..."
                         
                         sh """
                         docker compose -f frontend-project/docker-compose.yml up -d --no-build --force-recreate

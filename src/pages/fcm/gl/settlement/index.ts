@@ -12,4 +12,4 @@
  */
 
 // 결산관리 페이지 컴포넌트 export
-
+//export { default as FgcryEvl } from "./FgcryEvl/FgcryEvl";  //외화평가

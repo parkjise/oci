@@ -147,7 +147,7 @@ const MenuDetailForm = forwardRef<MenuDetailFormRef, MenuDetailFormProps>(({
           <tbody>
             <tr>
               <th>
-                <Tooltip title={getLabelDesc("메뉴번호") || ""}>
+                <Tooltip title={getLabelDesc("메뉴번호")}>
                   {t("메뉴번호")}
                 </Tooltip>
               </th>
@@ -160,7 +160,7 @@ const MenuDetailForm = forwardRef<MenuDetailFormRef, MenuDetailFormProps>(({
                 />
               </td>
               <th>
-                <Tooltip title={getLabelDesc("부모메뉴번호") || ""}>
+                <Tooltip title={getLabelDesc("부모메뉴번호")}>
                   {getLabel("부모메뉴번호")}
                 </Tooltip>
               </th>
@@ -175,7 +175,7 @@ const MenuDetailForm = forwardRef<MenuDetailFormRef, MenuDetailFormProps>(({
             </tr>
             <tr>
               <th>
-                <Tooltip title={getLabelDesc("메뉴타입") || ""}>
+                <Tooltip title={getLabelDesc("메뉴타입")}>
                   {getLabel("메뉴타입")}
                 </Tooltip>
               </th>
@@ -192,7 +192,7 @@ const MenuDetailForm = forwardRef<MenuDetailFormRef, MenuDetailFormProps>(({
                 />
               </td>
               <th>
-                <Tooltip title={getLabelDesc("메뉴ID") || ""}>
+                <Tooltip title={getLabelDesc("메뉴ID")}>
                   {getLabel("메뉴ID")}
                 </Tooltip>
               </th>
@@ -206,7 +206,7 @@ const MenuDetailForm = forwardRef<MenuDetailFormRef, MenuDetailFormProps>(({
             </tr>
             <tr>
               <th>
-                <Tooltip title={getLabelDesc("메뉴명") || ""}>
+                <Tooltip title={getLabelDesc("메뉴명")}>
                   {getLabel("메뉴명")}
                 </Tooltip>
               </th>
@@ -220,7 +220,7 @@ const MenuDetailForm = forwardRef<MenuDetailFormRef, MenuDetailFormProps>(({
             </tr>
             <tr>
               <th className="checkbox-th">
-                <Tooltip title={getLabelDesc("메뉴") || ""}>
+                <Tooltip title={getLabelDesc("메뉴")}>
                   {getLabel("메뉴")}
                 </Tooltip>
               </th>
@@ -228,7 +228,7 @@ const MenuDetailForm = forwardRef<MenuDetailFormRef, MenuDetailFormProps>(({
                 <FormCheckbox name="useMenu" label="" />
               </td>
               <th className="checkbox-th">
-                <Tooltip title={getLabelDesc("숨김") || ""}>
+                <Tooltip title={getLabelDesc("숨김")}>
                   {getLabel("숨김")}
                 </Tooltip>
               </th>
@@ -236,7 +236,7 @@ const MenuDetailForm = forwardRef<MenuDetailFormRef, MenuDetailFormProps>(({
                 <FormCheckbox name="hidden" label="" />
               </td>
               <th>
-                <Tooltip title={getLabelDesc("프로그램") || ""}>
+                <Tooltip title={getLabelDesc("프로그램")}>
                   {getLabel("프로그램")}
                 </Tooltip>
               </th>
@@ -253,7 +253,7 @@ const MenuDetailForm = forwardRef<MenuDetailFormRef, MenuDetailFormProps>(({
                 />
               </td>
               <th className="period-th">
-                <Tooltip title={getLabelDesc("기간") || ""}>
+                <Tooltip title={getLabelDesc("기간")}>
                   {getLabel("기간")}
                 </Tooltip>
               </th>
@@ -320,7 +320,7 @@ const MenuDetailForm = forwardRef<MenuDetailFormRef, MenuDetailFormProps>(({
                 />
               </td>
               <th className="sort-th">
-                <Tooltip title={getLabelDesc("SORT") || ""}>
+                <Tooltip title={getLabelDesc("SORT")}>
                   {getLabel("SORT")}
                 </Tooltip>
               </th>
@@ -349,7 +349,7 @@ const MenuDetailForm = forwardRef<MenuDetailFormRef, MenuDetailFormProps>(({
             </tr>
             <tr>
               <th>
-                <Tooltip title={getLabelDesc("PATH") || ""}>
+                <Tooltip title={getLabelDesc("PATH")}>
                   {getLabel("PATH")}
                 </Tooltip>
               </th>
@@ -363,7 +363,7 @@ const MenuDetailForm = forwardRef<MenuDetailFormRef, MenuDetailFormProps>(({
             </tr>
             <tr>
               <th>
-                <Tooltip title={getLabelDesc("파라메터") || ""}>
+                <Tooltip title={getLabelDesc("파라메터")}>
                   {getLabel("파라메터")}
                 </Tooltip>
               </th>
@@ -378,7 +378,7 @@ const MenuDetailForm = forwardRef<MenuDetailFormRef, MenuDetailFormProps>(({
             </tr>
             <tr>
               <th>
-                <Tooltip title={getLabelDesc("도움말") || ""}>
+                <Tooltip title={getLabelDesc("도움말")}>
                   {getLabel("도움말")}
                 </Tooltip>
               </th>

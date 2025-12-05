@@ -49,6 +49,8 @@ const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
 }) => {
   const [options, setOptions] = useState<RadioOption[]>(propOptions || []);
   const [loading, setLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const radioGroupRef = React.useRef<any>(null);
 
   // 모든 hooks를 early return 이전에 호출
 
@@ -104,14 +106,18 @@ const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
     if (!rules || !useModalMessage) return rules;
 
     return rules.map((rule) => {
-      if ('required' in rule && rule.required) {
-        const ruleWithRequired = rule as Rule & { required: boolean; message?: string };
+      if ("required" in rule && rule.required) {
+        const ruleWithRequired = rule as Rule & {
+          required: boolean;
+          message?: string;
+        };
         return {
           ...rule,
           validator: (_: unknown, value: string | number | undefined) => {
             if (!value) {
-              const errorMessage = ruleWithRequired.message || `${label}을(를) 선택해주세요.`;
-              
+              const errorMessage =
+                ruleWithRequired.message || `${label}을(를) 선택해주세요.`;
+
               // 첫 번째 모달만 표시
               if (canShowModal()) {
                 MessageModal.error({
@@ -119,10 +125,34 @@ const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
                   content: errorMessage,
                   onOk: () => {
                     resetModalFlag();
+                    // 모달 닫힌 후 해당 RadioGroup의 첫 번째 Radio로 포커스 이동
+                    requestAnimationFrame(() => {
+                      setTimeout(() => {
+                        if (radioGroupRef.current) {
+                          const firstRadio =
+                            radioGroupRef.current.querySelector(
+                              'input[type="radio"]:not([disabled])'
+                            ) as HTMLInputElement;
+
+                          if (firstRadio) {
+                            // 스크롤하여 요소가 보이도록 함
+                            firstRadio.scrollIntoView({
+                              behavior: "smooth",
+                              block: "center",
+                            });
+
+                            // 포커스 이동
+                            requestAnimationFrame(() => {
+                              firstRadio.focus();
+                            });
+                          }
+                        }
+                      }, 500);
+                    });
                   },
                 });
               }
-              
+
               return Promise.reject(new Error(errorMessage));
             }
             return Promise.resolve();
@@ -150,8 +180,8 @@ const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
             const displayValue = selectedOption
               ? selectedOption.label
               : value !== undefined && value !== null
-                ? String(value)
-                : emptyText;
+              ? String(value)
+              : emptyText;
             return (
               <Form.Item
                 name={name}
@@ -175,9 +205,13 @@ const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
       layout={layout as FormItemLayout}
       colon={false}
       rules={processedRules}
-      {...(useModalMessage ? { validateStatus: "", help: "" } : {})}
+      {...(useModalMessage ? { validateStatus: "", help: "" } : { help: "" })}
     >
-      <Radio.Group {...rest} disabled={loading || rest.disabled}>
+      <Radio.Group
+        ref={radioGroupRef}
+        {...rest}
+        disabled={loading || rest.disabled}
+      >
         {options.map((option) => (
           <Radio key={option.value} value={option.value}>
             {option.label}
@@ -189,4 +223,3 @@ const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
 };
 
 export default FormRadioGroup;
-

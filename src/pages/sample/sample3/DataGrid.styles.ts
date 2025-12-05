@@ -15,6 +15,11 @@ export const DataGridStyles = styled.div`
     }
     &-left {
       ${mixins.flex("center", "flex-start", "row")}
+      .data-grid-panel__button {
+        & + .data-grid-panel__button:not(.data-grid-panel__button--more) {
+          margin-left: 5px;
+        }
+      }
     }
     &-right {
       ${mixins.flex("center", "flex-start", "row", "5px")}
@@ -25,6 +30,7 @@ export const DataGridStyles = styled.div`
       }
     }
     &__count {
+      white-space: nowrap;
       font-size: 11px;
       color: ${({ theme }) => theme.colors.neutral[500]};
       &-number {

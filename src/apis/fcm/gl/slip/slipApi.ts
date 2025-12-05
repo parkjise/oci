@@ -2,7 +2,7 @@
  * ============================================================================
  * 전표 등록 API 함수
  * ============================================================================
- * 
+ *
  * 전표 등록 관련 API 호출 함수 정의
  */
 
@@ -17,6 +17,11 @@ import type {
   ConfmRequest,
   ConfmResponse,
 } from "@/types/fcm/gl/slip/slipRegist.types";
+import type {
+  SlipPostSearchRequest,
+  SlipPostSearchResponse,
+  SlipPostSaveRequest,
+} from "@/types/fcm/gl/slip/slipPost.types";
 
 /**
  * 전표 등록 목록 조회
@@ -26,7 +31,10 @@ import type {
 export const selectSlipRegistList = async (
   request: SlipSrchRequest
 ): Promise<ApiResponse<SlipListResponse[]>> => {
-  return await post<SlipListResponse[]>("/fcm/gl/slip/selectSlipRegistList", request);
+  return await post<SlipListResponse[]>(
+    "/fcm/gl/slip/selectSlipRegistList",
+    request
+  );
 };
 
 /**
@@ -37,7 +45,10 @@ export const selectSlipRegistList = async (
 export const selectSerialNumber = async (
   request: SlipSrchRequest
 ): Promise<ApiResponse<SlipHderResponse>> => {
-  return await post<SlipHderResponse>("/fcm/gl/slip/selectSerialNumber", request);
+  return await post<SlipHderResponse>(
+    "/fcm/gl/slip/selectSerialNumber",
+    request
+  );
 };
 
 /**
@@ -81,7 +92,10 @@ export const selectHderList = async (
 export const selectDetailList = async (
   request: SlipSrchRequest
 ): Promise<ApiResponse<SlipDetailResponse[]>> => {
-  return await post<SlipDetailResponse[]>("/fcm/gl/slip/selectDetailList", request);
+  return await post<SlipDetailResponse[]>(
+    "/fcm/gl/slip/selectDetailList",
+    request
+  );
 };
 
 /**
@@ -137,4 +151,29 @@ export const cancelConfm = async (
   request: ConfmRequest
 ): Promise<ApiResponse<void>> => {
   return await post<void>("/fcm/gl/slip/cancelConfm", request);
+};
+
+/**
+ * 전표 전기 조회
+ * @param request 조회 조건
+ * @returns 전표 전기 목록
+ */
+export const selectSlipPostList = async (
+  request: SlipPostSearchRequest
+): Promise<ApiResponse<SlipPostSearchResponse[]>> => {
+  return await post<SlipPostSearchResponse[]>(
+    "/fcm/gl/slip/selectSlipPostList",
+    request
+  );
+};
+
+/**
+ * 전표 전기 저장
+ * @param request 저장할 전표 전기 데이터
+ * @returns 저장 결과
+ */
+export const saveSlipPost = async (
+  request: SlipPostSaveRequest
+): Promise<ApiResponse<void>> => {
+  return await post<void>("/fcm/gl/slip/saveSlipPost", request);
 };

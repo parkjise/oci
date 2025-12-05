@@ -30,13 +30,14 @@
       "@assets/*": ["src/assets/*"],
       "@components/*": ["src/components/*"],
       "@pages/*": ["src/pages/*"],
-      "@model/*": ["src/model/*"],
       "@store/*": ["src/store/*"],
       "@apis/*": ["src/apis/*"],
       "@utils/*": ["src/utils/*"],
-      "@types/*": ["src/types/*"],
       "@config/*": ["src/config/*"],
-      "@form/*": ["src/components/common/form/*"]
+      "@constants/*": ["src/constants/*"],
+      "@form": ["src/components/ui/form"],
+      "@form/*": ["src/components/ui/form/*"],
+      "@hooks/*": ["src/hooks/*"]
     }
   },
   "include": ["src"]

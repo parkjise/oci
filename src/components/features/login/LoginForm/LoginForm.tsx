@@ -16,6 +16,7 @@ const LoginForm: React.FC = () => {
   const [form] = Form.useForm<LoginFormValues>();
   const navigate = useNavigate();
   const setUser = useAuthStore((s) => s.setUser);
+  const [showCaseWarning, setShowCaseWarning] = useState(false);
 
   useEffect(() => {
     // localStorage에서 저장된 아이디 불러오기
@@ -29,8 +30,7 @@ const LoginForm: React.FC = () => {
   }, [form]);
 
   const handleRememberChange = (checked: boolean) => {
-    const username = form.getFieldValue("username");
-    if (!checked && username) {
+    if (!checked) {
       // remember 체크 해제 시 localStorage에서 제거
       localStorage.removeItem(REMEMBERED_ID_KEY);
     }
@@ -50,29 +50,31 @@ const LoginForm: React.FC = () => {
         password: values.password || "",
         locale: i18n.language,
       });
-      if (response.success) {
+      if (response.success && response.data?.user) {
+        const { user } = response.data;
+
         // Zustand에 사용자 정보 저장
-        if (response.data?.user) {
-          setUser({
-            officeId: response.data.user.officeId,
-            empCode: response.data.user.empCode,
-            empName: response.data.user.empName,
-            deptCode: response.data.user.deptCode,
-            password: response.data.user.password,
-            useYn: response.data.user.useYn,
-            emailId: response.data.user.emailId,
-          });
-        }
+        setUser({
+          officeId: user.officeId,
+          empCode: user.empCode,
+          empName: user.empName,
+          deptCode: user.deptCode,
+          password: user.password,
+          useYn: user.useYn,
+          emailId: user.emailId,
+        });
+
         // Ant Design Notification 표시
         notification.success({
-          message: t("login_success", "로그인 성공!"),
-          description: `${response.data.user.empName}${t(
+          title: t("login_success", "로그인 성공!"),
+          description: `${user.empName}${t(
             "welcome_message",
             "님, 환영합니다!"
           )}`,
           placement: "topRight",
           duration: 2,
         });
+
         // 메인 페이지로 이동
         navigate("/app");
       }
@@ -100,22 +102,8 @@ const LoginForm: React.FC = () => {
     showInfo(t("resetPassword", "비밀번호 초기화 기능은 준비 중입니다."));
   };
 
-  const [showCaseWarning, setShowCaseWarning] = useState<boolean>(false);
-
-  const handlePasswordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.getModifierState("CapsLock")) {
-      setShowCaseWarning(true);
-    } else {
-      setShowCaseWarning(false);
-    }
-  };
-
-  const handlePasswordKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.getModifierState("CapsLock")) {
-      setShowCaseWarning(true);
-    } else {
-      setShowCaseWarning(false);
-    }
+  const handleCapsLockChange = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    setShowCaseWarning(e.getModifierState("CapsLock"));
   };
 
   return (
@@ -161,8 +149,8 @@ const LoginForm: React.FC = () => {
         <Input.Password
           prefix={<LockOutlined />}
           placeholder={t("password", "비밀번호")}
-          onKeyDown={handlePasswordKeyDown}
-          onKeyUp={handlePasswordKeyUp}
+          onKeyDown={handleCapsLockChange}
+          onKeyUp={handleCapsLockChange}
         />
       </Form.Item>
 

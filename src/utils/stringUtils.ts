@@ -259,13 +259,38 @@ export const formatCorporateNumber = (corporateNumber: string): string => {
 };
 
 /**
- * 간단한 이메일 형식 유효성을 검사합니다. (정규식 기반)
+ * 이메일 형식 유효성을 검사합니다. (정규식 기반)
  * @param email 검사할 이메일 문자열
  * @returns 유효하면 true, 아니면 false
  */
 export const isValidEmail = (email: string): boolean => {
   if (isEmpty(email)) return false;
-  // 간단한 이메일 정규식
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  
+  // 공백 제거 후 검증
+  const trimmedEmail = email.trim();
+  if (trimmedEmail !== email) return false; // 앞뒤 공백이 있으면 유효하지 않음
+  
+  // 더 정확한 이메일 정규식
+  // - 로컬 부분: 영문, 숫자, 특수문자(._+-) 허용
+  // - @ 기호 필수
+  // - 도메인 부분: 영문, 숫자, 하이픈, 점 허용
+  // - 최소 2자 이상의 TLD 필수
+  const emailRegex = /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  
+  // 추가 검증: 로컬 부분과 도메인 부분의 길이 제한
+  const [localPart, domainPart] = trimmedEmail.split('@');
+  if (!localPart || !domainPart) return false;
+  
+  // 로컬 부분: 1~64자 (RFC 5321)
+  if (localPart.length === 0 || localPart.length > 64) return false;
+  
+  // 도메인 부분: 1~255자 (RFC 5321)
+  if (domainPart.length === 0 || domainPart.length > 255) return false;
+  
+  // 연속된 점이나 하이픈 체크
+  if (localPart.includes('..') || domainPart.includes('..')) return false;
+  if (domainPart.startsWith('.') || domainPart.endsWith('.')) return false;
+  if (domainPart.startsWith('-') || domainPart.endsWith('-')) return false;
+  
+  return emailRegex.test(trimmedEmail);
 };

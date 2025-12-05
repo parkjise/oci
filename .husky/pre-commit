@@ -1,0 +1,5 @@
+# 1. 전체 타입 체크 (TypeScript 오류가 있으면 커밋 막음)
+npm run type-check
+
+# 2. 스테이징된 파일만 린트 검사 & 포맷팅
+npx lint-staged
