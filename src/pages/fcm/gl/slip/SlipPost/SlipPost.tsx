@@ -1,31 +1,15 @@
-import React, { useRef } from "react";
-import { ListDetailLayout } from "@/components/ui/layout/ListDetailLayout";
+import React from "react";
+import { SearchGridLayout } from "@/components/ui/layout/SearchGridLayout";
 import {
   FilterPanel,
   DetailGrid,
-} from "@components/features/fcm/gl/slip/slipPost";
-import { useSlipPostStore } from "@store/slipPostStore";
+} from "@components/features/fcm/gl/slip/SlipPost";
 
 const SlipPost: React.FC = () => {
-  const { searchData, setSPostYn } = useSlipPostStore();
-  const filterPanelRef = useRef<{ handleSearch: () => Promise<void> } | null>(
-    null
-  );
-
   return (
-    <ListDetailLayout
-      filterPanel={
-        <FilterPanel
-          className="page-layout__filter-panel"
-          onPostYnChange={setSPostYn}
-          onRefReady={(ref) => {
-            filterPanelRef.current = ref;
-          }}
-        />
-      }
-      detailPanel={
-        <DetailGrid className="page-layout__detail-grid" rowData={searchData} />
-      }
+    <SearchGridLayout
+      filterPanel={<FilterPanel className="page-layout__filter-panel" />}
+      grid={<DetailGrid className="page-layout__detail-grid" />}
     />
   );
 };

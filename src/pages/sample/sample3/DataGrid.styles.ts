@@ -23,9 +23,12 @@ export const DataGridStyles = styled.div`
     }
     &-right {
       ${mixins.flex("center", "flex-start", "row", "5px")}
-      .ant-btn-icon {
-        i {
-          color: ${({ theme }) => theme.colors.grey[500]};
+      .ant-btn {
+        box-shadow: none;
+        &-icon {
+          i {
+            color: ${({ theme }) => theme.colors.grey[500]};
+          }
         }
       }
     }

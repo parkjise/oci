@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Space, Dropdown } from "antd";
+import { Dropdown } from "antd";
 import type { MenuProps } from "antd";
 import ActionButton, { type ActionButtonType } from "./ActionButton";
 import FormButton from "./FormButton";
@@ -9,12 +9,6 @@ export interface ActionButtonGroupProps {
   onButtonClick?: Partial<Record<ActionButtonType, () => void>>;
   /** 숨길 버튼 타입 배열 (예: ["copy", "delete"]) */
   hideButtons?: ActionButtonType[];
-  /** 버튼 간 간격 (기본값: 8) */
-  size?: number;
-  /** 버튼을 감싸는 컨테이너 클래스명 */
-  className?: string;
-  /** 버튼을 감싸는 컨테이너 스타일 */
-  style?: React.CSSProperties;
   /** 프로그램 번호 (MenuButtonProvider에 전달) */
   pgmNo?: string;
   /** 접기/펼치기 기능 활성화 여부 */
@@ -68,9 +62,6 @@ const DEFAULT_OBJ_IDS: Record<ActionButtonType, string> = {
 const ActionButtonGroup: React.FC<ActionButtonGroupProps> = ({
   onButtonClick = {},
   hideButtons = [],
-  size = 8,
-  className,
-  style,
   enableExpand = false,
   expanded: controlledExpanded,
   onExpandChange,
@@ -189,9 +180,9 @@ const ActionButtonGroup: React.FC<ActionButtonGroupProps> = ({
 
     return (
       <>
-        {showCustomButtonsDivider && (
-          <div className="detail-view__divider"></div>
-        )}
+        {/* {showCustomButtonsDivider && (
+          <div className="action-button-group__divider"></div>
+        )} */}
         {/* 표시할 버튼들 */}
         {visibleButtons.map((button, index) => (
           <React.Fragment key={index}>
@@ -204,7 +195,7 @@ const ActionButtonGroup: React.FC<ActionButtonGroupProps> = ({
             type="text"
             size="small"
             icon={<i className="ri-more-2-line" style={{ fontSize: 16 }} />}
-            className="detail-view__button detail-view__button--more"
+            className="action-button-group__button action-button-group__button--more"
           ></FormButton>
         </Dropdown>
       </>
@@ -213,38 +204,33 @@ const ActionButtonGroup: React.FC<ActionButtonGroupProps> = ({
 
   return (
     <>
-      <Space size={size} className={className} style={style}>
-        {/* 커스텀 버튼을 입력 버튼 앞에 배치 */}
-        {renderCustomButtons()}
-        {visibleButtons.map((actionType) => (
+      {/* 커스텀 버튼을 입력 버튼 앞에 배치 */}
+      {renderCustomButtons()}
+      {visibleButtons.map((actionType) => (
+        <ActionButton
+          key={actionType}
+          actionType={actionType}
+          onClick={onButtonClick[actionType]}
+          objId={DEFAULT_OBJ_IDS[actionType]}
+        />
+      ))}
+      {enableExpand && (
+        <>
+          <div className="detail-view__divider"></div>
           <ActionButton
-            key={actionType}
-            actionType={actionType}
-            onClick={onButtonClick[actionType]}
-            objId={DEFAULT_OBJ_IDS[actionType]}
-          />
-        ))}
-        {enableExpand && (
-          <>
-            <div className="detail-view__divider"></div>
-            <ActionButton
-              actionType="expand"
-              onClick={handleExpandToggle}
-              objId={DEFAULT_OBJ_IDS.expand}
-              icon={
-                expanded ? (
-                  <i className="ri-arrow-up-s-line" style={{ fontSize: 18 }} />
-                ) : (
-                  <i
-                    className="ri-arrow-down-s-line"
-                    style={{ fontSize: 18 }}
-                  />
-                )
-              }
-            ></ActionButton>
-          </>
-        )}
-      </Space>
+            actionType="expand"
+            onClick={handleExpandToggle}
+            objId={DEFAULT_OBJ_IDS.expand}
+            icon={
+              expanded ? (
+                <i className="ri-arrow-up-s-line" style={{ fontSize: 18 }} />
+              ) : (
+                <i className="ri-arrow-down-s-line" style={{ fontSize: 18 }} />
+              )
+            }
+          ></ActionButton>
+        </>
+      )}
     </>
   );
 };

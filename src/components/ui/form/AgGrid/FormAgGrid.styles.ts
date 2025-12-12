@@ -29,6 +29,7 @@ export interface AgGridStyleOptions {
   headerFontWeight?: string;
   headerBorderColor?: string;
   headerBorderWidth?: string;
+  headerTextAlign?: "left" | "center" | "right";
 
   // Cells
   cellBackgroundColor?: string;
@@ -51,7 +52,7 @@ const defaultStyleOptions: AgGridStyleOptions = {
   // General
   backgroundColor: "#ffffff",
   color: "#1a1a1a",
-  fontSize: "14px",
+  fontSize: "13px",
   fontFamily: "inherit",
 
   // Border
@@ -62,15 +63,15 @@ const defaultStyleOptions: AgGridStyleOptions = {
 
   // Spacing
   padding: "10px",
-  cellPadding: "8px",
-  headerPadding: "12px",
-  rowHeight: "42px",
-  headerHeight: "48px",
+  cellPadding: "6px",
+  headerPadding: "8px",
+  rowHeight: "36px",
+  headerHeight: "40px",
 
   // Header
   headerBackgroundColor: "#f8f9fa",
   headerColor: "#1a1a1a",
-  headerFontSize: "14px",
+  headerFontSize: "13px",
   headerFontWeight: "600",
   headerBorderColor: "#e5e7eb",
   headerBorderWidth: "1px",
@@ -183,6 +184,35 @@ export const StyledAgGridContainer = styled.div<{
     height: 100%;
   }
 
+  /* 헤더 텍스트 정렬 (변수로 제어 가능) */
+  .ag-header-cell-text {
+    text-align: ${({ $styleOptions }) =>
+      $styleOptions?.headerTextAlign || "center"} !important;
+    width: 100%;
+  }
+
+  /* 헤더별 정렬 (headerClass 기반) */
+  .ag-header-cell-left .ag-header-cell-text {
+    text-align: left !important;
+    justify-content: flex-start !important;
+  }
+
+  .ag-header-cell-right .ag-header-cell-text {
+    text-align: right !important;
+    justify-content: flex-end !important;
+  }
+
+  /* 헤더별 정렬 (headerClass 기반) */
+  .ag-header-cell-left .ag-header-cell-text {
+    text-align: left !important;
+    justify-content: flex-start !important;
+  }
+
+  .ag-header-cell-right .ag-header-cell-text {
+    text-align: right !important;
+    justify-content: flex-end !important;
+  }
+
   /* AG-Grid 셀 스타일 커스터마이징 */
   .ag-cell {
     background-color: ${({ $styleOptions }) =>
@@ -194,6 +224,8 @@ export const StyledAgGridContainer = styled.div<{
       $styleOptions?.cellBorderColor ?? defaultStyleOptions.cellBorderColor};
     border-width: ${({ $styleOptions }) =>
       $styleOptions?.cellBorderWidth ?? defaultStyleOptions.cellBorderWidth};
+    /* 기본 중앙 정렬 (낮은 우선순위) */
+    text-align: center;
   }
 
   /* 짝수 행 배경색 (클릭되지 않은 경우만) */
@@ -402,9 +434,12 @@ export const StyledGridToolbar = styled.div`
     }
     &-right {
       ${mixins.flex("center", "flex-start", "row", "5px")}
-      .ant-btn-icon {
-        i {
-          color: ${({ theme }) => theme.colors.grey[500]};
+      .ant-btn {
+        box-shadow: none;
+        &-icon {
+          i {
+            color: ${({ theme }) => theme.colors.grey[500]};
+          }
         }
       }
     }

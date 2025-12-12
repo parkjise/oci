@@ -8,15 +8,11 @@
  * - 로컬 스토리지를 사용한 메뉴 데이터 캐싱
  */
 import React, { useMemo, useCallback, useState, useEffect } from "react";
-import { Avatar, Dropdown, Space } from "antd";
-import {
-  UserOutlined,
-  LogoutOutlined,
-  SettingOutlined,
-} from "@ant-design/icons";
+import { Dropdown, Badge } from "antd";
+
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import type { MenuProps, SelectProps } from "antd";
+import type { SelectProps } from "antd";
 import { useAuthStore } from "@/store/authStore";
 import { clearAllTokens } from "@/utils/tokenUtils";
 import { useUiStore } from "@store/uiStore";
@@ -27,6 +23,9 @@ import type { MenuItem } from "@/types/api.types";
 import { getMenuCache } from "@utils/menuCache";
 import type { RouteConfig } from "@/types/routes.types";
 import type { SearchableMenuItem } from "@/types/menu.types";
+import { FormButton } from "@components/ui/form";
+import eng from "@/assets/images/eng.svg";
+import kor from "@/assets/images/kor.svg";
 
 /**
  * 페이지 컴포넌트 모듈 매핑
@@ -58,12 +57,16 @@ const getComponentByPath = (
       .replace(/^components\/pages/gi, "pages")
       .replace(/\/src\/pages/gi, "/pages")
       .replace(/^src\/pages/gi, "pages");
-    
+
     // 앞뒤 공백 제거
     normalizedPath = normalizedPath.trim();
 
     // 정규화 후 /pages/ 포함 여부 확인
-    if (!normalizedPath.includes("/pages/") && !normalizedPath.includes("pages/")) return null;
+    if (
+      !normalizedPath.includes("/pages/") &&
+      !normalizedPath.includes("pages/")
+    )
+      return null;
 
     // PATH를 상대 경로로 변환
     // import.meta.glob("../pages/**/*.{tsx,ts}")를 사용하면 (src/utils/pageModules.ts에서)
@@ -78,7 +81,7 @@ const getComponentByPath = (
 
     // 매핑된 모듈 찾기
     let moduleLoader = pageModules[relativePath];
-    
+
     // 정확히 매칭되지 않으면 대소문자 무시하여 찾기 시도
     if (!moduleLoader) {
       const lowerRelativePath = relativePath.toLowerCase();
@@ -102,7 +105,10 @@ const getComponentByPath = (
       const pathWithoutExt = relativePath.replace(/\.(tsx|ts)$/, "");
       for (const key in pageModules) {
         const keyWithoutExt = key.replace(/\.(tsx|ts)$/, "");
-        if (keyWithoutExt === pathWithoutExt || keyWithoutExt.toLowerCase() === pathWithoutExt.toLowerCase()) {
+        if (
+          keyWithoutExt === pathWithoutExt ||
+          keyWithoutExt.toLowerCase() === pathWithoutExt.toLowerCase()
+        ) {
           moduleLoader = pageModules[key];
           if (import.meta.env.DEV) {
             console.warn(
@@ -115,7 +121,7 @@ const getComponentByPath = (
         }
       }
     }
-    
+
     if (!moduleLoader) {
       // 디버깅: 개발 모드에서만 로그 출력
       if (import.meta.env.DEV) {
@@ -143,14 +149,13 @@ const getComponentByPath = (
     return null;
   }
 };
-import logoImage from "@/assets/images/logo_main_onerp.png";
+import logoImage from "@/assets/images/logo.png";
 import {
   StyledHeader,
   StyledHeaderLeft,
   StyledLogo,
   StyledSearchSelect,
   StyledHeaderRight,
-  StyledUserButton,
   StyledSearchOptionContainer,
   StyledSearchOptionIcon,
   StyledSearchOptionText,
@@ -181,7 +186,9 @@ const convertPathToRoute = (path: string): string => {
       return `/app/${dirPath}`.replace(/\/+/g, "/");
     }
   }
-  return `/app${normalizedPath.startsWith("/") ? "" : "/"}${normalizedPath}`.replace(/\/+/g, "/");
+  return `/app${
+    normalizedPath.startsWith("/") ? "" : "/"
+  }${normalizedPath}`.replace(/\/+/g, "/");
 };
 
 /**
@@ -244,7 +251,6 @@ const flattenMenuItems = (
 const MainHeader: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
   const logoutStore = useAuthStore((s) => s.logout);
   const { addTab } = useUiStore();
   const [menus, setMenus] = useState<MenuItem[]>([]);
@@ -394,54 +400,38 @@ const MainHeader: React.FC = () => {
     [searchableMenuItems]
   );
 
-  /**
-   * 사용자 메뉴 클릭 핸들러
-   */
-  const handleMenuClick = useCallback(
-    ({ key }: { key: string }) => {
-      switch (key) {
-        case "profile":
-          // 프로필 페이지 기능은 추후 구현 예정
-          break;
-        case "settings":
-          // 설정 페이지 기능은 추후 구현 예정
-          break;
-        case "logout":
-          handleLogout();
-          break;
-        default:
-          break;
-      }
-    },
-    [handleLogout]
-  );
-
-  const userMenuItems: MenuProps["items"] = [
-    {
-      key: "profile",
-      icon: <UserOutlined />,
-      label: t("profile", "프로필"),
-    },
-    {
-      key: "settings",
-      icon: <SettingOutlined />,
-      label: t("settings", "설정"),
-    },
-    {
-      type: "divider",
-    },
-    {
-      key: "logout",
-      icon: <LogoutOutlined />,
-      label: t("logout", "로그아웃"),
-    },
-  ];
+  // const userMenuItems: MenuProps["items"] = [
+  //   {
+  //     key: "user",
+  //     icon: <UserOutlined />,
+  //     label: <>{user?.empName || t("user", "사용자")}</>,
+  //   },
+  //   {
+  //     key: "profile",
+  //     icon: <UserOutlined />,
+  //     label: t("profile", "프로필"),
+  //   },
+  //   {
+  //     key: "settings",
+  //     icon: <SettingOutlined />,
+  //     label: t("settings", "설정"),
+  //   },
+  //   {
+  //     type: "divider",
+  //   },
+  //   {
+  //     key: "logout",
+  //     icon: <LogoutOutlined />,
+  //     label: t("logout", "로그아웃"),
+  //   },
+  // ];
 
   return (
-    <StyledHeader>
-      <StyledLogo $logoSrc={logoImage} />
-      <StyledHeaderLeft>
+    <StyledHeader className="header">
+      <StyledHeaderLeft className="header__left">
+        <StyledLogo $logoSrc={logoImage} />
         <StyledSearchSelect
+          className="header__search-select"
           showSearch
           placeholder={t("search_menu", "메뉴 검색...")}
           onSelect={handleSearchSelect}
@@ -459,18 +449,18 @@ const MainHeader: React.FC = () => {
             if (!menuItem) return option.label;
 
             return (
-              <StyledSearchOptionContainer>
+              <StyledSearchOptionContainer className="header__search-option-container">
                 {menuItem.icon && (
                   <StyledSearchOptionIcon>
                     {menuItem.icon}
                   </StyledSearchOptionIcon>
                 )}
-                <StyledSearchOptionText>
-                  <StyledSearchOptionLabel>
+                <StyledSearchOptionText className="header__search-option-text">
+                  <StyledSearchOptionLabel className="header__search-option-label">
                     {menuItem.label}
                   </StyledSearchOptionLabel>
                   {menuItem.breadcrumb !== menuItem.label && (
-                    <StyledSearchOptionBreadcrumb>
+                    <StyledSearchOptionBreadcrumb className="header__search-option-breadcrumb">
                       {menuItem.breadcrumb}
                     </StyledSearchOptionBreadcrumb>
                   )}
@@ -484,20 +474,94 @@ const MainHeader: React.FC = () => {
           }))}
         />
       </StyledHeaderLeft>
-      <StyledHeaderRight>
-        <Space size="middle">
-          <Dropdown
-            menu={{ items: userMenuItems, onClick: handleMenuClick }}
-            placement="bottomRight"
-          >
-            <StyledUserButton type="text">
-              <Space>
-                <Avatar icon={<UserOutlined />} size="small" />
-                <span>{user?.empName || t("user", "사용자")}</span>
-              </Space>
-            </StyledUserButton>
-          </Dropdown>
-        </Space>
+      <StyledHeaderRight className="header__right">
+        <FormButton
+          icon={<i className="ri-notification-2-line" />}
+          className="header__button header__button--notification"
+        >
+          <Badge count={85} />
+        </FormButton>
+        <Dropdown
+          placement="bottomCenter"
+          overlayClassName="language-switcher"
+          dropdownRender={() => (
+            <div className="header-dropdown language-switcher__menu">
+              <FormButton
+                type="link"
+                className="language-switcher__option  language-switcher__option--kor language-switcher__option--active"
+              >
+                <span className="language-switcher__flag">
+                  <img src={kor} alt="한국" />
+                </span>
+                <span className="language-switcher__label">KOR</span>
+              </FormButton>
+              <FormButton
+                type="link"
+                className="language-switcher__option  language-switcher__option--eng"
+              >
+                <span className="language-switcher__flag">
+                  <img src={eng} alt="미국" />
+                </span>
+                <span className="language-switcher__label">ENG</span>
+              </FormButton>
+            </div>
+          )}
+        >
+          <FormButton
+            icon={<i className="ri-global-line" />}
+            className="header__button header__button--language"
+          />
+        </Dropdown>
+        <FormButton
+          icon={<i className="ri-sun-line" />}
+          className="header__button header__button--theme"
+        />
+        <FormButton
+          icon={<i className="ri-settings-3-line" />}
+          className="header__button header__button--setting"
+        />
+        <Dropdown
+          // menu={{ items: userMenuItems, onClick: handleMenuClick }}
+          placement="bottomRight"
+          overlayClassName="user-menu"
+          dropdownRender={() => (
+            <div className="header-dropdown user-menu__content">
+              <div className="user-menu__profile">
+                <div className="user-menu__name">홍길동</div>
+                <div className="user-menu__role">시스템 엔지니어</div>
+              </div>
+              <div className="user-menu__divider"></div>
+              <div className="user-menu__group">
+                <FormButton
+                  icon={<i className="ri-user-settings-line" />}
+                  className="user-menu__item user-menu__item--settings"
+                >
+                  환경설정
+                </FormButton>
+                <FormButton
+                  icon={<i className="ri-lock-line" />}
+                  className="user-menu__item user-menu__item--password"
+                >
+                  비밀번호 변경
+                </FormButton>
+              </div>
+              <div className="user-menu__divider"></div>
+              <div className="user-menu__group user-menu__group--logout">
+                <FormButton
+                  className="user-menu__item user-menu__item--logout"
+                  onClick={handleLogout}
+                >
+                  로그아웃
+                </FormButton>
+              </div>
+            </div>
+          )}
+        >
+          <FormButton
+            icon={<i className="ri-user-line" />}
+            className="header__button header__button--user"
+          ></FormButton>
+        </Dropdown>
       </StyledHeaderRight>
     </StyledHeader>
   );

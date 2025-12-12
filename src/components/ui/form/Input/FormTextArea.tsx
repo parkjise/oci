@@ -1,13 +1,13 @@
 import React from "react";
-import { Form, Input, Typography } from "antd";
+import { Form, Typography } from "antd";
 import type { Rule } from "antd/es/form";
 import type { TextAreaProps } from "antd/es/input";
 import type { FormItemLayout } from "antd/es/form/Form";
 import { runes } from "runes2";
 import MessageModal from "@/components/ui/feedback/Message/MessageModal";
 import { canShowModal, resetModalFlag } from "@/utils/formModalUtils";
-
-const { TextArea } = Input;
+import { TextStyles } from "@/components/ui/form/Input/FormTextArea.styles";
+// const { TextArea } = Input;
 const { Text } = Typography;
 
 // FormTextArea Props 정의
@@ -78,9 +78,9 @@ const FormTextArea: React.FC<FormTextAreaProps> = ({
         label={label}
         layout={layout as FormItemLayout}
         colon={false}
-        noStyle
+        style={{ marginBottom: 0 }}
       >
-        <Form.Item shouldUpdate={(prev, curr) => prev[name] !== curr[name]}>
+        <Form.Item shouldUpdate style={{ marginBottom: 0 }}>
           {({ getFieldValue }) => {
             const value = getFieldValue(name);
             const displayValue =
@@ -88,14 +88,7 @@ const FormTextArea: React.FC<FormTextAreaProps> = ({
                 ? String(value)
                 : emptyText;
             return (
-              <Form.Item
-                name={name}
-                label={label}
-                layout={layout as FormItemLayout}
-                colon={false}
-              >
-                <Text style={{ whiteSpace: "pre-wrap" }}>{displayValue}</Text>
-              </Form.Item>
+              <Text style={{ whiteSpace: "pre-wrap" }}>{displayValue}</Text>
             );
           }}
         </Form.Item>
@@ -105,14 +98,15 @@ const FormTextArea: React.FC<FormTextAreaProps> = ({
 
   const textAreaProps: TextAreaProps = {
     ...rest,
-    ...(max && max > 0 && {
-      count: {
-        show: true,
-        max,
-        strategy: (txt) => runes(txt).length,
-        exceedFormatter: (txt, { max }) => runes(txt).slice(0, max).join(""),
-      },
-    }),
+    ...(max &&
+      max > 0 && {
+        count: {
+          show: true,
+          max,
+          strategy: (txt) => runes(txt).length,
+          exceedFormatter: (txt, { max }) => runes(txt).slice(0, max).join(""),
+        },
+      }),
   };
 
   return (
@@ -122,12 +116,12 @@ const FormTextArea: React.FC<FormTextAreaProps> = ({
       rules={processedRules}
       layout={layout as FormItemLayout}
       colon={false}
+      style={{ marginBottom: 0 }}
       {...(useModalMessage ? { validateStatus: "", help: "" } : {})}
     >
-      <TextArea {...textAreaProps} />
+      <TextStyles {...textAreaProps} />
     </Form.Item>
   );
 };
 
 export default FormTextArea;
-

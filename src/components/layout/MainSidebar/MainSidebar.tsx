@@ -34,7 +34,6 @@ import {
 } from "./MainSidebar.styles";
 import { getMainInitDataApi } from "@apis/main";
 import type { MenuItem } from "@/types/api.types";
-import type { RouteConfig } from "@/types/routes.types";
 import { getMenuCache, setMenuCache } from "@utils/menuCache";
 import { getMenuIcon } from "@utils/iconUtils";
 import {
@@ -42,8 +41,19 @@ import {
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_MAX_WIDTH,
 } from "@/constants";
+import { pageModules } from "@utils/pageModules";
 
 type MenuItemType = Required<MenuProps>["items"][number];
+
+// 상수
+const DEFAULT_WIDTH = SIDEBAR_DEFAULT_WIDTH;
+const MAX_WIDTH = SIDEBAR_MAX_WIDTH;
+
+// 컴포넌트 캐시 맵 (동일한 경로에 대한 중복 컴포넌트 생성 방지)
+const componentCache = new Map<
+  string,
+  React.LazyExoticComponent<React.ComponentType>
+>();
 
 /**
  * 백엔드 메뉴 데이터를 계층 구조로 변환
@@ -87,12 +97,14 @@ const buildMenuTree = (menus: MenuItem[]): MenuItem[] => {
         if (!parent.children) {
           parent.children = [];
         }
-        // 중복 체크 후 추가
-        if (!parent.children.some((child) => child.pgmNo === menu.pgmNo)) {
+        // Set으로 중복 체크 최적화
+        const childPgmNos = new Set(
+          parent.children.map((child) => child.pgmNo)
+        );
+        if (!childPgmNos.has(menu.pgmNo)) {
           parent.children.push(menuNode);
         }
       }
-      // 부모가 없고 parentPgmNo가 ROOT_PARENT_PGM_NO가 아니면 무시 (데이터 오류)
     }
   });
 
@@ -124,47 +136,55 @@ const convertToMenuItems = (
     return [];
   }
 
-  return menus
-    .filter((menu) => menu.useYn === "Y" && menu.hidden !== "Y")
-    .map((menu) => {
-      // 다국어 번역: lKey가 있으면 번역 사용, 없으면 pgmName 사용
-      // MainHeader의 t("profile", "프로필")과 동일한 패턴
-      const label = menu.lKey
-        ? t(menu.lKey, menu.pgmName || menu.lKey)
-        : menu.pgmName || "";
+  const result: MenuItemType[] = [];
 
-      // 1단계 메뉴(lvl === 1)에만 아이콘 적용
-      const icon =
-        menu.lvl === 1 ? getMenuIcon(menu, "MainSidebar") : undefined;
+  for (const menu of menus) {
+    if (menu.useYn !== "Y" || menu.hidden === "Y") continue;
 
-      // children이 있으면 SubMenu로 변환
-      if (
-        menu.children &&
-        Array.isArray(menu.children) &&
-        menu.children.length > 0
-      ) {
-        const children = convertToMenuItems(menu.children, t);
-        if (children.length > 0) {
-          // SubMenu 타입 반환 (children이 있으면 자동으로 SubMenu로 인식)
-          return icon
-            ? { key: menu.pgmNo, label, icon, children }
-            : { key: menu.pgmNo, label, children };
-        }
+    const label = menu.lKey
+      ? t(menu.lKey, menu.pgmName || menu.lKey)
+      : menu.pgmName || "";
+
+    const icon = menu.lvl === 1 ? getMenuIcon(menu, "MainSidebar") : undefined;
+
+    // SubMenu 처리
+    if (menu.children && menu.children.length > 0) {
+      const children = convertToMenuItems(menu.children, t);
+      if (children.length > 0) {
+        result.push(
+          icon
+            ? ({ key: menu.pgmNo, label, icon, children } as MenuItemType)
+            : ({ key: menu.pgmNo, label, children } as MenuItemType)
+        );
+        continue;
       }
+    }
 
-      // 일반 MenuItem (children이 없음)
-      return icon
-        ? { key: menu.pgmNo, label, icon }
-        : { key: menu.pgmNo, label };
-    })
-    .filter((item) => item !== null && item !== undefined) as MenuItemType[];
+    // 일반 MenuItem
+    result.push(
+      icon
+        ? ({ key: menu.pgmNo, label, icon } as MenuItemType)
+        : ({ key: menu.pgmNo, label } as MenuItemType)
+    );
+  }
+
+  return result;
 };
 
 /**
- * 페이지 컴포넌트 모듈 매핑
- * 중앙 집중식으로 관리하여 경로 문제를 방지합니다.
+ * Lazy 컴포넌트 생성 및 캐싱 헬퍼 함수
  */
-import { pageModules } from "@utils/pageModules";
+const createLazyComponent = (
+  moduleLoader: () => Promise<{ default: React.ComponentType }>,
+  path: string
+): React.LazyExoticComponent<React.ComponentType> => {
+  const LazyComponent = React.lazy(async () => {
+    const module = await moduleLoader();
+    return { default: module.default };
+  });
+  componentCache.set(path, LazyComponent);
+  return LazyComponent;
+};
 
 /**
  * PATH로 컴포넌트 동적 로드
@@ -175,25 +195,24 @@ const getComponentByPath = (
   path: string
 ): React.LazyExoticComponent<React.ComponentType> | null => {
   if (!path) return null;
+
+  // 캐시 확인
+  if (componentCache.has(path)) {
+    return componentCache.get(path)!;
+  }
+
   try {
-    // PATH 정규화: 다양한 형식의 /components/pages를 /pages로 변환
-    // 1. /src/components/pages -> /pages
-    // 2. /components/pages -> /pages
-    // 3. src/components/pages -> pages
-    // 4. components/pages -> pages
-    // 5. /src/pages -> /pages (이미 올바른 형식)
-    let normalizedPath = path
+    // PATH 정규화
+    const normalizedPath = path
       .replace(/\/src\/components\/pages/gi, "/pages")
       .replace(/\/components\/pages/gi, "/pages")
       .replace(/^src\/components\/pages/gi, "pages")
       .replace(/^components\/pages/gi, "pages")
       .replace(/\/src\/pages/gi, "/pages")
-      .replace(/^src\/pages/gi, "pages");
-    
-    // 앞뒤 공백 제거
-    normalizedPath = normalizedPath.trim();
+      .replace(/^src\/pages/gi, "pages")
+      .trim();
 
-    // 정규화 후 /pages/ 포함 여부 확인
+    // /pages/ 포함 여부 확인
     if (
       !normalizedPath.includes("/pages/") &&
       !normalizedPath.includes("pages/")
@@ -201,20 +220,17 @@ const getComponentByPath = (
       return null;
     }
 
-    // PATH를 상대 경로로 변환
-    // import.meta.glob("../pages/**/*.{tsx,ts}")를 사용하면 (src/utils/pageModules.ts에서)
-    // 키는 ../pages/... 형식으로 저장됩니다
-    // 예: /pages/users/Users.tsx -> ../pages/users/Users.tsx
+    // 상대 경로로 변환 (../pages/... 형식)
     const relativePath = (
       normalizedPath.startsWith("/")
         ? `../${normalizedPath.slice(1)}`
         : `../${normalizedPath}`
-    ).replace(/\\/g, "/"); // Windows 경로 구분자 처리 (백슬래시를 슬래시로 변환)
+    ).replace(/\\/g, "/");
 
-    // 매핑된 모듈 찾기
+    // 모듈 로더 찾기
     let moduleLoader = pageModules[relativePath];
 
-    // 정확히 매칭되지 않으면 대소문자 무시하여 찾기 시도
+    // 대소문자 무시하여 찾기 시도
     if (!moduleLoader) {
       const lowerRelativePath = relativePath.toLowerCase();
       for (const key in pageModules) {
@@ -232,19 +248,15 @@ const getComponentByPath = (
       }
     }
 
-    if (moduleLoader) {
-      return React.lazy(async () => {
-        const module = await moduleLoader();
-        return { default: module.default };
-      });
-    }
-
-    // 매핑에 없으면 확장자 없이도 찾기 시도
+    // 확장자 없이 찾기 시도
     if (!moduleLoader) {
       const pathWithoutExt = relativePath.replace(/\.(tsx|ts)$/, "");
       for (const key in pageModules) {
         const keyWithoutExt = key.replace(/\.(tsx|ts)$/, "");
-        if (keyWithoutExt === pathWithoutExt || keyWithoutExt.toLowerCase() === pathWithoutExt.toLowerCase()) {
+        if (
+          keyWithoutExt === pathWithoutExt ||
+          keyWithoutExt.toLowerCase() === pathWithoutExt.toLowerCase()
+        ) {
           moduleLoader = pageModules[key];
           if (import.meta.env.DEV) {
             console.warn(
@@ -259,13 +271,10 @@ const getComponentByPath = (
     }
 
     if (moduleLoader) {
-      return React.lazy(async () => {
-        const module = await moduleLoader();
-        return { default: module.default };
-      });
+      return createLazyComponent(moduleLoader, path);
     }
 
-    // 매핑에 없으면 null 반환 (직접 import는 Vite에서 경로 문제 발생 가능)
+    // 모듈을 찾을 수 없음
     if (import.meta.env.DEV) {
       console.error(
         `[MainSidebar] import.meta.glob에서 모듈을 찾을 수 없습니다.`,
@@ -312,21 +321,29 @@ const MainSidebar: React.FC = () => {
   const [menus, setMenus] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const menuContainerRef = useRef<HTMLDivElement>(null);
-  const { addTab, activeTabKey } = useUiStore();
+  const widthCalculationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const contextRef = useRef<CanvasRenderingContext2D | null>(null);
 
-  const DEFAULT_WIDTH = SIDEBAR_DEFAULT_WIDTH;
-  const MAX_WIDTH = SIDEBAR_MAX_WIDTH;
+  // Zustand 선택적 구독
+  const addTab = useUiStore((state) => state.addTab);
+  const activeTabKey = useUiStore((state) => state.activeTabKey);
 
-  /**
-   * 메뉴 데이터 로드
-   * 로컬 스토리지 캐시를 우선 사용하고, 없으면 API 호출
-   */
+  // Canvas 초기화
+  useEffect(() => {
+    if (!canvasRef.current) {
+      canvasRef.current = document.createElement("canvas");
+      contextRef.current = canvasRef.current.getContext("2d");
+    }
+  }, []);
+
+  // 메뉴 데이터 로드
   useEffect(() => {
     const loadMenus = async () => {
       try {
         setLoading(true);
 
-        // 1. 캐시에서 먼저 확인
+        // 캐시에서 먼저 확인
         const cachedMenus = getMenuCache();
         if (cachedMenus && cachedMenus.length > 0) {
           setMenus(cachedMenus);
@@ -334,7 +351,7 @@ const MainSidebar: React.FC = () => {
           return;
         }
 
-        // 2. 캐시가 없거나 만료되었으면 API 호출
+        // API 호출
         const response = await getMainInitDataApi();
         if (response.success && response.data?.menus) {
           setMenus(response.data.menus);
@@ -357,116 +374,124 @@ const MainSidebar: React.FC = () => {
     loadMenus();
   }, []);
 
-  // 메뉴 트리 구성
+  // 메뉴 데이터 변환 및 캐싱
   const menuTree = useMemo(() => buildMenuTree(menus), [menus]);
 
-  // Ant Design Menu Items 변환 (언어 변경 시 재렌더링)
+  const menuMap = useMemo(() => {
+    const map = new Map<string, MenuItem>();
+    const buildMap = (menuList: MenuItem[]) => {
+      menuList.forEach((menu) => {
+        map.set(menu.pgmNo, menu);
+        if (menu.children && menu.children.length > 0) {
+          buildMap(menu.children);
+        }
+      });
+    };
+    buildMap(menuTree);
+    return map;
+  }, [menuTree]);
+
   const sidebarMenuItems = useMemo(
     () => convertToMenuItems(menuTree, t),
     [menuTree, t]
   );
 
-  /**
-   * PGM_NO로 메뉴 찾기
-   * @param pgmNo - 프로그램 번호
-   * @returns 찾은 메뉴 또는 undefined
-   */
-  const findMenuByPgmNo = useCallback(
-    (pgmNo: string): MenuItem | undefined => {
-      const findInTree = (menuList: MenuItem[]): MenuItem | undefined => {
-        for (const menu of menuList) {
-          if (menu.pgmNo === pgmNo) return menu;
-          if (menu.children) {
-            const found = findInTree(menu.children);
-            if (found) return found;
-          }
-        }
-        return undefined;
-      };
-      return findInTree(menuTree);
-    },
-    [menuTree]
+  const selectedKeys = useMemo(
+    () => (activeTabKey ? [activeTabKey] : []),
+    [activeTabKey]
   );
 
-  /**
-   * 사이드바 너비 계산 (메뉴 텍스트 길이에 따라 동적 조정)
-   */
+  // 메뉴 찾기 (맵 사용으로 O(1) 조회)
+  const findMenuByPgmNo = useCallback(
+    (pgmNo: string): MenuItem | undefined => menuMap.get(pgmNo),
+    [menuMap]
+  );
+
+  // 사이드바 너비 계산 (디바운싱 적용)
   const calculateWidth = useCallback(() => {
     if (collapsed || !menuContainerRef.current) return;
 
-    requestAnimationFrame(() => {
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d");
-      if (!context) return;
+    // 기존 타이머 취소
+    if (widthCalculationTimeoutRef.current) {
+      clearTimeout(widthCalculationTimeoutRef.current);
+    }
 
-      const menuItems = menuContainerRef.current?.querySelectorAll(
-        ".ant-menu-item, .ant-menu-submenu-title"
-      );
-      if (!menuItems || menuItems.length === 0) return;
+    widthCalculationTimeoutRef.current = setTimeout(() => {
+      requestAnimationFrame(() => {
+        const context = contextRef.current;
+        if (!context) return;
 
-      let maxTextWidth = 0;
-      const firstItem = menuItems[0] as HTMLElement;
-      const computedStyle = window.getComputedStyle(firstItem);
-      context.font = `${computedStyle.fontStyle} ${computedStyle.fontWeight} ${computedStyle.fontSize} ${computedStyle.fontFamily}`;
+        const menuItems = menuContainerRef.current?.querySelectorAll(
+          ".ant-menu-item, .ant-menu-submenu-title"
+        );
+        if (!menuItems || menuItems.length === 0) return;
 
-      menuItems.forEach((item: Element) => {
-        const element = item as HTMLElement;
-        const display = window.getComputedStyle(element).display;
-        const visibility = window.getComputedStyle(element).visibility;
-        const opacity = window.getComputedStyle(element).opacity;
+        let maxTextWidth = 0;
+        const firstItem = menuItems[0] as HTMLElement;
+        const computedStyle = window.getComputedStyle(firstItem);
+        context.font = `${computedStyle.fontStyle} ${computedStyle.fontWeight} ${computedStyle.fontSize} ${computedStyle.fontFamily}`;
 
-        if (display !== "none" && visibility !== "hidden" && opacity !== "0") {
-          let parentSubmenu = element.closest(".ant-menu-submenu");
-          let isVisible = true;
+        menuItems.forEach((item: Element) => {
+          const element = item as HTMLElement;
+          const display = window.getComputedStyle(element).display;
+          const visibility = window.getComputedStyle(element).visibility;
+          const opacity = window.getComputedStyle(element).opacity;
 
-          while (parentSubmenu) {
-            if (!parentSubmenu.classList.contains("ant-menu-submenu-open")) {
-              isVisible = false;
-              break;
+          if (
+            display !== "none" &&
+            visibility !== "hidden" &&
+            opacity !== "0"
+          ) {
+            let parentSubmenu = element.closest(".ant-menu-submenu");
+            let isVisible = true;
+
+            while (parentSubmenu) {
+              if (!parentSubmenu.classList.contains("ant-menu-submenu-open")) {
+                isVisible = false;
+                break;
+              }
+              parentSubmenu =
+                parentSubmenu.parentElement?.closest(".ant-menu-submenu") ||
+                null;
             }
-            parentSubmenu =
-              parentSubmenu.parentElement?.closest(".ant-menu-submenu") || null;
-          }
 
-          if (isVisible) {
-            const textSpan = element.querySelector(".ant-menu-title-content");
-            if (textSpan) {
-              const textContent = textSpan.textContent || "";
-              const textWidth = context.measureText(textContent).width;
-              maxTextWidth = Math.max(maxTextWidth, textWidth);
+            if (isVisible) {
+              const textSpan = element.querySelector(".ant-menu-title-content");
+              if (textSpan) {
+                const textContent = textSpan.textContent || "";
+                const textWidth = context.measureText(textContent).width;
+                maxTextWidth = Math.max(maxTextWidth, textWidth);
+              }
             }
           }
-        }
+        });
+
+        // 아이콘(28px) + 화살표(20px) + 패딩(40px) + 여유공간(50px)
+        const totalWidth = maxTextWidth + 28 + 20 + 40 + 50;
+
+        const newWidth = Math.max(
+          DEFAULT_WIDTH,
+          Math.min(MAX_WIDTH, Math.ceil(totalWidth))
+        );
+
+        setSidebarWidth((prevWidth) =>
+          prevWidth !== newWidth ? newWidth : prevWidth
+        );
       });
+    }, 150);
+  }, [collapsed]);
 
-      // 아이콘(28px) + 화살표(20px) + 패딩(40px) + 여유공간(50px)
-      const totalWidth = maxTextWidth + 28 + 20 + 40 + 50;
-
-      const newWidth = Math.max(
-        DEFAULT_WIDTH,
-        Math.min(MAX_WIDTH, Math.ceil(totalWidth))
-      );
-
-      setSidebarWidth((prevWidth: number) =>
-        prevWidth !== newWidth ? newWidth : prevWidth
-      );
-    });
-  }, [collapsed, DEFAULT_WIDTH, MAX_WIDTH]);
-
-  /**
-   * 메뉴 클릭 핸들러
-   * 메뉴 클릭 시 해당 페이지를 탭으로 추가
-   */
+  // 이벤트 핸들러
   const handleMenuClick = useCallback(
     (info: { key: string }) => {
       const menu = findMenuByPgmNo(info.key);
-      if (!menu || !menu.path) return;
+      if (!menu?.path) return;
 
       const routePath = convertPathToRoute(menu.path);
       const Component = getComponentByPath(menu.path);
 
       if (Component) {
-        const routeConfig: RouteConfig = {
+        addTab({
           path: routePath,
           element: Component,
           meta: {
@@ -474,63 +499,66 @@ const MainSidebar: React.FC = () => {
             requiresAuth: true,
             pgmNo: menu.pgmNo,
           },
-        };
-        addTab(routeConfig);
+        });
       }
 
-      // 사이드바가 열려있으면 너비 재계산
       if (!collapsed) {
-        requestAnimationFrame(() => {
-          setTimeout(() => calculateWidth(), 50);
-          setTimeout(() => calculateWidth(), 200);
-        });
+        calculateWidth();
       }
     },
     [findMenuByPgmNo, addTab, collapsed, calculateWidth]
   );
 
-  /**
-   * 서브메뉴 열림/닫힘 핸들러
-   * 서브메뉴가 열리거나 닫힐 때 사이드바 너비 재계산 및 스크롤 조정
-   */
   const handleMenuOpenChange = useCallback(
     (openKeys: string[]) => {
       if (!collapsed && menuContainerRef.current) {
-        const container = menuContainerRef.current;
         const lastOpenKey = openKeys[openKeys.length - 1];
 
         // 마지막으로 열린 메뉴 항목으로 스크롤
         if (lastOpenKey) {
           requestAnimationFrame(() => {
-            const menuItem = container.querySelector(
+            const menuItem = menuContainerRef.current?.querySelector(
               `[data-menu-id*="${lastOpenKey}"]`
             ) as HTMLElement;
-            if (menuItem) {
-              menuItem.scrollIntoView({ behavior: "smooth", block: "nearest" });
-            }
+            menuItem?.scrollIntoView({
+              behavior: "smooth",
+              block: "nearest",
+            });
           });
         }
 
-        // 너비 재계산
-        requestAnimationFrame(() => {
-          setTimeout(() => calculateWidth(), 100);
-          setTimeout(() => calculateWidth(), 250);
-        });
+        calculateWidth();
       }
     },
     [collapsed, calculateWidth]
   );
 
-  /**
-   * 초기 너비 계산
-   * 사이드바가 열릴 때 한 번만 실행
-   */
+  const handleCollapse = useCallback(
+    (value: boolean) => {
+      setCollapsed(value);
+      if (!value) {
+        calculateWidth();
+      }
+    },
+    [calculateWidth]
+  );
+
+  // 초기 너비 계산
   useEffect(() => {
-    if (!collapsed && sidebarWidth === DEFAULT_WIDTH) {
-      const timer = setTimeout(() => calculateWidth(), 100);
+    if (!collapsed && sidebarWidth === DEFAULT_WIDTH && !loading) {
+      const timer = setTimeout(() => calculateWidth(), 200);
       return () => clearTimeout(timer);
     }
-  }, [collapsed, sidebarWidth, DEFAULT_WIDTH, calculateWidth]);
+  }, [collapsed, sidebarWidth, loading, calculateWidth]);
+
+  // 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (widthCalculationTimeoutRef.current) {
+        clearTimeout(widthCalculationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -553,12 +581,7 @@ const MainSidebar: React.FC = () => {
     <StyledSidebar
       collapsible
       collapsed={collapsed}
-      onCollapse={(value) => {
-        setCollapsed(value);
-        if (!value) {
-          setTimeout(() => calculateWidth(), 100);
-        }
-      }}
+      onCollapse={handleCollapse}
       trigger={null}
       width={collapsed ? 64 : sidebarWidth}
       collapsedWidth={64}
@@ -576,7 +599,7 @@ const MainSidebar: React.FC = () => {
       <StyledMenuContainer ref={menuContainerRef}>
         <StyledMenu
           theme="dark"
-          selectedKeys={activeTabKey ? [activeTabKey] : undefined}
+          selectedKeys={selectedKeys}
           mode="inline"
           items={sidebarMenuItems}
           onClick={handleMenuClick}

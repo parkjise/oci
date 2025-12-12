@@ -17,11 +17,6 @@ import type {
   ConfmRequest,
   ConfmResponse,
 } from "@/types/fcm/gl/slip/slipRegist.types";
-import type {
-  SlipPostSearchRequest,
-  SlipPostSearchResponse,
-  SlipPostSaveRequest,
-} from "@/types/fcm/gl/slip/slipPost.types";
 
 /**
  * 전표 등록 목록 조회
@@ -151,29 +146,4 @@ export const cancelConfm = async (
   request: ConfmRequest
 ): Promise<ApiResponse<void>> => {
   return await post<void>("/fcm/gl/slip/cancelConfm", request);
-};
-
-/**
- * 전표 전기 조회
- * @param request 조회 조건
- * @returns 전표 전기 목록
- */
-export const selectSlipPostList = async (
-  request: SlipPostSearchRequest
-): Promise<ApiResponse<SlipPostSearchResponse[]>> => {
-  return await post<SlipPostSearchResponse[]>(
-    "/fcm/gl/slip/selectSlipPostList",
-    request
-  );
-};
-
-/**
- * 전표 전기 저장
- * @param request 저장할 전표 전기 데이터
- * @returns 저장 결과
- */
-export const saveSlipPost = async (
-  request: SlipPostSaveRequest
-): Promise<ApiResponse<void>> => {
-  return await post<void>("/fcm/gl/slip/saveSlipPost", request);
 };

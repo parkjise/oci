@@ -12,4 +12,5 @@
  */
 
 // 거래처관리 페이지 컴포넌트 export
+export { default as BcncRegist } from "./BcncRegist/BcncRegist";
 

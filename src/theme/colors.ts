@@ -23,6 +23,7 @@ export const colors = {
     800: "#3A404A",
     900: "#191F28",
   },
+  red: "#E21A22",
   white: "#fff",
   black: "#000",
   navy: "#35507D",

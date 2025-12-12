@@ -1,6 +1,27 @@
 import { createGlobalStyle } from "styled-components";
+import { antdSelectGlobal } from "@/styles/antd/antd-select.global";
+import { antdTooltipGlobal } from "@/styles/antd/antd-tooltip.global";
+import { antdDropdownGlobal } from "@/styles/antd/antd-dropdown.global";
+import * as mixins from "@/styles/mixins";
 
 export const GlobalStyle = createGlobalStyle`
+  ${antdSelectGlobal}
+  ${antdTooltipGlobal}
+  ${antdDropdownGlobal}
+  .css-var-root{
+    --ant-font-family: "Pretendard","Noto Sans KR", "Roboto", sans-serif ;
+    --ant-font-family-code: "Pretendard","Noto Sans KR", "Roboto", sans-serif;
+    
+    &.ant-input-css-var{
+      --ant-input-active-shadow: 0 0 0 2px rgba(0, 0, 0, 0.07);
+    }
+    &.ant-picker-css-var{
+      --ant-date-picker-active-shadow :0 0 0 2px rgba(0, 0, 0, 0.07);
+    }
+    &.ant-input-number-css-var{
+      --ant-input-number-active-shadow:0 0 0 2px rgba(0, 0, 0, 0.07);
+    }
+  }
   html{
     font-size: 62.5%;
   }
@@ -17,6 +38,7 @@ export const GlobalStyle = createGlobalStyle`
     background-color:#F2F4F6;
     font-weight: 400;
     letter-spacing: -0.5px;
+    font-family:"Pretendard" ;
   }
 
   #root {
@@ -37,16 +59,7 @@ export const GlobalStyle = createGlobalStyle`
     color: ${({ theme }) => theme.colors.neutral[800]};
     font-weight: 400;
   }
-  .ant-tooltip{
-    font-size: 11px;
-    .ant-tooltip-inner{
-      min-height: 24px;
-      padding: 4px 8px;
-    }
-    .ant-tooltip-container{
-      min-height: 24px;
-    }
-  }
+
 
   .helptext{
     i{
@@ -59,10 +72,21 @@ export const GlobalStyle = createGlobalStyle`
       color: ${({ theme }) => theme.colors.error};
       font-size: 8px;
       vertical-align: text-top;
-
     }
   }
 
+  /* Form */
+  .form-select {
+    ${mixins.flex("center", "flex-start", "row", "5px")}
+
+  }
+
+  .ant-dropdown{
+    border-radius: 2px;
+    .ant-dropdown-menu{
+      border-radius: 2px;
+    }
+  }
   /* AG Grid 클릭된 행 스타일 - 전역 스타일로 추가하여 확실하게 적용 */
   .ag-row.ag-row-clicked,
   .ag-row-clicked,

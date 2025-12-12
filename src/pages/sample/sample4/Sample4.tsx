@@ -1,12 +1,9 @@
 import React from "react";
 import { ListDetailLayout } from "@/components/ui/layout/ListDetailLayout";
-import {
-  FilterPanel,
-  RecordList,
-  DetailView,
-  DetailGrid,
-} from "@components/features/sample2";
-
+import DetailView from "./DetailView";
+import RecordList from "./RecordList";
+import FilterPanel from "./FilterPanel";
+import DetailGrid from "./DetailGrid";
 const Sample4: React.FC = () => {
   return (
     <ListDetailLayout

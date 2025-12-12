@@ -2,6 +2,12 @@ import styled from "styled-components";
 import * as mixins from "@/styles/mixins";
 
 export const DetailViewStyles = styled.div`
+  .ant-input,
+  .ant-select,
+  .ant-input-number,
+  .ant-picker {
+    height: 26px;
+  }
   &.page-layout__detail-view {
     ${mixins.flex("flex-start", "flex-start", "column", "10px")}
     height: fit-content;
@@ -50,6 +56,7 @@ export const DetailViewStyles = styled.div`
             &--search {
               .ant-input {
                 padding-block: 2px;
+                height: 28px;
                 &::placeholder {
                   font-size: 11px;
                 }
@@ -63,6 +70,13 @@ export const DetailViewStyles = styled.div`
         }
         &--right {
           ${mixins.flex("center", "flex-start", "row", "5px")}
+          .action-button-group__button--more {
+            border: none;
+            &:hover {
+              background: none;
+              border: none !important;
+            }
+          }
         }
       }
     }
@@ -86,8 +100,9 @@ export const DetailViewStyles = styled.div`
         td {
           height: 36px;
           text-align: left;
-          padding-left: 10px;
+          padding-inline: 10px;
           background-color: ${({ theme }) => theme.colors.white};
+          font-size: 13px;
         }
         th {
           width: 100px;
@@ -104,6 +119,12 @@ export const DetailViewStyles = styled.div`
         td {
           color: ${({ theme }) => theme.colors.neutral[600]};
           border-bottom: 1px solid ${({ theme }) => theme.colors.grey[100]};
+          .ant-typography {
+            font-size: 13px;
+            background-color: #000;
+            color: ${({ theme }) => theme.colors.neutral[600]};
+            font-weight: 400;
+          }
         }
         tr:last-child {
           th,

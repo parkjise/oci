@@ -171,16 +171,10 @@ const Sample3: React.FC = () => {
             전체 <span className="data-grid-panel__count-number">5</span> 건
           </div>
           <div className="data-grid-panel__divider"></div>
-          <FormButton
-            size="small"
-            className="data-grid-panel__button data-grid-panel__button--search"
-          >
+          <FormButton size="small" className="data-grid-panel__button">
             구매요청 검색
           </FormButton>
-          <FormButton
-            size="small"
-            className="data-grid-panel__button data-grid-panel__button--search"
-          >
+          <FormButton size="small" className="data-grid-panel__button">
             Button
           </FormButton>
           <Tooltip title="더보기">

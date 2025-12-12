@@ -39,6 +39,7 @@ export interface UserDto {
   ySale?: string; // YSALE
   divisionRole?: string; // DIVISION_ROLE
   insaDeptChgYn?: string; // INSA_DEPT_CHG_YN
+  orgId?: string; // ORG_ID (소속사업장, 실제 DB: WORK_PLACE)
   workPlace?: string; // WORK_PLACE
   subOrgId?: string; // SUB_ORG_ID
   empImgId?: string; // EMP_IMG_ID
@@ -96,6 +97,7 @@ export interface UserSaveItem {
   ySale?: string;
   divisionRole?: string;
   insaDeptChgYn?: string;
+  orgId?: string; // 소속사업장 ID (프론트엔드용, 실제 DB는 workPlace)
   workPlace?: string;
   subOrgId?: string;
   empImgId?: string;

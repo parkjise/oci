@@ -1,23 +1,30 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Form, Button, Tooltip, message } from "antd";
+import { Form, message, type FormInstance } from "antd";
 import {
   FormInput,
   FormDatePicker,
   FormSelect,
-  FormButton,
   FormRadioGroup,
+  SearchForm,
 } from "@components/ui/form";
-import { FilterPanelStyles } from "./FilterPanel.styles";
-import { getCodeDetailApi } from "@apis/comCode";
 import { useAuthStore } from "@store/authStore";
 import { useSlipPostStore } from "@store/slipPostStore";
 import type { SlipPostSearchRequest } from "@/types/fcm/gl/slip/slipPost.types";
 import dayjs from "dayjs";
 
-type SelectOption = {
-  value: string | number;
-  label: string;
-};
+// 전표유형 필터에서 제외할 값들
+const SLIP_TYPE_FILTER_VALUES = [
+  "E",
+  "F",
+  "G",
+  "H",
+  "I",
+  "M",
+  "P",
+  "R",
+  "T",
+  "U",
+] as (string | number)[];
 
 type FilterPanelProps = {
   className?: string;
@@ -25,203 +32,77 @@ type FilterPanelProps = {
   onRefReady?: (ref: { handleSearch: () => Promise<void> }) => void;
 };
 
+// Internal component to capture Form instance from SearchForm
+const FormWatcher: React.FC<{
+  onFormInstanceReady: (instance: FormInstance) => void;
+}> = ({ onFormInstanceReady }) => {
+  const form = Form.useFormInstance();
+  useEffect(() => {
+    if (form) {
+      onFormInstanceReady(form);
+    }
+  }, [form, onFormInstanceReady]);
+  return null;
+};
+
 const FilterPanel: React.FC<FilterPanelProps> = ({
   className,
   onPostYnChange,
   onRefReady,
 }) => {
-  const [form] = Form.useForm();
-  const [expanded, setExpanded] = useState(false);
+  // Form 인스턴스: useRef로 관리 (리렌더링 방지)
+  const formRef = useRef<FormInstance | null>(null);
+  // Form.useWatch를 위해 최소한의 state 필요 (useWatch가 form 인스턴스 변경을 감지하기 위해)
+  const [formInstance, setFormInstance] = useState<FormInstance | null>(null);
   const { user } = useAuthStore();
   const { search, loading, setSPostYn } = useSlipPostStore();
   const isInitialMount = useRef(true);
-  const [businessUnitOptions, setBusinessUnitOptions] = useState<
-    SelectOption[]
-  >([]);
-  const [slipTypeOptions, setSlipTypeOptions] = useState<SelectOption[]>([]);
-  const [allSlipExptnSrcOptions, setAllSlipExptnSrcOptions] = useState<
-    SelectOption[]
-  >([]);
-  const [slipExptnSrcOptions, setSlipExptnSrcOptions] = useState<
-    SelectOption[]
-  >([]);
 
-  // 사업부 옵션 조회 (comCodeParams로 가져온 옵션에 "전체" 추가)
-  useEffect(() => {
-    const fetchBusinessUnitOptions = async () => {
-      try {
-        const response = await getCodeDetailApi({
-          module: "PF",
-          type: "ORG",
-          enabledFlag: "Y",
-        });
-
-        console.log("사업부 옵션 조회 response:", response);
-
-        if (response.success && response.data) {
-          const codeList = Array.isArray(response.data)
-            ? response.data
-            : [response.data];
-          const transformedOptions: SelectOption[] = codeList
-            .filter((item) => item.code && item.name1 && item.code !== "##")
-            .map((item) => ({
-              value: item.code as string,
-              label: item.name1 as string,
-            }));
-
-          // "전체" 옵션을 맨 앞에 추가
-          setBusinessUnitOptions([
-            { value: "", label: "전체" },
-            ...transformedOptions,
-          ]);
-        } else {
-          setBusinessUnitOptions([{ value: "", label: "전체" }]);
-        }
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error("사업부 옵션 조회 실패:", error);
-        }
-        setBusinessUnitOptions([{ value: "", label: "전체" }]);
-      }
-    };
-
-    fetchBusinessUnitOptions();
-  }, []);
-
-  // 전표유형 옵션 조회 (comCodeParams로 가져온 옵션에 "전체" 추가)
-  useEffect(() => {
-    const fetchSlipTypeOptions = async () => {
-      try {
-        const response = await getCodeDetailApi({
-          module: "GL",
-          type: "SLIPID",
-          enabledFlag: "Y",
-        });
-
-        if (response.success && response.data) {
-          const codeList = Array.isArray(response.data)
-            ? response.data
-            : [response.data];
-          const transformedOptions: SelectOption[] = codeList
-            .filter((item) => item.code && item.name1)
-            .map((item) => ({
-              value: item.code as string,
-              label: item.name1 as string,
-            }));
-
-          // "전체" 옵션을 맨 앞에 추가
-          setSlipTypeOptions([
-            { value: "", label: "전체" },
-            ...transformedOptions,
-          ]);
-        } else {
-          setSlipTypeOptions([{ value: "", label: "전체" }]);
-        }
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error("전표유형 옵션 조회 실패:", error);
-        }
-        setSlipTypeOptions([{ value: "", label: "전체" }]);
-      }
-    };
-
-    fetchSlipTypeOptions();
-  }, []);
-
-  // 전표유형상세 전체 옵션 조회 (한 번만 조회하여 저장)
-  useEffect(() => {
-    const fetchAllSlipExptnSrcOptions = async () => {
-      try {
-        const response = await getCodeDetailApi({
-          module: "GL",
-          type: "SLPORG",
-          enabledFlag: "Y",
-        });
-
-        if (response.success && response.data) {
-          const codeList = Array.isArray(response.data)
-            ? response.data
-            : [response.data];
-          const transformedOptions: SelectOption[] = codeList
-            .filter((item) => item.code && item.name1)
-            .map((item) => ({
-              value: item.code as string,
-              label: item.name1 as string,
-            }));
-
-          setAllSlipExptnSrcOptions(transformedOptions);
-        } else {
-          setAllSlipExptnSrcOptions([]);
-        }
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error("전표유형상세 전체 옵션 조회 실패:", error);
-        }
-        setAllSlipExptnSrcOptions([]);
-      }
-    };
-
-    fetchAllSlipExptnSrcOptions();
-  }, []);
-
-  // 사업부 기본값을 "전체"(빈값)로 설정, 회계일자는 이번 달 1일부터 오늘까지로 설정, 전표유형도 "전체"로 설정, sPostYn은 "UNPOST"(전기)로 설정
-  useEffect(() => {
+  // 초기값 생성 함수 (중복 제거)
+  const getInitialValues = useCallback(() => {
     const today = dayjs();
     const firstDay = today.startOf("month");
 
-    const initialValues: {
-      dateRange?: [dayjs.Dayjs, dayjs.Dayjs];
-      asDvs?: string;
-      asSlipType?: string;
-      sPostYn?: string;
-    } = {
-      dateRange: [firstDay, today],
-      sPostYn: "UNPOST", // 첫 번째 라디오 버튼 "전기"를 기본값으로 설정
+    return {
+      dateRange: [firstDay, today] as [dayjs.Dayjs, dayjs.Dayjs],
+      sPostYn: "UNPOST" as const,
+      asDvs: "",
+      asSlipType: "",
     };
+  }, []);
 
-    if (businessUnitOptions.length > 0) {
-      initialValues.asDvs = ""; // "전체" 옵션의 값 (빈 문자열)
-    }
+  // Form 인스턴스 설정 함수
+  const setForm = useCallback(
+    (instance: FormInstance | null) => {
+      formRef.current = instance;
+      // Form.useWatch가 인스턴스 변경을 감지할 수 있도록 state 업데이트
+      // (단, 이 state는 useWatch를 위해서만 사용되므로 최소한의 리렌더링만 발생)
+      setFormInstance(instance);
 
-    if (slipTypeOptions.length > 0) {
-      initialValues.asSlipType = ""; // "전체" 옵션의 값 (빈 문자열)
-    }
+      // Form 인스턴스가 설정되면 초기값 설정
+      if (instance) {
+        instance.setFieldsValue(getInitialValues());
+      }
+    },
+    [getInitialValues]
+  );
 
-    form.setFieldsValue(initialValues);
-  }, [businessUnitOptions, slipTypeOptions, form]);
-
-  // 전표유형 값 감시
-  const slipType = Form.useWatch("asSlipType", form);
+  // 초기화 핸들러 (SearchForm에 전달)
+  const handleReset = useCallback(() => {
+    if (!formRef.current) return;
+    formRef.current.setFieldsValue(getInitialValues());
+  }, [getInitialValues]);
 
   // sPostYn 값 감시 (라디오 버튼 변경 시 자동 조회)
-  const sPostYn = Form.useWatch("sPostYn", form);
-
-  // 전표유형상세 옵션 필터링 (전표유형 값에 따라 동적으로 변경)
-  useEffect(() => {
-    // 전표유형이 선택되지 않았거나 "전체"인 경우 옵션 초기화
-    if (!slipType || slipType === "") {
-      setSlipExptnSrcOptions([]);
-      form.setFieldValue("asSlipExptnSrc", undefined);
-      return;
-    }
-
-    // 전체 옵션에서 선택된 전표유형으로 시작하는 항목만 필터링
-    // 예: 전표유형이 "E"이면 "E01", "E02", "E03" 등만 표시
-    const filteredOptions = allSlipExptnSrcOptions.filter((option) =>
-      String(option.value).startsWith(slipType)
-    );
-
-    // "전체" 옵션을 맨 앞에 추가
-    setSlipExptnSrcOptions([{ value: "", label: "전체" }, ...filteredOptions]);
-
-    // 전표유형이 변경되면 전표유형상세를 "전체"로 초기화
-    form.setFieldValue("asSlipExptnSrc", "");
-  }, [slipType, allSlipExptnSrcOptions, form]);
+  // formInstance state를 사용하여 useWatch가 인스턴스 변경을 감지할 수 있도록 함
+  const sPostYn = Form.useWatch("sPostYn", formInstance || undefined);
 
   // 조회 버튼 핸들러
   const handleSearch = useCallback(async () => {
+    if (!formRef.current) return;
+
     try {
-      const values = await form.validateFields();
+      const values = await formRef.current.validateFields();
 
       if (!user?.officeId) {
         message.error("사무소 정보를 찾을 수 없습니다.");
@@ -265,13 +146,15 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         asTgt: asTgtValue,
       };
 
-      // API 요청 파라미터 콘솔 출력
-      console.log("=== API 요청 파라미터 ===");
-      console.log("searchRequest:", searchRequest);
-      console.log("Form values:", values);
-      console.log("sPostYn:", values.sPostYn);
-      console.log("asTgt 변환값:", asTgtValue);
-      console.log("========================");
+      // API 요청 파라미터 콘솔 출력 (개발 환경에서만)
+      if (import.meta.env.DEV) {
+        console.log("=== API 요청 파라미터 ===");
+        console.log("searchRequest:", searchRequest);
+        console.log("Form values:", values);
+        console.log("sPostYn:", values.sPostYn);
+        console.log("asTgt 변환값:", asTgtValue);
+        console.log("========================");
+      }
 
       // store의 search 함수 호출 (sPostYn도 함께 전달)
       await search(searchRequest, values.sPostYn);
@@ -286,7 +169,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         }
       }
     }
-  }, [form, user, search]);
+  }, [user, search]);
 
   // sPostYn 값 변경 시 store 업데이트 및 자동 조회
   useEffect(() => {
@@ -313,14 +196,15 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
 
   // 초기 마운트 시 sPostYn 값 store에 저장
   useEffect(() => {
-    const initialSPostYn = form.getFieldValue("sPostYn");
+    if (!formRef.current) return;
+    const initialSPostYn = formRef.current.getFieldValue("sPostYn");
     if (initialSPostYn) {
       setSPostYn(initialSPostYn);
       if (onPostYnChange) {
         onPostYnChange(initialSPostYn);
       }
     }
-  }, [form, setSPostYn, onPostYnChange]);
+  }, [setSPostYn, onPostYnChange]);
 
   // ref를 통해 handleSearch를 외부에서 호출할 수 있도록 expose
   useEffect(() => {
@@ -332,85 +216,64 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   }, [onRefReady, handleSearch]);
 
   return (
-    <FilterPanelStyles className={className}>
-      <Form form={form} style={{}} className="filter-panel__form">
-        <FormSelect
-          name="asDvs"
-          label="사업부"
-          placeholder="전체"
-          className="filter-panel__field"
-          options={businessUnitOptions}
-        />
-        <FormDatePicker
-          name="dateRange"
-          isRange={true}
-          label="회계계일자"
-          placeholder={["시작일", "종료일"]}
-          className="filter-panel__field"
-        />
-        <FormSelect
-          name="asSlipType"
-          label="전표유형"
-          placeholder="전체"
-          className="filter-panel__field"
-          options={slipTypeOptions}
-        />
-        <FormSelect
-          name="asSlipExptnSrc"
-          label=""
-          placeholder="전체"
-          className="filter-panel__field"
-          disabled={!slipType || slipType === ""}
-          options={slipExptnSrcOptions}
-        />
-
-        <FormInput
-          name="asRem"
-          label="대표적요"
-          className="filter-panel__field"
-        />
-        <FormInput
-          name="asSlipNo"
-          label="Slip No."
-          className="filter-panel__field"
-        />
-        <FormRadioGroup
-          name="sPostYn"
-          label=""
-          options={[
-            { value: "UNPOST", label: "전기" },
-            { value: "POST", label: "전기취소" },
-          ]}
-          layout="horizontal"
-        />
-
-        {expanded && <></>}
-      </Form>
-      <div className="filter-panel__actions">
-        <Tooltip title="조회">
-          <Button
-            icon={<i className="ri-search-line" style={{ fontSize: 18 }} />}
-            className="filter-panel__actions-button"
-            onClick={handleSearch}
-            loading={loading}
-          />
-        </Tooltip>
-        <Tooltip title={expanded ? "접기" : "펼치기"}>
-          <FormButton
-            icon={
-              <i
-                className={
-                  expanded ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"
-                }
-                style={{ fontSize: 18 }}
-              />
-            }
-            className="filter-panel__actions-button"
-            onClick={() => setExpanded(!expanded)}
-          />
-        </Tooltip>
-      </div>
-    </FilterPanelStyles>
+    <SearchForm
+      onSearch={handleSearch}
+      onReset={handleReset}
+      loading={loading}
+      showReset={true}
+      visibleRows={2}
+      columnsPerRow={4}
+      className={className}
+    >
+      <FormWatcher onFormInstanceReady={setForm} />
+      <FormSelect
+        name="asDvs"
+        label="사업부"
+        placeholder="전체"
+        comCodeParams={{
+          module: "PF",
+          type: "ORG",
+          enabledFlag: "Y",
+        }}
+        filterValues={["##"]}
+        allOptionLabel="ALL"
+      />
+      <FormDatePicker
+        name="dateRange"
+        isRange={true}
+        label="회계일자"
+        placeholder={["시작일", "종료일"]}
+      />
+      <FormSelect
+        name="asSlipType"
+        label="전표유형"
+        placeholder="-선택-"
+        comCodeParams={{
+          module: "GL",
+          type: "SLIPID",
+          enabledFlag: "Y",
+        }}
+        filterComCodeParams={{
+          module: "GL",
+          type: "SLPORG",
+          enabledFlag: "Y",
+        }}
+        filterFieldName="asSlipExptnSrc"
+        filterValues={SLIP_TYPE_FILTER_VALUES}
+        allOptionLabel="-선택-"
+      />
+      <FormInput name="asRem" label="대표적요" />
+      <FormInput name="asSlipNo" label="Slip No." />
+      <FormRadioGroup
+        name="sPostYn"
+        label=""
+        options={[
+          { value: "UNPOST", label: "전기" },
+          { value: "POST", label: "전기취소" },
+        ]}
+        layout="horizontal"
+      />
+    </SearchForm>
   );
 };
 

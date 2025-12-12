@@ -55,6 +55,7 @@ import {
   StyledDivider,
   StyledCardTitle,
 } from "./Sample3.styles";
+import Mdi from "@/components/features/mdi/Mdi";
 
 interface SearchFormType {
   name?: string;
@@ -1466,7 +1467,7 @@ const Sample3: React.FC = () => {
               <FormButton
                 key="search"
                 size="small"
-                className="data-grid-panel__button data-grid-panel__button--search"
+                className="data-grid-panel__button"
                 onClick={() => {
                   showSuccess("커스텀 버튼 클릭됨");
                 }}
@@ -1579,7 +1580,9 @@ const Sample3: React.FC = () => {
             }}
           />
         </StyledGridCard>
-
+        <div>
+          <Mdi />
+        </div>
         <SaveDataModal
           open={saveModalOpen}
           onClose={() => setSaveModalOpen(false)}

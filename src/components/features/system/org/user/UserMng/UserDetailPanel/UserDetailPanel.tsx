@@ -383,12 +383,13 @@ const UserDetailPanel: React.FC<UserDetailPanelProps> = ({
           purreqRole: selectedUser.purreqRole,
           emailReceiveYn: selectedUser.emailReceiveYn || "N",
           insaDeptChgYn: selectedUser.insaDeptChgYn || "N",
-          officeId: selectedUser.officeId,
+          orgId: selectedUser.orgId, // AS-IS: ORG_ID (소속사업장)
+          officeId: selectedUser.officeId, // 백엔드 호환성을 위해 유지
+          workPlace: selectedUser.workPlace, // 근무장소
           purkpoRole: selectedUser.purkpoRole,
           applUseYn: selectedUser.applUseYn || "NO",
           subOrgId: selectedUser.subOrgId,
           buyerYn: selectedUser.buyerYn || "N",
-          workPlace: selectedUser.workPlace,
         });
 
         // 다른 사용자를 선택할 때는 pendingFile을 초기화하여 파일 목록 조회 가능하도록 함
@@ -921,11 +922,18 @@ const UserDetailPanel: React.FC<UserDetailPanelProps> = ({
                 <th>{t("소속사업장")}</th>
                 <td>
                   <FormSelect
-                    name="officeId"
+                    name="orgId" // AS-IS: ORG_ID (소속사업장)
                     label=""
                     options={orgList}
                     allowClear
                     style={{ marginBottom: 0, width: "100%" }}
+                    onChange={(value) => {
+                      // AS-IS: 소속사업장은 ORG_ID 사용
+                      if (onValuesChange) {
+                        const allValues = form.getFieldsValue();
+                        onValuesChange({ orgId: value }, allValues);
+                      }
+                    }}
                   />
                 </td>
                 <th>{t("구매결의권한")}</th>

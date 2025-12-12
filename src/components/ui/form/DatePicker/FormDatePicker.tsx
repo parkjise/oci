@@ -13,7 +13,7 @@ const { RangePicker } = DatePicker;
 const { Text } = Typography;
 
 // 단일 DatePicker Props
-type SingleDatePickerProps = Omit<DatePickerProps, "mode"> & {
+type SingleDatePickerProps = Omit<DatePickerProps, "mode" | "value"> & {
   name: string;
   label: string;
   rules?: Rule[];
@@ -25,10 +25,11 @@ type SingleDatePickerProps = Omit<DatePickerProps, "mode"> & {
   mode?: "view" | "edit";
   emptyText?: string;
   format?: string;
+  value?: Dayjs | string | null; // 문자열도 지원
 };
 
 // 범위 DatePicker Props
-type RangeDatePickerProps = Omit<RangePickerProps, "mode"> & {
+type RangeDatePickerProps = Omit<RangePickerProps, "mode" | "value"> & {
   name: string;
   label: string;
   rules?: Rule[];
@@ -40,6 +41,7 @@ type RangeDatePickerProps = Omit<RangePickerProps, "mode"> & {
   mode?: "view" | "edit";
   emptyText?: string;
   format?: string;
+  value?: [Dayjs, Dayjs] | [string, string] | null; // 문자열 배열도 지원
 };
 
 // Union 타입
@@ -148,46 +150,38 @@ const FormDatePicker: React.FC<FormDatePickerProps> = ({
         label={label}
         layout={layout as FormItemLayout}
         colon={false}
-        noStyle
+        style={{ marginBottom: 0 }}
       >
-        <Form.Item shouldUpdate={(prev, curr) => prev[name] !== curr[name]}>
+        <Form.Item noStyle shouldUpdate>
           {({ getFieldValue }) => {
-            const value = getFieldValue(name);
+            const rawValue = getFieldValue(name);
+
+            // 문자열을 dayjs 객체로 변환하는 헬퍼 함수
+            const convertToDayjs = (value: unknown): Dayjs | null => {
+              if (dayjs.isDayjs(value)) {
+                return value;
+              }
+              if (typeof value === "string" && value) {
+                const parsed = dayjs(value);
+                return parsed.isValid() ? parsed : null;
+              }
+              return null;
+            };
 
             if (isRange) {
               // 범위 선택
+              const startValue = convertToDayjs(rawValue?.[0]);
+              const endValue = convertToDayjs(rawValue?.[1]);
               const displayValue =
-                Array.isArray(value) && value[0] && value[1]
-                  ? `${value[0].format(format)} ~ ${value[1].format(format)}`
+                startValue && endValue
+                  ? `${startValue.format(format)} ~ ${endValue.format(format)}`
                   : emptyText;
-
-              return (
-                <Form.Item
-                  name={name}
-                  label={label}
-                  layout={layout as FormItemLayout}
-                  colon={false}
-                >
-                  <Text>{displayValue}</Text>
-                </Form.Item>
-              );
+              return <Text>{displayValue}</Text>;
             } else {
               // 단일 선택
-              const displayValue =
-                value && dayjs.isDayjs(value)
-                  ? value.format(format)
-                  : emptyText;
-
-              return (
-                <Form.Item
-                  name={name}
-                  label={label}
-                  layout={layout as FormItemLayout}
-                  colon={false}
-                >
-                  <Text>{displayValue}</Text>
-                </Form.Item>
-              );
+              const value = convertToDayjs(rawValue);
+              const displayValue = value ? value.format(format) : emptyText;
+              return <Text>{displayValue}</Text>;
             }
           }}
         </Form.Item>
@@ -197,9 +191,30 @@ const FormDatePicker: React.FC<FormDatePickerProps> = ({
 
   // 범위 선택 모드
   if (isRange) {
-    // rest에서 mode를 제외 (우리가 정의한 mode와 충돌 방지)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { mode: _, ...rangePickerRest } = rest as RangePickerProps;
+    // rest에서 value를 제외하고 나머지만 전달
+    const { value, ...rangePickerRest } = rest as RangePickerProps & {
+      value?: [Dayjs, Dayjs] | [string, string] | null;
+    };
+
+    // value prop 변환 (문자열 배열을 dayjs 객체 배열로)
+    let processedValue: [Dayjs, Dayjs] | undefined = undefined;
+    if (Array.isArray(value) && value.length === 2) {
+      const startValue = dayjs.isDayjs(value[0])
+        ? value[0]
+        : typeof value[0] === "string"
+        ? dayjs(value[0])
+        : null;
+      const endValue = dayjs.isDayjs(value[1])
+        ? value[1]
+        : typeof value[1] === "string"
+        ? dayjs(value[1])
+        : null;
+
+      if (startValue?.isValid() && endValue?.isValid()) {
+        processedValue = [startValue, endValue];
+      }
+    }
+
     return (
       <Form.Item
         name={name}
@@ -207,11 +222,14 @@ const FormDatePicker: React.FC<FormDatePickerProps> = ({
         rules={processedRules}
         layout={layout as FormItemLayout}
         colon={false}
+        style={{ marginBottom: 0 }}
         {...(useModalMessage ? { validateStatus: "", help: "" } : {})}
       >
-        <RangePicker
+        <DatePickerStyles
+          as={RangePicker}
           ref={rangePickerRef}
           style={{ width: "100%" }}
+          value={processedValue}
           {...rangePickerRest}
         />
       </Form.Item>
@@ -245,9 +263,21 @@ const FormDatePicker: React.FC<FormDatePickerProps> = ({
     return false;
   };
 
-  // rest에서 onChange와 onOk를 제외하고 나머지만 전달 (Form.Item이 onChange를 관리)
+  // rest에서 onChange, onOk를 제외하고 나머지만 전달 (Form.Item이 onChange를 관리)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { onChange: _, onOk: __, ...datePickerRest } = rest as DatePickerProps;
+  const { onChange, onOk, value, ...datePickerRest } =
+    rest as DatePickerProps & { value?: Dayjs | string | null };
+
+  // value prop 변환 (문자열을 dayjs 객체로)
+  let processedValue = undefined;
+  if (dayjs.isDayjs(value)) {
+    processedValue = value;
+  } else if (typeof value === "string" && value) {
+    const parsed = dayjs(value);
+    if (parsed.isValid()) {
+      processedValue = parsed;
+    }
+  }
 
   return (
     <Form.Item
@@ -256,12 +286,14 @@ const FormDatePicker: React.FC<FormDatePickerProps> = ({
       rules={processedRules}
       layout={layout as FormItemLayout}
       colon={false}
+      style={{ marginBottom: 0 }}
       {...(useModalMessage ? { validateStatus: "", help: "" } : {})}
     >
       <DatePickerStyles
         ref={datePickerRef}
         style={{ width: "100%" }}
         disabledDate={disabledDate}
+        value={processedValue}
         {...datePickerRest}
       />
     </Form.Item>

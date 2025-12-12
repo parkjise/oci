@@ -4,7 +4,7 @@ import * as mixins from "@/styles/mixins";
 export const FilterPanelStyles = styled.div`
   &.page-layout__filter-panel {
     /* padding: 1.4rem 2rem; */
-    ${mixins.flex("center", "space-between")}
+    ${mixins.flex("flex-start", "space-between")}
     width: 100%;
   }
   .filter-panel {
@@ -43,7 +43,10 @@ export const FilterPanelStyles = styled.div`
       }
       .ant-form-item .ant-form-item-label > label,
       .ant-form-item .ant-form-item-control-input,
-      .ant-input {
+      .ant-input,
+      .ant-select,
+      .ant-picker,
+      .ant-input-number {
         height: 28px;
       }
       .ant-form-item .ant-form-item-control-input {
@@ -52,16 +55,18 @@ export const FilterPanelStyles = styled.div`
       .ant-input-search-btn {
         height: 28px;
       }
+      & .ant-btn {
+        &:hover,
+        &:active,
+        &:focus {
+          border-color: ${({ theme }) => theme.colors.neutral[800]};
+          color: ${({ theme }) => theme.colors.neutral[800]};
+        }
+      }
     }
     &__actions {
-      ${mixins.flex("flex-start", "center", "row", "5px")}
+      ${mixins.flex("flex-start", "flex-start", "row", "5px")}
       height: 100%;
-      button {
-        width: 28px;
-        height: 28px;
-        border-radius: 2px;
-        border: 1px solid ${({ theme }) => theme.colors.grey[200]};
-      }
     }
   }
 `;

@@ -25,7 +25,9 @@ import {
   type UserSearchRequest,
 } from "@apis/system/user/userApi";
 import { uploadFileApi, createEatKeyApi } from "@apis/system/file/fileApi";
+import { getAllOrgListApi } from "@apis/system/common/listApi";
 import { useTranslation } from "react-i18next";
+import { useAuthStore } from "@store/authStore";
 import dayjs from "dayjs";
 import { FilterPanelWrapper, UserMngLayoutWrapper } from "./UserMng.styles";
 
@@ -34,6 +36,7 @@ import { FilterPanelWrapper, UserMngLayoutWrapper } from "./UserMng.styles";
 // ============================================================================
 const UserMng: React.FC = () => {
   const { t } = useTranslation();
+  const { user } = useAuthStore();
   const [form] = Form.useForm();
   const [detailForm] = Form.useForm();
   const [userList, setUserList] = useState<UserDto[]>([]);
@@ -154,6 +157,7 @@ const UserMng: React.FC = () => {
       empName: "",
       officeId: "",
       useYn: "Y",
+      ySale: "N", // AS-IS: 영업사원여부 기본값 'N'
       rowStatus: "C",
       id: `new_${Date.now()}`,
     };
@@ -424,10 +428,11 @@ const UserMng: React.FC = () => {
                   startDate: formattedStartDate,
                   endDate: formattedEndDate,
                   empyId: item.empyId,
-                  ySale: item.ySale,
+                  ySale: item.ySale !== undefined && item.ySale !== null && item.ySale !== "" ? item.ySale : "N", // AS-IS: 영업사원여부 기본값 'N'
                   divisionRole: item.divisionRole,
                   insaDeptChgYn: item.insaDeptChgYn,
-                  workPlace: item.workPlace,
+                  orgId: item.orgId, // AS-IS: 소속사업장은 ORG_ID 사용
+                  workPlace: item.workPlace, // AS-IS: 근무장소는 WORK_PLACE 사용
                   subOrgId: item.subOrgId,
                   empImgId: finalEmpImgId,
                 });
@@ -455,10 +460,11 @@ const UserMng: React.FC = () => {
                   startDate: formattedStartDate,
                   endDate: formattedEndDate,
                   empyId: item.empyId,
-                  ySale: item.ySale,
+                  ySale: item.ySale !== undefined && item.ySale !== null && item.ySale !== "" ? item.ySale : "N", // AS-IS: 영업사원여부 기본값 'N'
                   divisionRole: item.divisionRole,
                   insaDeptChgYn: item.insaDeptChgYn,
-                  workPlace: item.workPlace,
+                  orgId: item.orgId, // AS-IS: 소속사업장은 ORG_ID 사용
+                  workPlace: item.workPlace, // AS-IS: 근무장소는 WORK_PLACE 사용
                   subOrgId: item.subOrgId,
                   empImgId: finalEmpImgId,
                 });
@@ -533,15 +539,20 @@ const UserMng: React.FC = () => {
     setSearchExpanded((prev) => !prev);
   }, []);
 
-  // 조직 목록 조회
+  // 조직 목록 조회 (AS-IS selectCommonList의 ORG_ID_ALL 사용)
   const fetchOrgList = useCallback(async () => {
+    if (!user?.officeId) return;
+    
     try {
-      const { getWorkplaceListApi } = await import("@apis/system/org/workplaceApi");
-      const response = await getWorkplaceListApi();
+      // 공통 목록 조회 API를 사용하여 전체 사업장 목록 조회
+      const response = await getAllOrgListApi({
+        officeId: user.officeId,
+      });
+      
       if (response.success && response.data) {
         const options = response.data.map((item) => ({
-          value: item.orgId || "",
-          label: item.orgNme || "",
+          value: item.code || "",
+          label: item.name || item.code || "",
         }));
         setOrgList(options);
       }
@@ -549,7 +560,7 @@ const UserMng: React.FC = () => {
       console.error("조직 목록 조회 실패:", error);
       setOrgList([]);
     }
-  }, []);
+  }, [user?.officeId]);
 
   // 직위 목록 조회
   const fetchPositionList = useCallback(async () => {
@@ -674,7 +685,12 @@ const UserMng: React.FC = () => {
             ...allValues,
             // 필수 필드 보존 (그리드 행의 원본 데이터 유지)
             empCode: row.empCode,
-            officeId: row.officeId || allValues.officeId,
+            // AS-IS: 소속사업장은 ORG_ID 사용, 근무장소는 WORK_PLACE 사용
+            orgId: allValues.orgId || row.orgId,
+            workPlace: allValues.workPlace || row.workPlace,
+            officeId: row.officeId || allValues.officeId, // 백엔드 호환성을 위해 유지
+            // ySale 값 명시적으로 반영 (상세 패널에서 변경한 값 우선)
+            ySale: allValues.ySale !== undefined && allValues.ySale !== null ? allValues.ySale : row.ySale || "N",
           };
           // empImgId가 변경되었거나 추가되었으면 무조건 수정 상태로 표시
           if (_changedValues?.empImgId !== undefined || allValues?.empImgId !== undefined) {
@@ -682,14 +698,22 @@ const UserMng: React.FC = () => {
           } else if (!updatedRow.rowStatus || updatedRow.rowStatus === undefined) {
             updatedRow.rowStatus = "U";
           }
+          
+          // ySale이 변경되었고 현재 선택된 사용자와 일치하면 selectedUser도 업데이트
+          if (_changedValues?.ySale !== undefined && selectedUser && selectedUser.empCode === targetEmpCode) {
+            setSelectedUser((prev) => {
+              if (prev && prev.empCode === targetEmpCode) {
+                return { ...prev, ySale: updatedRow.ySale };
+              }
+              return prev;
+            });
+          }
+          
           return updatedRow;
         }
         return row;
       });
       setUserList(updatedData);
-      
-      // selectedUser는 업데이트하지 않음 (파일 선택 시 하단 정보 초기화 방지)
-      // selectedUser는 handleRowSelection에서만 업데이트되도록 함
       
       // 그리드의 선택 상태를 유지하기 위해 현재 선택된 행을 다시 선택
       const gridApi = gridRef.current?.getGridApi();
@@ -850,6 +874,7 @@ const UserMng: React.FC = () => {
             isModified={isModified}
             totalCount={userList.length}
             onRowSelection={handleRowSelection}
+            orgList={orgList}
           />
         }
         detailBottomPanel={

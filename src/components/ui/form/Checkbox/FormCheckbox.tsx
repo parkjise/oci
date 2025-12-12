@@ -48,6 +48,7 @@ export interface FormCheckboxGroupProps
   useModalMessage?: boolean; // 모달 메시지 사용 여부 옵션 (기본값: true)
   mode?: "view" | "edit";
   emptyText?: string;
+  filterValues?: (string | number)[]; // 필터링하여 숨길 값들의 배열
 }
 
 // 단일 체크박스 컴포넌트
@@ -184,6 +185,7 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
   emptyText = "-",
   value: controlledValue,
   defaultValue,
+  filterValues,
   ...rest
 }) => {
   const [options, setOptions] = useState<FormCheckboxOption[]>(
@@ -246,6 +248,14 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
       setOptions(propOptions);
     }
   }, [comCodeParams, propOptions, valueKey, labelKey]);
+
+  // filterValues에 따라 옵션 필터링
+  const filteredOptions = React.useMemo(() => {
+    if (!filterValues || filterValues.length === 0) {
+      return options;
+    }
+    return options.filter((option) => !filterValues.includes(option.value));
+  }, [options, filterValues]);
 
   // useModalMessage가 true일 때만 required 규칙을 모달로 변환
   const processedRules = React.useMemo(() => {
@@ -315,7 +325,7 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
     (values: Array<string | number>) => {
       if (name) return; // name이 있으면 Form.Item이 관리하므로 불필요
 
-      const allValues = options.map((opt) => opt.value);
+      const allValues = filteredOptions.map((opt) => opt.value);
       const allChecked =
         allValues.length > 0 && allValues.every((val) => values.includes(val));
       const someChecked = values.length > 0 && !allChecked;
@@ -323,7 +333,7 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
       setCheckAll(allChecked);
       setIndeterminate(someChecked);
     },
-    [options, name]
+    [filteredOptions, name]
   );
 
   // controlled value가 변경되면 내부 상태 업데이트 (name이 없을 때만)
@@ -349,7 +359,7 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
         <Form.Item shouldUpdate={(prev, curr) => prev[name] !== curr[name]}>
           {({ getFieldValue }) => {
             const value = getFieldValue(name) || [];
-            const selectedOptions = options.filter((opt) =>
+            const selectedOptions = filteredOptions.filter((opt) =>
               value.includes(opt.value)
             );
             const displayValue =
@@ -390,7 +400,7 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
 
   // 전체 선택/해제 핸들러 (name이 없을 때만 사용)
   const handleSelectAll = (e: { target: { checked: boolean } }) => {
-    const allValues = options.map((opt) => opt.value);
+    const allValues = filteredOptions.map((opt) => opt.value);
     const newValues = e.target.checked ? allValues : [];
     if (!name) {
       // name이 없을 때만 내부 상태 업데이트
@@ -403,7 +413,7 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
 
   // 그리드 레이아웃으로 렌더링
   const renderCheckboxes = () => {
-    const checkboxElements = options.map((option) => (
+    const checkboxElements = filteredOptions.map((option) => (
       <Checkbox
         key={option.value}
         value={option.value}
@@ -414,11 +424,14 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
     ));
 
     if (columns && columns > 0) {
-      const itemsPerColumn = Math.ceil(options.length / columns);
+      const itemsPerColumn = Math.ceil(filteredOptions.length / columns);
       const columnsArray = Array.from({ length: columns }, (_, colIndex) => {
         const startIndex = colIndex * itemsPerColumn;
-        const endIndex = Math.min(startIndex + itemsPerColumn, options.length);
-        return options.slice(startIndex, endIndex);
+        const endIndex = Math.min(
+          startIndex + itemsPerColumn,
+          filteredOptions.length
+        );
+        return filteredOptions.slice(startIndex, endIndex);
       });
 
       return (
@@ -490,7 +503,7 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
           {({ getFieldValue, setFieldValue }) => {
             const fieldValue = getFieldValue(name) || [];
 
-            const allValues = options.map((opt) => opt.value);
+            const allValues = filteredOptions.map((opt) => opt.value);
             const allChecked =
               allValues.length > 0 &&
               allValues.every((val) => fieldValue.includes(val));

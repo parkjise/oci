@@ -31,6 +31,7 @@ interface FormRadioGroupProps extends Omit<RadioGroupProps, "options"> {
   useModalMessage?: boolean; // 모달 메시지 사용 여부 옵션 (기본값: true)
   mode?: "view" | "edit";
   emptyText?: string;
+  filterValues?: (string | number)[]; // 필터링하여 숨길 값들의 배열
 }
 
 const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
@@ -45,6 +46,7 @@ const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
   useModalMessage = true,
   mode = "edit",
   emptyText = "-",
+  filterValues,
   ...rest
 }) => {
   const [options, setOptions] = useState<RadioOption[]>(propOptions || []);
@@ -100,6 +102,14 @@ const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
       setOptions(propOptions);
     }
   }, [comCodeParams, propOptions, valueKey, labelKey]);
+
+  // filterValues에 따라 옵션 필터링
+  const filteredOptions = React.useMemo(() => {
+    if (!filterValues || filterValues.length === 0) {
+      return options;
+    }
+    return options.filter((option) => !filterValues.includes(option.value));
+  }, [options, filterValues]);
 
   // useModalMessage가 true일 때만 required 규칙을 모달로 변환
   const processedRules = React.useMemo(() => {
@@ -171,27 +181,20 @@ const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
         label={label}
         layout={layout as FormItemLayout}
         colon={false}
-        noStyle
+        style={{ marginBottom: 0 }}
       >
-        <Form.Item shouldUpdate={(prev, curr) => prev[name] !== curr[name]}>
+        <Form.Item noStyle shouldUpdate style={{ marginBottom: 0 }}>
           {({ getFieldValue }) => {
             const value = getFieldValue(name);
-            const selectedOption = options.find((opt) => opt.value === value);
+            const selectedOption = filteredOptions.find(
+              (opt) => opt.value === value
+            );
             const displayValue = selectedOption
               ? selectedOption.label
               : value !== undefined && value !== null
               ? String(value)
               : emptyText;
-            return (
-              <Form.Item
-                name={name}
-                label={label}
-                layout={layout as FormItemLayout}
-                colon={false}
-              >
-                <Text>{displayValue}</Text>
-              </Form.Item>
-            );
+            return <Text>{displayValue}</Text>;
           }}
         </Form.Item>
       </Form.Item>
@@ -205,6 +208,7 @@ const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
       layout={layout as FormItemLayout}
       colon={false}
       rules={processedRules}
+      style={{ marginBottom: 0 }}
       {...(useModalMessage ? { validateStatus: "", help: "" } : { help: "" })}
     >
       <Radio.Group
@@ -212,7 +216,7 @@ const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
         {...rest}
         disabled={loading || rest.disabled}
       >
-        {options.map((option) => (
+        {filteredOptions.map((option) => (
           <Radio key={option.value} value={option.value}>
             {option.label}
           </Radio>

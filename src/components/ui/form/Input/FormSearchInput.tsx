@@ -78,23 +78,15 @@ const FormSearchInput: React.FC<FormSearchInputProps> = ({
     <InputSearchStyles {...formInputProps} onSearch={handleSearch} />
   );
 
-  // readOnly 표시 박스 (showReadOnlyBoxName이 있으면 활성화)
-  const readOnlyDisplayElement = showReadOnlyBoxName ? (
-    <Form.Item name={showReadOnlyBoxName}>
-      <FormInput type="text" readOnly name={showReadOnlyBoxName} />
-    </Form.Item>
-  ) : null;
-
   // readOnly 박스가 있으면 두 개를 나란히 배치
-  const inputContent =
-    showReadOnlyBoxName && readOnlyDisplayElement ? (
-      <Space.Compact style={FULL_WIDTH_STYLE}>
-        <Form.Item name={name}>{searchElement}</Form.Item>
-        {readOnlyDisplayElement}
-      </Space.Compact>
-    ) : (
-      searchElement
-    );
+  const inputContent = showReadOnlyBoxName ? (
+    <Space.Compact style={FULL_WIDTH_STYLE}>
+      {searchElement}
+      <FormInput type="text" readOnly name={showReadOnlyBoxName} />
+    </Space.Compact>
+  ) : (
+    searchElement
+  );
 
   return (
     <Form.Item

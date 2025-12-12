@@ -1,6 +1,6 @@
 import { useEffect, useImperativeHandle, forwardRef } from "react";
-import { Form, Tooltip, Radio } from "antd";
-import { FormDatePicker, FormButton } from "@components/ui/form";
+import { Form, Tooltip } from "antd";
+import { FormDatePicker, FormButton, FormRadioGroup } from "@components/ui/form";
 import { FilterPanelStyles } from "./FilterPanel.styles";
 import dayjs from "dayjs";
 
@@ -80,22 +80,23 @@ const FilterPanel = forwardRef<FilterPanelRef, FilterPanelProps>(({ className, o
           placeholder=""
           className="filter-panel__field"
         />
-        <Form.Item name="radio-group" label="구분" initialValue="1">
-          <Radio.Group 
-            className="filter-panel__field"
-            onChange={handleRadioChange} // 구분값 변경 시 자동 조회
-          >
-            <Radio value="1">AP</Radio>
-            <Radio value="2">AR</Radio>
-            <Radio value="3">GL</Radio>
-          </Radio.Group>
-        </Form.Item>
-        <FormDatePicker
+        <FormRadioGroup
+          name="radio-group"
+          label="구분"
+          options={[
+            { value: "1", label: "AP" },
+            { value: "2", label: "AR" },
+            { value: "3", label: "GL" },
+          ]}
+          className="filter-panel__field"
+          onChange={handleRadioChange}
+        />
+        {/* <FormDatePicker
           name="Reverse일자"
           label="Reverse일자"
           placeholder=""
           className="filter-panel__field"
-        />
+        /> */}
       </Form>
       <div className="filter-panel__actions">
         <Tooltip title="조회">

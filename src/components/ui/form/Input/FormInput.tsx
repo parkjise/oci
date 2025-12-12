@@ -243,11 +243,14 @@ const FormInput: React.FC<FormInputProps> = ({
 
   if (mode === "view" && type !== "number" && type !== "search") {
     return (
-      <Form.Item name={name} colon={false} noStyle>
-        <Form.Item
-          shouldUpdate={(prev, curr) => prev[name] !== curr[name]}
-          noStyle
-        >
+      <Form.Item
+        name={name}
+        label={label}
+        layout={layout as FormItemLayout}
+        colon={false}
+        style={{ marginBottom: 0 }}
+      >
+        <Form.Item shouldUpdate style={{ marginBottom: 0 }}>
           {({ getFieldValue }) => {
             const value = getFieldValue(name);
             const displayValue =

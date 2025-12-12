@@ -49,6 +49,23 @@ export const FilterPanelStyles = styled.section`
       .ant-form-item .ant-form-item-control-input {
         min-height: 28px;
       }
+      &__button-group {
+        ${mixins.flex("center", "flex-start", "row", "0")}
+        button {
+          border-radius: 0;
+          &:first-child {
+            border-top-left-radius: 2px;
+            border-bottom-left-radius: 2px;
+          }
+          &:last-child {
+            border-top-right-radius: 2px;
+            border-bottom-right-radius: 2px;
+          }
+          &:not(:last-child) {
+            border-right: none;
+          }
+        }
+      }
     }
     &__actions {
       ${mixins.flex("flex-start", "center", "row", "5px")}

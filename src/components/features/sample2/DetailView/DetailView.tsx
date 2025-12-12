@@ -1,12 +1,54 @@
 import React from "react";
 import { DetailViewStyles } from "./DetailView.styles";
 import { Tooltip, Badge, Tag } from "antd";
-import { FormButton, FormSearchInput } from "@components/ui/form";
+import {
+  FormButton,
+  FormLabel,
+  FormSearchInput,
+  ActionButtonGroup,
+} from "@components/ui/form";
 type DetailViewProps = {
   className?: string;
 };
 
 const DetailView: React.FC<DetailViewProps> = ({ className }) => {
+  // ActionButtonGroup 설정
+  const customButtons = [
+    <FormButton
+      key="approve"
+      size="small"
+      onClick={() => console.log("결제상신")}
+    >
+      결제상신
+    </FormButton>,
+    <FormButton
+      key="cancel-approve"
+      size="small"
+      onClick={() => console.log("승인취소")}
+    >
+      승인취소
+    </FormButton>,
+    <Tooltip key="more" title="더보기">
+      <FormButton
+        icon={<i className="ri-more-2-line" style={{ fontSize: 16 }} />}
+        size="small"
+      />
+    </Tooltip>,
+  ];
+
+  const actionButtonGroup = {
+    onButtonClick: {
+      edit: () => console.log("수정"),
+      create: () => console.log("신규"),
+      copy: () => console.log("복사"),
+      delete: () => console.log("삭제"),
+      save: () => console.log("저장"),
+    },
+    customButtons,
+    enableExpand: true,
+    showCustomButtonsDivider: true,
+  };
+
   return (
     <DetailViewStyles className={className}>
       <div className="detail-view__actions">
@@ -51,62 +93,8 @@ const DetailView: React.FC<DetailViewProps> = ({ className }) => {
             />
           </div>
         </div>
-        <div className="detail-view__actions-group  detail-view__actions-group--right">
-          <FormButton size={"small"} className="detail-view__button">
-            결제상신
-          </FormButton>
-          <FormButton size={"small"} className="detail-view__button">
-            승인취소
-          </FormButton>
-          <Tooltip title="더보기">
-            <FormButton
-              icon={<i className="ri-more-2-line" style={{ fontSize: 16 }} />}
-              size="small"
-              className="detail-view__button detail-view__button--more"
-            />
-          </Tooltip>
-          <div className="detail-view__divider"></div>
-          <FormButton
-            size={"small"}
-            className="detail-view__button detail-view__button--edit"
-          >
-            수정
-          </FormButton>
-          <FormButton
-            size={"small"}
-            className="detail-view__button detail-view__button--input"
-          >
-            신규
-          </FormButton>
-          <FormButton
-            size={"small"}
-            className="detail-view__button detail-view__button--copy"
-          >
-            복사
-          </FormButton>
-          <FormButton
-            size={"small"}
-            className="detail-view__button detail-view__button--delete"
-          >
-            삭제
-          </FormButton>
-          <FormButton
-            type="primary"
-            size={"small"}
-            className="detail-view__button detail-view__button--save navy"
-          >
-            저장
-          </FormButton>
-          <div className="detail-view__divider"></div>
-          <Tooltip title="펼치기">
-            <FormButton
-              size="small"
-              icon={
-                <i className="ri-arrow-down-s-line" style={{ fontSize: 18 }} />
-              }
-              className="detail-view__button detail-view__button--expand"
-            />
-          </Tooltip>
+        <div className="detail-view__actions-group detail-view__actions-group--right">
+          <ActionButtonGroup {...actionButtonGroup} />
         </div>
       </div>
       <div className="detail-view__table">
@@ -114,10 +102,7 @@ const DetailView: React.FC<DetailViewProps> = ({ className }) => {
           <tbody>
             <tr>
               <th>
-                작성부서
-                <span className="helptext asterisk">
-                  <i className="ri-asterisk"></i>
-                </span>
+                <FormLabel labelKey="메뉴번호" required />
               </th>
               <td>A11 경영관리본부</td>
               <th>작성자</th>
@@ -156,6 +141,14 @@ const DetailView: React.FC<DetailViewProps> = ({ className }) => {
               <td></td>
               <th>최종수정일시</th>
               <td>2025-10-20</td>
+            </tr>
+            <tr>
+              <th>Reverse No.</th>
+              <td>10</td>
+              <th>대표적요</th>
+              <td>상차도</td>
+              <th>Closed</th>
+              <td colSpan={3}></td>
             </tr>
           </tbody>
         </table>

@@ -42,17 +42,20 @@ import {
   StyledGridToolbar,
   type AgGridStyleOptions,
 } from "./FormAgGrid.styles";
+import { FormAgGridLayoutStyles } from "./FormAgGridLayout.style";
 
 // AG Grid 모듈 등록
 ModuleRegistry.registerModules([AllCommunityModule, AllEnterpriseModule]);
 LicenseManager.setLicenseKey(import.meta.env.VITE_AGGRID_LICENSEMANAGER);
 
-/**
- * FormAgGrid에서 사용하는 확장된 ColDef 타입
- */
+/** FormAgGrid 확장 ColDef 타입 */
 export interface ExtendedColDef<TData> extends ColDef<TData> {
   /** 엑셀 다운로드에서 제외할지 여부 */
   excludeFromExcel?: boolean;
+  /** 헤더 정렬: "left" | "center" | "right" (기본값: "center") */
+  headerAlign?: "left" | "center" | "right";
+  /** 바디 값 정렬: "left" | "center" | "right" (기본값: "center") */
+  bodyAlign?: "left" | "center" | "right";
 }
 
 /**
@@ -73,6 +76,8 @@ interface FormAgGridProps<TData> extends AgGridReactProps {
   className?: string;
   /** 스타일 옵션 */
   styleOptions?: AgGridStyleOptions;
+  /** 헤더 텍스트 정렬 (간편 설정) */
+  headerTextAlign?: "left" | "center" | "right";
   /** 툴바 표시 여부 */
   showToolbar?: boolean;
   /** 행 추가 핸들러 */
@@ -148,11 +153,12 @@ const FormAgGrid = <TData extends { id?: number | string }>(
   const {
     rowData,
     columnDefs,
-    height = 400,
+    height = "100%",
     width = "100%",
     gridOptions,
     className,
     styleOptions,
+    headerTextAlign,
     showToolbar = false,
     onAddRow,
     onCopyRow,
@@ -173,6 +179,12 @@ const FormAgGrid = <TData extends { id?: number | string }>(
     onGridReady,
     ...rest
   } = props;
+
+  // styleOptions와 headerTextAlign 병합
+  const mergedStyleOptions: AgGridStyleOptions = {
+    ...styleOptions,
+    headerTextAlign: headerTextAlign || styleOptions?.headerTextAlign,
+  };
 
   const [gridApi, setGridApi] = useState<GridApi<TData> | null>(null);
   const [clickedRowId, setClickedRowId] = useState<number | string | null>(
@@ -280,9 +292,42 @@ const FormAgGrid = <TData extends { id?: number | string }>(
     return disableFilter ? { ...col, filter: false } : col;
   };
 
-  const processedColumnDefs = columnDefs.map((col) =>
-    processEditable(col, props.enableFilter === false)
-  );
+  // 컬럼 정의 처리 (편집 가능성 및 정렬 적용)
+  const processedColumnDefs = columnDefs.map((col) => {
+    const processed = processEditable(col, props.enableFilter === false);
+    const extendedCol = processed as ExtendedColDef<TData>;
+
+    // 헤더별 정렬 적용 (컬럼별 headerAlign 우선)
+    const headerAlign = extendedCol.headerAlign || "center";
+    let headerClass = processed.headerClass;
+    if (headerAlign !== "center") {
+      const newClass = `ag-header-cell-${headerAlign}`;
+      headerClass = processed.headerClass
+        ? `${processed.headerClass} ${newClass}`
+        : newClass;
+    }
+
+    // 바디 값 정렬 적용 (컬럼별 bodyAlign 우선)
+    const bodyAlign = extendedCol.bodyAlign || "center";
+    let cellStyle = processed.cellStyle;
+
+    // AG Grid에서 텍스트 정렬은 cellStyle의 textAlign 속성으로 적용
+    // bodyAlign이 지정된 경우 항상 textAlign 적용
+    if (bodyAlign) {
+      const newStyle = {
+        textAlign: bodyAlign as "left" | "center" | "right",
+      };
+      cellStyle = processed.cellStyle
+        ? { ...processed.cellStyle, ...newStyle }
+        : newStyle;
+    }
+
+    return {
+      ...processed,
+      ...(headerClass !== processed.headerClass && { headerClass }),
+      ...(cellStyle !== processed.cellStyle && { cellStyle }),
+    };
+  });
 
   const handleGridReady = (params: GridReadyEvent<TData>) => {
     setGridApi(params.api);
@@ -788,247 +833,260 @@ const FormAgGrid = <TData extends { id?: number | string }>(
   };
 
   return (
-    <StyledAgGridContainer
-      className={clsx("ag-theme-quartz", className)}
-      style={{
-        height: typeof height === "number" ? `${height}px` : height,
-        width,
-      }}
-      $styleOptions={styleOptions}
-    >
-      {showToolbar && (
-        <StyledGridToolbar>
-          <div className="data-grid-panel__toolbar">
-            <div className="data-grid-panel-left">
-              <div className="data-grid-panel__count">
-                전체{" "}
-                <span className="data-grid-panel__count-number">
-                  {rowData.length}
-                </span>{" "}
-                건
+    <FormAgGridLayoutStyles>
+      <StyledAgGridContainer
+        className={clsx("ag-theme-quartz", className)}
+        style={{
+          height: typeof height === "number" ? `${height}px` : height,
+          width,
+        }}
+        $styleOptions={mergedStyleOptions}
+      >
+        {showToolbar && (
+          <StyledGridToolbar>
+            <div className="data-grid-panel__toolbar">
+              <div className="data-grid-panel-left">
+                <div className="data-grid-panel__count">
+                  전체{" "}
+                  <span className="data-grid-panel__count-number">
+                    {rowData.length}
+                  </span>{" "}
+                  건
+                </div>
+                {renderCustomButtons()}
               </div>
-              {renderCustomButtons()}
-            </div>
-            <div className="data-grid-panel-right">
-              {buttonOptions.showAdd && (
-                <Tooltip title="행 추가">
-                  <FormButton
-                    icon={
-                      <i
-                        className="ri-file-add-line"
-                        style={{ fontSize: 20 }}
-                      />
-                    }
-                    onClick={handleAddRow}
-                    size="small"
-                    objId="BTN_ADD_ROW"
-                    disabled={!buttonOptions.enableAdd}
-                  />
-                </Tooltip>
-              )}
-              {buttonOptions.showCopy && (
-                <Tooltip title="행 복사">
-                  <FormButton
-                    icon={
-                      <i
-                        className="ri-file-copy-line"
-                        style={{ fontSize: 20 }}
-                      />
-                    }
-                    onClick={handleCopyRow}
-                    size="small"
-                    objId="BTN_COPY_ROW"
-                    disabled={!buttonOptions.enableCopy}
-                  />
-                </Tooltip>
-              )}
-              {buttonOptions.showDelete && (
-                <Tooltip title="행 삭제">
-                  <FormButton
-                    icon={
-                      <i
-                        className="ri-delete-bin-line"
-                        style={{ fontSize: 20 }}
-                      />
-                    }
-                    onClick={handleDeleteRow}
-                    size="small"
-                    objId="BTN_DELETE_ROW"
-                    disabled={!buttonOptions.enableDelete}
-                  />
-                </Tooltip>
-              )}
-              {buttonOptions.showExcelDownload && (
-                <>
-                  <div className="data-grid-panel__divider"></div>
-                  <Tooltip title="엑셀 다운로드">
+              <div className="data-grid-panel-right">
+                {buttonOptions.showAdd && (
+                  <Tooltip title="행 추가">
                     <FormButton
                       icon={
                         <i
-                          className="ri-download-line"
+                          className="ri-file-add-line"
                           style={{ fontSize: 20 }}
                         />
                       }
-                      onClick={handleExcelDownload}
+                      onClick={handleAddRow}
                       size="small"
-                      objId="BTN_EXCEL_DOWNLOAD"
-                      disabled={!buttonOptions.enableExcelDownload}
+                      objId="BTN_ADD_ROW"
+                      disabled={!buttonOptions.enableAdd}
+                      className="data-grid-panel__button  data-grid-panel__button--add-row ghost"
                     />
                   </Tooltip>
-                </>
-              )}
-              {buttonOptions.showExcelUpload && (
-                <Tooltip title="엑셀 업로드">
-                  <Upload
-                    accept=".xlsx,.xls"
-                    showUploadList={false}
-                    beforeUpload={handleExcelUpload}
-                    disabled={!buttonOptions.enableExcelUpload}
-                  >
+                )}
+                {buttonOptions.showCopy && (
+                  <Tooltip title="행 복사">
                     <FormButton
                       icon={
                         <i
-                          className="ri-upload-line"
+                          className="ri-file-copy-line"
                           style={{ fontSize: 20 }}
                         />
                       }
+                      onClick={handleCopyRow}
                       size="small"
-                      objId="BTN_EXCEL_UPLOAD"
+                      objId="BTN_COPY_ROW"
+                      disabled={!buttonOptions.enableCopy}
+                      className="data-grid-panel__button data-grid-panel__button--copy-row ghost"
+                    />
+                  </Tooltip>
+                )}
+                {buttonOptions.showDelete && (
+                  <Tooltip title="행 삭제">
+                    <FormButton
+                      icon={
+                        <i
+                          className="ri-delete-bin-line"
+                          style={{ fontSize: 20 }}
+                        />
+                      }
+                      onClick={handleDeleteRow}
+                      size="small"
+                      objId="BTN_DELETE_ROW"
+                      disabled={!buttonOptions.enableDelete}
+                      className="data-grid-panel__button data-grid-panel__button--delete-row ghost"
+                    />
+                  </Tooltip>
+                )}
+                {buttonOptions.showExcelDownload && (
+                  <>
+                    <div className="data-grid-panel__divider"></div>
+                    <Tooltip title="엑셀 다운로드">
+                      <FormButton
+                        icon={
+                          <i
+                            className="ri-download-line"
+                            style={{ fontSize: 20 }}
+                          />
+                        }
+                        onClick={handleExcelDownload}
+                        size="small"
+                        objId="BTN_EXCEL_DOWNLOAD"
+                        disabled={!buttonOptions.enableExcelDownload}
+                        className="data-grid-panel__button  data-grid-panel__button--excel-download ghost"
+                      />
+                    </Tooltip>
+                  </>
+                )}
+                {buttonOptions.showExcelUpload && (
+                  <Tooltip title="엑셀 업로드">
+                    <Upload
+                      accept=".xlsx,.xls"
+                      showUploadList={false}
+                      beforeUpload={handleExcelUpload}
                       disabled={!buttonOptions.enableExcelUpload}
-                    />
-                  </Upload>
-                </Tooltip>
-              )}
-              {buttonOptions.showRefresh && (
-                <Tooltip title="그리드 새로고침">
-                  <FormButton
-                    icon={
-                      <i className="ri-refresh-line" style={{ fontSize: 20 }} />
-                    }
-                    onClick={handleRefresh}
-                    size="small"
-                    objId="BTN_REFRESH"
-                    disabled={!buttonOptions.enableRefresh}
-                  />
-                </Tooltip>
-              )}
-              {buttonOptions.showSave && (
-                <>
-                  <div className="data-grid-panel__divider"></div>
-                  <Tooltip title="저장">
-                    <FormButton
-                      onClick={() => onSave?.(gridApi)}
-                      size="small"
-                      objId="BTN_SAVE"
-                      className="navy"
                     >
-                      저장
-                    </FormButton>
+                      <FormButton
+                        icon={
+                          <i
+                            className="ri-upload-line"
+                            style={{ fontSize: 20 }}
+                          />
+                        }
+                        size="small"
+                        objId="BTN_EXCEL_UPLOAD"
+                        disabled={!buttonOptions.enableExcelUpload}
+                        className="data-grid-panel__button  data-grid-panel__button--excel-upload ghost"
+                      />
+                    </Upload>
                   </Tooltip>
-                </>
-              )}
+                )}
+                {buttonOptions.showRefresh && (
+                  <Tooltip title="그리드 새로고침">
+                    <FormButton
+                      icon={
+                        <i
+                          className="ri-refresh-line"
+                          style={{ fontSize: 20 }}
+                        />
+                      }
+                      onClick={handleRefresh}
+                      size="small"
+                      objId="BTN_REFRESH"
+                      disabled={!buttonOptions.enableRefresh}
+                      className="data-grid-panel__button  data-grid-panel__button--refresh-grid ghost"
+                    />
+                  </Tooltip>
+                )}
+                {buttonOptions.showSave && (
+                  <>
+                    <div className="data-grid-panel__divider"></div>
+                    <Tooltip title="저장">
+                      <FormButton
+                        onClick={() => onSave?.(gridApi)}
+                        size="small"
+                        objId="BTN_SAVE"
+                        className="navy"
+                      >
+                        저장
+                      </FormButton>
+                    </Tooltip>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        </StyledGridToolbar>
-      )}
-      <AgGridReact<TData>
-        theme="legacy"
-        rowData={rowData}
-        columnDefs={processedColumnDefs}
-        onGridReady={handleGridReady}
-        {...defaultGridOptions}
-        {...gridOptions}
-        rowClassRules={{
-          // 선택된 행에 클래스 추가
-          "ag-row-selected": (params) => !!params.node.isSelected(),
-          // 클릭된 행에 클래스 추가 (선택 여부와 관계없이)
-          "ag-row-clicked": (params) => {
+          </StyledGridToolbar>
+        )}
+        <AgGridReact<TData>
+          theme="legacy"
+          rowData={rowData}
+          columnDefs={processedColumnDefs}
+          onGridReady={handleGridReady}
+          {...defaultGridOptions}
+          {...gridOptions}
+          rowClassRules={{
+            // 선택된 행에 클래스 추가
+            "ag-row-selected": (params) => !!params.node.isSelected(),
+            // 클릭된 행에 클래스 추가 (선택 여부와 관계없이)
+            "ag-row-clicked": (params) => {
+              const data = params.data as TData | undefined;
+              const rowId = data?.id;
+              const currentClickedRowId = clickedRowIdRef.current; // ref에서 최신 값 가져오기
+              return (
+                rowId !== undefined &&
+                rowId !== null &&
+                currentClickedRowId !== null &&
+                currentClickedRowId !== undefined &&
+                (rowId === currentClickedRowId ||
+                  String(rowId) === String(currentClickedRowId) ||
+                  Number(rowId) === Number(currentClickedRowId))
+              );
+            },
+            ...(gridOptions?.rowClassRules || {}),
+          }}
+          onCellClicked={handleCellClicked}
+          onSelectionChanged={handleSelectionChanged}
+          onCellEditingStopped={handleCellEditingStopped}
+          {...rest}
+          getRowStyle={(params) => {
+            const restProps = rest as {
+              getRowStyle?: (
+                params: RowClassParams<TData>
+              ) => RowStyle | undefined;
+            };
+            const customStyle =
+              restProps?.getRowStyle?.(params) ||
+              gridOptions?.getRowStyle?.(params);
+
             const data = params.data as TData | undefined;
             const rowId = data?.id;
-            const currentClickedRowId = clickedRowIdRef.current; // ref에서 최신 값 가져오기
-            return (
+            const currentClickedRowId = clickedRowIdRef.current;
+            const rowWithStatus = data as TData & {
+              rowStatus?: "C" | "U" | "D";
+            };
+
+            // 삭제된 행 스타일 (최우선)
+            if (rowWithStatus?.rowStatus === "D") {
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              const { backgroundColor, ...restCustomStyle } = customStyle || {};
+              return {
+                backgroundColor: "#fff1f0",
+                opacity: 0.7,
+                textDecoration: "line-through",
+                ...restCustomStyle,
+              } as RowStyle;
+            }
+
+            // 클릭된 행 스타일 확인
+            const isClickedRow =
               rowId !== undefined &&
               rowId !== null &&
               currentClickedRowId !== null &&
               currentClickedRowId !== undefined &&
               (rowId === currentClickedRowId ||
                 String(rowId) === String(currentClickedRowId) ||
-                Number(rowId) === Number(currentClickedRowId))
-            );
-          },
-          ...(gridOptions?.rowClassRules || {}),
-        }}
-        onCellClicked={handleCellClicked}
-        onSelectionChanged={handleSelectionChanged}
-        onCellEditingStopped={handleCellEditingStopped}
-        {...rest}
-        getRowStyle={(params) => {
-          const restProps = rest as {
-            getRowStyle?: (
-              params: RowClassParams<TData>
-            ) => RowStyle | undefined;
-          };
-          const customStyle =
-            restProps?.getRowStyle?.(params) ||
-            gridOptions?.getRowStyle?.(params);
+                Number(rowId) === Number(currentClickedRowId));
 
-          const data = params.data as TData | undefined;
-          const rowId = data?.id;
-          const currentClickedRowId = clickedRowIdRef.current;
-          const rowWithStatus = data as TData & { rowStatus?: "C" | "U" | "D" };
+            // 클릭된 행 스타일 (선택 여부와 관계없이 적용)
+            if (isClickedRow) {
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              const { backgroundColor, color, ...restCustomStyle } =
+                customStyle || {};
+              return {
+                ...restCustomStyle,
+                backgroundColor: "#e6f7ff",
+                color: "#1890ff",
+              } as RowStyle;
+            }
 
-          // 삭제된 행 스타일 (최우선)
-          if (rowWithStatus?.rowStatus === "D") {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { backgroundColor, ...restCustomStyle } = customStyle || {};
-            return {
-              backgroundColor: "#fff1f0",
-              opacity: 0.7,
-              textDecoration: "line-through",
-              ...restCustomStyle,
-            } as RowStyle;
-          }
+            // 선택된 행 스타일 (삭제되지 않은 행만, 클릭되지 않은 경우)
+            if (params.node.isSelected()) {
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              const { backgroundColor, ...restCustomStyle } = customStyle || {};
+              return {
+                backgroundColor: "#e6f7ff",
+                ...restCustomStyle,
+              } as RowStyle;
+            }
 
-          // 클릭된 행 스타일 확인
-          const isClickedRow =
-            rowId !== undefined &&
-            rowId !== null &&
-            currentClickedRowId !== null &&
-            currentClickedRowId !== undefined &&
-            (rowId === currentClickedRowId ||
-              String(rowId) === String(currentClickedRowId) ||
-              Number(rowId) === Number(currentClickedRowId));
-
-          // 클릭된 행 스타일 (선택 여부와 관계없이 적용)
-          if (isClickedRow) {
+            // 선택 해제된 행: customStyle에서 backgroundColor를 제거하여 기본 스타일로 복원
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { backgroundColor, color, ...restCustomStyle } =
               customStyle || {};
-            return {
-              ...restCustomStyle,
-              backgroundColor: "#e6f7ff",
-              color: "#1890ff",
-            } as RowStyle;
-          }
-
-          // 선택된 행 스타일 (삭제되지 않은 행만, 클릭되지 않은 경우)
-          if (params.node.isSelected()) {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { backgroundColor, ...restCustomStyle } = customStyle || {};
-            return {
-              backgroundColor: "#e6f7ff",
-              ...restCustomStyle,
-            } as RowStyle;
-          }
-
-          // 선택 해제된 행: customStyle에서 backgroundColor를 제거하여 기본 스타일로 복원
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { backgroundColor, color, ...restCustomStyle } =
-            customStyle || {};
-          return restCustomStyle;
-        }}
-      />
-    </StyledAgGridContainer>
+            return restCustomStyle;
+          }}
+        />
+      </StyledAgGridContainer>
+    </FormAgGridLayoutStyles>
   );
 };
 

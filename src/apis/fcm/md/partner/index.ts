@@ -5,4 +5,5 @@
  */
 
 export * from "./partnerApi";
+export * from "./bcncRegistApi";
 

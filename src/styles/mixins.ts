@@ -59,6 +59,10 @@ export const Card = (padding: string = "15px", radius: string = "8px") => css`
   padding: ${padding};
 `;
 
+export const BoxShadow = (value: string) => css`
+  box-shadow: ${value};
+`;
+
 export const scrollbar = () => css`
   scrollbar-width: thin; /* auto | thin | none */
   scrollbar-color: transparent transparent;

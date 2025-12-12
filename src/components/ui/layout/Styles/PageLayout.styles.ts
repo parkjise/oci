@@ -22,17 +22,28 @@ export const Article = styled.article`
     }
     &--vertical {
       .page-card {
+        padding-right: 5px;
         &--grid {
           height: 100%;
+          overflow-y: scroll;
+          ${mixins.scrollbar()}
+        }
+      }
+
+      .ant-splitter {
+        .ant-splitter-panel {
+          overflow-y: hidden;
         }
       }
     }
 
     &--search-double-grid {
       .page-card {
+        padding-right: 5px;
         &--grid {
           overflow-y: scroll;
           height: 100%;
+          ${mixins.scrollbar()}
         }
       }
       .ag-theme-quartz {
@@ -41,8 +52,34 @@ export const Article = styled.article`
     }
     &--search-triple-grid {
       & .page-card {
+        padding-right: 5px;
+        &--grid {
+          overflow-y: scroll;
+          height: 100%;
+          ${mixins.scrollbar()}
+        }
+      }
+    }
+    &--search-triple-stack {
+      & .page-card {
         &--grid {
           height: 100%;
+        }
+      }
+      & .split-layout__panel {
+        &.ant-splitter-panel {
+          overflow-y: hidden;
+        }
+        &--right {
+          .page-card--grid {
+            padding-right: 5px;
+            flex: 1;
+            overflow-y: scroll;
+            height: 100%;
+            ${mixins.scrollbar()}
+          }
+          overflow-y: hidden;
+          ${mixins.flex("flex-start", "flex-start", "column", "10px")}
         }
       }
     }

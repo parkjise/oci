@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { message } from "antd";
 import type { GridApi } from "ag-grid-community";
 import dayjs from "dayjs";
-import { selectSlipPostList, saveSlipPost } from "@apis/fcm/gl/slip";
+import { slip } from "@apis/fcm/gl";
 import { useAuthStore } from "@store/authStore";
 import type {
   SlipPostSearchRequest,
@@ -62,7 +62,7 @@ export const useSlipPostStore = create<SlipPostState>((set, get) => ({
     }
 
     try {
-      const response = await selectSlipPostList(searchRequest);
+      const response = await slip.selectSlipPostList(searchRequest);
 
       if (response.success && response.data) {
         // sPostYn에 따라 필터링 (exptnTgt 기준)
@@ -102,7 +102,10 @@ export const useSlipPostStore = create<SlipPostState>((set, get) => ({
   save: async (selectedRows) => {
     const state = get();
     const { user } = useAuthStore.getState();
-    console.log("Current Auth State:", useAuthStore.getState());
+
+    if (import.meta.env.DEV) {
+      console.log("Current Auth State:", useAuthStore.getState());
+    }
 
     if (!state.sPostYn) {
       message.warning("전기 또는 전기취소를 선택해주세요.");
@@ -193,15 +196,17 @@ export const useSlipPostStore = create<SlipPostState>((set, get) => ({
       details,
     };
 
-    // 저장 요청 파라미터 콘솔 출력
-    console.log("=== 저장 요청 파라미터 ===");
-    console.log("saveRequest:", saveRequest);
-    console.log("sPostYn:", state.sPostYn);
-    console.log("선택된 행 개수:", selectedRows.length);
-    console.log("========================");
+    // 저장 요청 파라미터 콘솔 출력 (개발 환경에서만)
+    if (import.meta.env.DEV) {
+      console.log("=== 저장 요청 파라미터 ===");
+      console.log("saveRequest:", saveRequest);
+      console.log("sPostYn:", state.sPostYn);
+      console.log("선택된 행 개수:", selectedRows.length);
+      console.log("========================");
+    }
 
     try {
-      const response = await saveSlipPost(saveRequest);
+      const response = await slip.saveSlipPost(saveRequest);
 
       if (response.success) {
         const actionType = state.sPostYn === "UNPOST" ? "전기" : "전기취소";

@@ -1,9 +1,10 @@
 import React from "react";
-import { Form, InputNumber, Space, Typography } from "antd";
+import { Form, Space, Typography } from "antd";
 import type { Rule } from "antd/es/form";
 import type { InputNumberProps } from "antd/es/input-number";
 import type { FormItemLayout } from "antd/es/form/Form";
 import { addonAfterStyle } from "./AddonAfter.styles";
+import { InputNumberStyles } from "./FormInputNumber.styles";
 import MessageModal from "@/components/ui/feedback/Message/MessageModal";
 import { canShowModal, resetModalFlag } from "@/utils/formModalUtils";
 import {
@@ -13,7 +14,10 @@ import {
 
 const { Text } = Typography;
 
-export type FormInputNumberProps = Omit<InputNumberProps, "addonAfter" | "mode"> & {
+export type FormInputNumberProps = Omit<
+  InputNumberProps,
+  "addonAfter" | "mode"
+> & {
   name: string;
   label: string;
   rules?: Rule[];
@@ -108,9 +112,9 @@ const FormInputNumber: React.FC<FormInputNumberProps> = ({
         label={label}
         layout={layout as FormItemLayout}
         colon={false}
-        noStyle
+        style={{ marginBottom: 0 }}
       >
-        <Form.Item shouldUpdate={(prev, curr) => prev[name] !== curr[name]}>
+        <Form.Item noStyle shouldUpdate style={{ marginBottom: 0 }}>
           {({ getFieldValue }) => {
             const value = getFieldValue(name);
             const displayValue =
@@ -122,16 +126,7 @@ const FormInputNumber: React.FC<FormInputNumberProps> = ({
                     })
                   : formatNumberWithCommas(value)
                 : emptyText;
-            return (
-              <Form.Item
-                name={name}
-                label={label}
-                layout={layout as FormItemLayout}
-                colon={false}
-              >
-                <Text>{displayValue}</Text>
-              </Form.Item>
-            );
+            return <Text>{displayValue}</Text>;
           }}
         </Form.Item>
       </Form.Item>
@@ -145,13 +140,14 @@ const FormInputNumber: React.FC<FormInputNumberProps> = ({
       rules={processedRules}
       layout={layout as FormItemLayout}
       colon={false}
+      style={{ marginBottom: 0 }}
       getValueFromEvent={(value) => {
         return value ?? undefined;
       }}
       {...(useModalMessage ? { validateStatus: "", help: "" } : { help: "" })}
     >
       <Form.Item
-        noStyle
+        style={{ marginBottom: 0 }}
         shouldUpdate={(prevValues, currentValues) =>
           prevValues[name] !== currentValues[name]
         }
@@ -172,7 +168,7 @@ const FormInputNumber: React.FC<FormInputNumberProps> = ({
           };
 
           const inputNumberElement = (
-            <InputNumber
+            <InputNumberStyles
               ref={inputNumberRef}
               {...inputNumberProps}
               style={FULL_WIDTH_STYLE}
