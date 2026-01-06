@@ -15,6 +15,7 @@ export interface UserData {
   memo?: string;
   gender?: string; // 성별
   hobby?: string[]; // 취미 (배열)
+  bankName?: string; // 은행명
 }
 
 // 초기 데이터
@@ -30,6 +31,7 @@ export const initialUserData: UserData[] = [
     joinDate: "2020-01-15",
     salary: 5500000,
     memo: "프론트엔드 전문가",
+    bankName: "002",
   },
   {
     id: 2,
@@ -44,6 +46,7 @@ export const initialUserData: UserData[] = [
     memo: "웹 디자인 경력 5년",
     gender: "남성",
     hobby: ["영화감상", "요리"],
+    bankName: "001",
   },
   {
     id: 3,
@@ -58,6 +61,7 @@ export const initialUserData: UserData[] = [
     memo: "신입 개발자",
     gender: "여성",
     hobby: ["독서", "영화감상", "여행"],
+    bankName: "007",
   },
   {
     id: 4,
@@ -72,6 +76,7 @@ export const initialUserData: UserData[] = [
     memo: "프로덕트 기획 전문",
     gender: "남성",
     hobby: ["운동", "독서"],
+    bankName: "007",
   },
   {
     id: 5,
@@ -86,6 +91,7 @@ export const initialUserData: UserData[] = [
     memo: "백엔드 아키텍처 전문",
     gender: "여성",
     hobby: ["게임", "코딩"],
+    bankName: "007",
   },
   {
     id: 6,
@@ -100,6 +106,7 @@ export const initialUserData: UserData[] = [
     memo: "브랜딩 디자인 전문",
     gender: "남성",
     hobby: ["사진", "여행"],
+    bankName: "007",
   },
   {
     id: 7,
@@ -114,6 +121,7 @@ export const initialUserData: UserData[] = [
     memo: "데이터 분석 전문",
     gender: "여성",
     hobby: ["독서", "요리", "영화감상"],
+    bankName: "007",
   },
   {
     id: 8,
@@ -128,6 +136,7 @@ export const initialUserData: UserData[] = [
     memo: "신입 개발자",
     gender: "남성",
     hobby: ["게임", "운동"],
+    bankName: "007",
   },
   {
     id: 9,
@@ -142,6 +151,7 @@ export const initialUserData: UserData[] = [
     memo: "디지털 마케팅 전문",
     gender: "여성",
     hobby: ["여행", "사진"],
+    bankName: "007",
   },
   {
     id: 10,
@@ -156,6 +166,7 @@ export const initialUserData: UserData[] = [
     memo: "풀스택 개발자",
     gender: "남성",
     hobby: ["코딩", "독서", "게임"],
+    bankName: "007",
   },
   {
     id: 11,
@@ -170,6 +181,7 @@ export const initialUserData: UserData[] = [
     memo: "신입 디자이너",
     gender: "여성",
     hobby: ["드로잉", "영화감상"],
+    bankName: "007",
   },
   {
     id: 12,
@@ -184,6 +196,7 @@ export const initialUserData: UserData[] = [
     memo: "서비스 기획 전문",
     gender: "남성",
     hobby: ["운동", "독서", "게임"],
+    bankName: "007",
   },
 ];
 

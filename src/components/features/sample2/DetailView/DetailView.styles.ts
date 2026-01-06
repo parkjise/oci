@@ -18,7 +18,7 @@ export const DetailViewStyles = styled.div`
       width: 1px;
       height: 20px;
       background-color: ${({ theme }) => theme.colors.neutral[300]};
-      margin: 0 10px;
+      margin: 0 5px;
     }
     &__status {
       &-tag {
@@ -64,12 +64,23 @@ export const DetailViewStyles = styled.div`
               .ant-btn {
                 height: 28px;
                 width: 28px;
+                &:not(:disabled) {
+                  &:hover,
+                  &:active,
+                  &:focus {
+                    border-color: ${({ theme }) => theme.colors.neutral[800]};
+                    color: ${({ theme }) => theme.colors.neutral[800]};
+                  }
+                }
               }
             }
           }
         }
         &--right {
           ${mixins.flex("center", "flex-start", "row", "5px")}
+          & > div {
+            gap: 5px;
+          }
           .action-button-group__button--more {
             border: none;
             &:hover {
@@ -79,6 +90,10 @@ export const DetailViewStyles = styled.div`
           }
         }
       }
+    }
+    &__department,
+    &__user {
+      white-space: nowrap;
     }
     &__button {
       &--more {
@@ -95,14 +110,14 @@ export const DetailViewStyles = styled.div`
         border: 1px solid ${({ theme }) => theme.colors.grey[100]};
         border-collapse: collapse;
         table-layout: fixed;
-        font-size: 13px;
+        font-size: 12px;
         th,
         td {
           height: 36px;
           text-align: left;
           padding-inline: 10px;
           background-color: ${({ theme }) => theme.colors.white};
-          font-size: 13px;
+          font-size: 12px;
         }
         th {
           width: 100px;
@@ -120,7 +135,7 @@ export const DetailViewStyles = styled.div`
           color: ${({ theme }) => theme.colors.neutral[600]};
           border-bottom: 1px solid ${({ theme }) => theme.colors.grey[100]};
           .ant-typography {
-            font-size: 13px;
+            font-size: 12px;
             background-color: #000;
             color: ${({ theme }) => theme.colors.neutral[600]};
             font-weight: 400;

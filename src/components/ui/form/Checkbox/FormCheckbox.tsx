@@ -3,8 +3,8 @@ import { Checkbox, Row, Col, Form, Typography } from "antd";
 import type { CheckboxProps, CheckboxGroupProps } from "antd/es/checkbox";
 import type { Rule } from "antd/es/form";
 import type { FormItemLayout } from "antd/es/form/Form";
-import { getCodeDetailApi } from "@apis/comCode";
-import type { CodeDetail, CodeDetailParams } from "@/types/api.types";
+import { getCodeDetailApi, clearCodeCache } from "@apis/com/code";
+import type { CodeDetail, CodeDetailParams } from "@/types/com/api/api.types";
 import MessageModal from "@/components/ui/feedback/Message/MessageModal";
 import { canShowModal, resetModalFlag } from "@/utils/formModalUtils";
 
@@ -49,6 +49,7 @@ export interface FormCheckboxGroupProps
   mode?: "view" | "edit";
   emptyText?: string;
   filterValues?: (string | number)[]; // 필터링하여 숨길 값들의 배열
+  clearCacheBeforeFetch?: boolean; // API 호출 전 캐시 무효화 여부 (기본값: false)
 }
 
 // 단일 체크박스 컴포넌트
@@ -186,6 +187,7 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
   value: controlledValue,
   defaultValue,
   filterValues,
+  clearCacheBeforeFetch = false,
   ...rest
 }) => {
   const [options, setOptions] = useState<FormCheckboxOption[]>(
@@ -208,6 +210,11 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
       const fetchOptions = async () => {
         setLoading(true);
         try {
+          // 캐시 무효화 옵션이 활성화된 경우 캐시를 먼저 무효화
+          if (clearCacheBeforeFetch) {
+            clearCodeCache(comCodeParams);
+          }
+
           const response = await getCodeDetailApi(comCodeParams);
           if (response.success && response.data) {
             // 응답이 배열인 경우
@@ -247,7 +254,7 @@ const FormCheckboxGroup: React.FC<FormCheckboxGroupProps> = ({
       // comCodeParams가 없고 propOptions가 제공된 경우
       setOptions(propOptions);
     }
-  }, [comCodeParams, propOptions, valueKey, labelKey]);
+  }, [comCodeParams, propOptions, valueKey, labelKey, clearCacheBeforeFetch]);
 
   // filterValues에 따라 옵션 필터링
   const filteredOptions = React.useMemo(() => {

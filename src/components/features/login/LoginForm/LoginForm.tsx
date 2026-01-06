@@ -4,12 +4,16 @@ import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import type { FormProps } from "antd";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import type { LoginFormValues } from "@/types/login.types";
+import type { LoginFormValues } from "@/types/com/auth/login.types";
 import { loginApi } from "@apis/auth";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@store/com/auth/authStore";
 import { showError, showInfo } from "@/components/ui/feedback/Message/Message";
 import { REMEMBERED_ID_KEY } from "@/constants";
-import { StyledForgotLink, StyledLoginButton } from "./LoginForm.styles";
+import {
+  StyledForgotLink,
+  StyledLoginButton,
+  CapsLockWarning,
+} from "./LoginForm.styles";
 
 const LoginForm: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -54,15 +58,7 @@ const LoginForm: React.FC = () => {
         const { user } = response.data;
 
         // Zustand에 사용자 정보 저장
-        setUser({
-          officeId: user.officeId,
-          empCode: user.empCode,
-          empName: user.empName,
-          deptCode: user.deptCode,
-          password: user.password,
-          useYn: user.useYn,
-          emailId: user.emailId,
-        });
+        setUser(user);
 
         // Ant Design Notification 표시
         notification.success({
@@ -140,9 +136,9 @@ const LoginForm: React.FC = () => {
         ]}
         extra={
           showCaseWarning ? (
-            <div style={{ color: "orange", marginTop: "5px" }}>
+            <CapsLockWarning>
               {t("caps_lock_on", "Caps Lock이 켜져 있습니다.")}
-            </div>
+            </CapsLockWarning>
           ) : null
         }
       >

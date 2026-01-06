@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Form, Tooltip } from "antd";
 import type { ButtonProps } from "antd/es/button";
 import type { Rule } from "antd/es/form";
@@ -6,14 +6,6 @@ import type { FormItemLayout } from "antd/es/form/Form";
 import { useTranslation } from "react-i18next";
 import { FormButton } from "@components/ui/form";
 
-// 스타일 없이 커스텀 아이콘 사용시 주석 해제
-// import {
-//   EditOutlined,
-//   PlusOutlined,
-//   CopyOutlined,
-//   DeleteOutlined,
-//   SaveOutlined,
-// } from "@ant-design/icons";
 import { useMenuButtonPermission } from "@/components/providers";
 
 /**
@@ -31,8 +23,10 @@ export type ActionButtonType =
  * 액션 버튼 Props
  * FormButton의 구조를 따르며, 액션 타입에 따라 자동으로 아이콘과 스타일을 설정합니다.
  */
-export interface ActionButtonProps
-  extends Omit<ButtonProps, "type" | "danger"> {
+export interface ActionButtonProps extends Omit<
+  ButtonProps,
+  "type" | "danger"
+> {
   /** 액션 버튼 타입 */
   actionType: ActionButtonType;
   /** 버튼 텍스트 (기본값: 타입에 따라 자동 설정) */
@@ -79,6 +73,9 @@ const ActionButton: React.FC<ActionButtonProps> = ({
   const { hasPermission, loading: permissionLoading } =
     useMenuButtonPermission();
 
+  // expand 타입에서만 사용하는 내부 상태
+  const [internalExpanded, setInternalExpanded] = useState(false);
+
   // 스타일 없이 커스텀 필요시 주석 해제제
   // 액션 타입별 기본 설정
   const actionConfig = useMemo(() => {
@@ -89,64 +86,51 @@ const ActionButton: React.FC<ActionButtonProps> = ({
         defaultLabel: string;
         defaultTooltip: string;
         labelKey: string;
-        tooltipKey: string;
+        tooltipKey?: string;
         className?: string;
-        // buttonType: ButtonProps["type"];
-        // danger?: boolean;
       }
     > = {
       edit: {
-        // icon: <EditOutlined />,
         defaultLabel: "수정",
-        defaultTooltip: "수정",
-        labelKey: "LABEL_WI_00116", // "수정"
-        tooltipKey: "LABEL_WI_00116", // "수정"
-        // buttonType: "text",
+        defaultTooltip: "",
+        labelKey: "수정",
+        tooltipKey: "",
       },
       create: {
-        // icon: <PlusOutlined />,
-        defaultLabel: "입력",
-        defaultTooltip: "입력",
-        labelKey: "LABEL_MG_00012", // "입력" / "New"
-        tooltipKey: "LABEL_MG_00012", // "입력" / "New"
-        // buttonType: "text",
+        defaultLabel: "신규",
+        defaultTooltip: "",
+        labelKey: "신규규",
+        tooltipKey: "",
       },
       copy: {
-        // icon: <CopyOutlined />,
         defaultLabel: "복사",
-        defaultTooltip: "복사",
-        labelKey: "LABEL_MG_00008", // "행복사" / "Copy row"
-        tooltipKey: "LABEL_MG_00008", // "행복사" / "Copy row"
-        // buttonType: "text",
+        defaultTooltip: "",
+        labelKey: "복사",
+        tooltipKey: "",
       },
       delete: {
-        // icon: <DeleteOutlined />,
         defaultLabel: "삭제",
-        defaultTooltip: "삭제",
-        labelKey: "LABEL_MG_00014", // "삭제" / "Delete"
-        tooltipKey: "LABEL_MG_00014", // "삭제" / "Delete"
-        // buttonType: "text",
-        //danger: true,
+        defaultTooltip: "",
+        labelKey: "삭제",
+        tooltipKey: "",
       },
       save: {
-        // icon: <SaveOutlined />,
         defaultLabel: "저장",
-        defaultTooltip: "저장",
-        labelKey: "LABEL_MG_00011", // "저장" / "Save"
-        tooltipKey: "LABEL_MG_00011", // "저장" / "Save"
+        defaultTooltip: "",
+        labelKey: "저장",
+        tooltipKey: "",
         className: "navy",
-        // buttonType: "primary",
       },
       expand: {
         defaultLabel: "",
-        defaultTooltip: "확장",
-        labelKey: "", // 번역 파일에 없음
-        tooltipKey: "", // 번역 파일에 없음
+        defaultTooltip: internalExpanded ? "접기" : "펼치기",
+        labelKey: "",
+        tooltipKey: internalExpanded ? "접기" : "펼치기",
       },
     };
 
     return configs[actionType];
-  }, [actionType]);
+  }, [actionType, internalExpanded]);
 
   // 다국어 처리된 라벨과 툴팁
   const translatedLabel = useMemo(() => {
@@ -159,7 +143,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
 
   const translatedTooltip = useMemo(() => {
     if (tooltip) return tooltip;
-    if (actionConfig.tooltipKey) {
+    if (actionConfig.tooltipKey && actionConfig.tooltipKey !== "") {
       return t(actionConfig.tooltipKey, actionConfig.defaultTooltip);
     }
     return actionConfig.defaultTooltip;
@@ -184,14 +168,19 @@ const ActionButton: React.FC<ActionButtonProps> = ({
 
   const buttonElement = (
     <FormButton
-      // type={actionConfig.buttonType}
-      // icon={actionConfig.icon}
-      // danger={actionConfig.danger}
       disabled={isDisabled}
       className={actionConfig.className}
       loading={permissionLoading}
       size="small"
       {...rest}
+      onClick={
+        actionType === "expand"
+          ? (e) => {
+              setInternalExpanded(!internalExpanded);
+              if (rest.onClick) rest.onClick(e);
+            }
+          : rest.onClick
+      }
     >
       {children || translatedLabel}
     </FormButton>

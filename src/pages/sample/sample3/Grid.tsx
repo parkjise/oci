@@ -1,10 +1,15 @@
 import React, { useState } from "react";
-import { Tag, Tooltip } from "antd";
-import type { ColDef } from "ag-grid-community";
-import { FormAgGrid } from "@components/ui/form";
+import { Tooltip } from "antd";
+import {
+  createCheckboxColumn,
+  createStatusRenderer,
+  createDateColumn,
+} from "@utils/agGridUtils";
+import { FormAgGrid, FormButton } from "@/components/ui/form";
+import { createComboBoxColumn } from "@components/ui/form/AgGrid/columns";
+import type { ExtendedColDef } from "@components/ui/form/AgGrid/FormAgGrid";
 import { DataGridStyles } from "@/pages/sample/sample3/DataGrid.styles";
-import { FormButton } from "@components/ui/form";
-// 그리드 데이터 타입 정의
+
 interface UserData {
   id: number;
   name: string;
@@ -15,8 +20,7 @@ interface UserData {
   joinDate: string;
 }
 
-const Sample3: React.FC = () => {
-  // 샘플 데이터
+const Grid: React.FC = () => {
   const [rowData] = useState<UserData[]>([
     {
       id: 1,
@@ -92,94 +96,100 @@ const Sample3: React.FC = () => {
     },
   ]);
 
-  // 컬럼 정의
-  const columnDefs: ColDef<UserData>[] = [
+  const columnDefs: ExtendedColDef<UserData>[] = [
     {
-      field: "id",
-      headerName: "ID",
-      width: 80,
-      pinned: "left",
-      checkboxSelection: true,
-      headerCheckboxSelection: true,
-    },
+      filter: false,
+      ...createCheckboxColumn<UserData & Record<string, unknown>>("ID", "id", {
+        width: 80,
+        pinned: "left",
+        rowSelection: true,
+        headerCheckboxSelection: true,
+        filter: false,
+      }),
+      excludeFromExcel: true,
+    } as ExtendedColDef<UserData>,
     {
       field: "name",
       headerName: "이름",
       width: 120,
-      filter: "agTextColumnFilter",
+      filter: false,
     },
     {
       field: "email",
       headerName: "이메일",
       width: 200,
-      filter: "agTextColumnFilter",
+      filter: false,
     },
     {
-      field: "department",
-      headerName: "부서",
-      width: 120,
-      filter: "agSetColumnFilter",
-      cellEditor: "agSelectCellEditor",
-      cellEditorParams: {
-        values: ["개발팀", "디자인팀", "기획팀", "마케팅팀"],
-      },
-      editable: true,
+      ...createComboBoxColumn<UserData>(
+        "department",
+        "부서",
+        {
+          comCodeParams: {
+            module: "SYS",
+            type: "DEPT", // 부서 공통코드 타입 (실제 공통코드에 맞게 수정 필요)
+            enabledFlag: "Y",
+          },
+        },
+        120
+      ),
+      filter: false,
     },
     {
       field: "position",
       headerName: "직책",
       width: 150,
-      filter: "agTextColumnFilter",
+      filter: false,
       editable: true,
     },
     {
-      field: "status",
-      headerName: "상태",
-      width: 100,
-      filter: "agSetColumnFilter",
-      cellRenderer: (params: { value: string }) => {
-        const color = params.value === "활성" ? "green" : "red";
-        return (
-          <Tag color={color} style={{ margin: 0 }}>
-            {params.value}
-          </Tag>
-        );
-      },
-      cellEditor: "agSelectCellEditor",
-      cellEditorParams: {
-        values: ["활성", "비활성"],
-      },
-      editable: true,
+      filter: false,
+      ...createComboBoxColumn<UserData>(
+        "status",
+        "상태",
+        {
+          comCodeParams: {
+            module: "SYS",
+            type: "STATUS", // 상태 공통코드 타입 (실제 공통코드에 맞게 수정 필요)
+            enabledFlag: "Y",
+          },
+        },
+        100
+      ),
+      cellRenderer: createStatusRenderer("green", "red", "활성"),
     },
-    {
-      field: "joinDate",
-      headerName: "입사일",
-      width: 120,
-      filter: "agDateColumnFilter",
-      cellEditor: "agDateCellEditor",
-      editable: true,
-    },
+    { filter: false, ...createDateColumn<UserData>("joinDate", "입사일", 120) },
   ];
-
-  // 그리드 준비 완료 이벤트
 
   return (
     <DataGridStyles className="data-grid-panel">
       <div className="data-grid-panel__toolbar">
         <div className="data-grid-panel-left">
           <div className="data-grid-panel__count">
-            전체 <span className="data-grid-panel__count-number">5</span> 건
+            전체{" "}
+            <span className="data-grid-panel__count-number">
+              {rowData.length}
+            </span>{" "}
+            건
           </div>
           <div className="data-grid-panel__divider"></div>
-          <FormButton size="small" className="data-grid-panel__button">
+          <FormButton
+            size="small"
+            className="data-grid-panel__button data-grid-panel__button--search"
+          >
             구매요청 검색
           </FormButton>
-          <FormButton size="small" className="data-grid-panel__button">
+          <FormButton
+            size="small"
+            className="data-grid-panel__button data-grid-panel__button--search"
+          >
             Button
           </FormButton>
           <Tooltip title="더보기">
             <FormButton
-              icon={<i className="ri-more-2-line" style={{ fontSize: 16 }} />}
+              icon={
+                <i className="ri-more-2-line data-grid-panel__icon--small" />
+              }
               size="small"
               className="data-grid-panel__button  data-grid-panel__button--more ghost"
             />
@@ -188,36 +198,32 @@ const Sample3: React.FC = () => {
         <div className="data-grid-panel-right">
           <Tooltip title="행추가">
             <FormButton
-              icon={<i className="ri-file-add-line" style={{ fontSize: 20 }} />}
+              icon={<i className="ri-file-add-line data-grid-panel__icon" />}
               className="data-grid-panel__button  data-grid-panel__button--add-row ghost"
             />
           </Tooltip>
           <Tooltip title="행복사">
             <FormButton
-              icon={
-                <i className="ri-file-copy-line" style={{ fontSize: 20 }} />
-              }
+              icon={<i className="ri-file-copy-line data-grid-panel__icon" />}
               className="data-grid-panel__button data-grid-panel__button--copy-row ghost"
             />
           </Tooltip>
           <Tooltip title="행삭제">
             <FormButton
-              icon={
-                <i className="ri-delete-bin-line" style={{ fontSize: 20 }} />
-              }
+              icon={<i className="ri-delete-bin-line data-grid-panel__icon" />}
               className="data-grid-panel__button data-grid-panel__button--delete-row ghost"
             />
           </Tooltip>
           <div className="data-grid-panel__divider"></div>
           <Tooltip title="엑셀다운로드">
             <FormButton
-              icon={<i className="ri-download-line" style={{ fontSize: 20 }} />}
+              icon={<i className="ri-download-line data-grid-panel__icon" />}
               className="data-grid-panel__button  data-grid-panel__button--excel-download ghost"
             />
           </Tooltip>
           <Tooltip title="엑셀업로드">
             <FormButton
-              icon={<i className="ri-upload-line" style={{ fontSize: 20 }} />}
+              icon={<i className="ri-upload-line data-grid-panel__icon" />}
               className="data-grid-panel__button  data-grid-panel__button--excel-upload ghost"
             />
           </Tooltip>
@@ -231,12 +237,11 @@ const Sample3: React.FC = () => {
           </FormButton>
         </div>
       </div>
-      {/* 그리드 */}
       <FormAgGrid<UserData>
         rowData={rowData}
         headerHeight={32}
         columnDefs={columnDefs}
-        height={400}
+        // height={400}
         gridOptions={{
           rowSelection: "multiple",
           animateRows: true,
@@ -261,4 +266,4 @@ const Sample3: React.FC = () => {
   );
 };
 
-export default Sample3;
+export default Grid;

@@ -45,15 +45,13 @@ const ListDetailLayout = ({
             >
               <div
                 className="page-layout__detail-view page-card page-card--detail-view"
-                style={{ height: "100%" }}
               >
                 {detailPanel}
               </div>
             </Splitter.Panel>
             <Splitter.Panel>
               <div
-                className="page-layout__detail-grid page-card page-card--detail-grid"
-                style={{ height: "100%" }}
+                className="page-layout__detail-grid page-card page-card--detail-grid "
               >
                 {detailBottomPanel}
               </div>
@@ -115,5 +113,4 @@ const ListDetailLayout = ({
     </Article>
   );
 };
-
 export default ListDetailLayout;

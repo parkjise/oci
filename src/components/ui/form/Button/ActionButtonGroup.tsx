@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { Dropdown } from "antd";
-import type { MenuProps } from "antd";
+import { Tooltip, type MenuProps } from "antd";
 import ActionButton, { type ActionButtonType } from "./ActionButton";
 import FormButton from "./FormButton";
+import { useTranslation } from "react-i18next";
+import { ActionButtonGroupStyles } from "@form/Button/ActionButtonGroup.styles.ts"; // 다국어 훅 추가
 
 export interface ActionButtonGroupProps {
   /** 각 버튼 타입별 onClick 핸들러 (필요한 것만 설정) */
@@ -71,7 +73,7 @@ const ActionButtonGroup: React.FC<ActionButtonGroupProps> = ({
   maxVisibleCustomButtons = 2,
 }) => {
   const [internalExpanded, setInternalExpanded] = useState(false);
-
+  const { t } = useTranslation();
   // 외부에서 제어하는지 내부에서 제어하는지 결정
   const isControlled = controlledExpanded !== undefined;
   const expanded = isControlled ? controlledExpanded : internalExpanded;
@@ -117,7 +119,7 @@ const ActionButtonGroup: React.FC<ActionButtonGroupProps> = ({
     // 모든 버튼을 표시하는 경우
     if (showAllCustomButtons) {
       return (
-        <>
+        <div className="action-button-group__list">
           {showCustomButtonsDivider && (
             <div className="detail-view__divider"></div>
           )}
@@ -126,14 +128,14 @@ const ActionButtonGroup: React.FC<ActionButtonGroupProps> = ({
               {applyButtonStyle(button)}
             </React.Fragment>
           ))}
-        </>
+        </div>
       );
     }
 
     // 버튼 개수가 maxVisibleCustomButtons 이하인 경우 모두 표시
     if (customButtons.length <= maxVisibleCustomButtons) {
       return (
-        <>
+        <div className="action-button-group__list">
           {showCustomButtonsDivider && (
             <div className="detail-view__divider"></div>
           )}
@@ -142,7 +144,7 @@ const ActionButtonGroup: React.FC<ActionButtonGroupProps> = ({
               {applyButtonStyle(button)}
             </React.Fragment>
           ))}
-        </>
+        </div>
       );
     }
 
@@ -165,7 +167,7 @@ const ActionButtonGroup: React.FC<ActionButtonGroupProps> = ({
           return {
             key: `custom-${maxVisibleCustomButtons + index}`,
             label: (
-              <FormButton onClick={onClick} size="small">
+              <FormButton onClick={onClick} size="small" className="action-button-group__button">
                 {children}
               </FormButton>
             ),
@@ -191,21 +193,26 @@ const ActionButtonGroup: React.FC<ActionButtonGroupProps> = ({
         ))}
         {/* 드롭다운 버튼 */}
         <Dropdown menu={{ items: menuItems }} trigger={["click"]}>
-          <FormButton
-            type="text"
-            size="small"
-            icon={<i className="ri-more-2-line" style={{ fontSize: 16 }} />}
-            className="action-button-group__button action-button-group__button--more"
-          ></FormButton>
+          <Tooltip title={t("더보기", "더보기")}>
+            <FormButton
+              type="text"
+              size="small"
+              icon={<i className="ri-more-2-line" style={{ fontSize: 16 }} />}
+              className="action-button-group__button action-button-group__button--more"
+            ></FormButton>
+          </Tooltip>
         </Dropdown>
       </>
     );
   };
 
   return (
-    <>
+    <ActionButtonGroupStyles>
       {/* 커스텀 버튼을 입력 버튼 앞에 배치 */}
       {renderCustomButtons()}
+      {showCustomButtonsDivider && customButtons && customButtons.length > 0 && (
+        <div className="action-button-group__divider"></div>
+      )}
       {visibleButtons.map((actionType) => (
         <ActionButton
           key={actionType}
@@ -231,7 +238,7 @@ const ActionButtonGroup: React.FC<ActionButtonGroupProps> = ({
           ></ActionButton>
         </>
       )}
-    </>
+    </ActionButtonGroupStyles>
   );
 };
 

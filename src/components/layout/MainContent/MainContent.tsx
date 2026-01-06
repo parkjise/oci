@@ -1,52 +1,81 @@
-import React, { Suspense, useMemo, useCallback } from "react";
-import { Typography, Button, Tooltip, Space } from "antd";
+import React, { Suspense } from "react";
+import { Typography } from "antd";
 import { useTranslation } from "react-i18next";
-import { useUiStore } from "@store/uiStore";
+import { useUiStore } from "@store/com/ui/uiStore";
 import { LoadingSpinner } from "@components/ui/feedback";
-import {
-  LeftSquareOutlined,
-  CloseSquareOutlined,
-  RightSquareOutlined,
-} from "@ant-design/icons";
 import {
   StyledContent,
   StyledContentInner,
   StyledWelcomeCard,
   StyledTabContent,
-  StyledTabs,
+  StyledTabPanel,
 } from "./MainContent.styles";
+import TabBar from "./TabBar";
 
 const { Title, Paragraph } = Typography;
+
+// Module-level cache to survive MainContent component remounts
+const globalTabComponentCache = new Map<string, React.ComponentType>();
+
+// 탭 패널 컴포넌트 - React.memo로 최적화
+const TabPanel: React.FC<{
+  isActive: boolean;
+  Component: React.ComponentType;
+}> = React.memo(
+  ({ isActive, Component }) => {
+    return (
+      <StyledTabPanel
+        $isActive={isActive}
+        role="tabpanel"
+        aria-hidden={!isActive}
+      >
+        <Suspense fallback={<LoadingSpinner />}>
+          <Component />
+        </Suspense>
+      </StyledTabPanel>
+    );
+  },
+  (prevProps, nextProps) => {
+    // Component 타입이 같고, 활성 상태가 같으면 재렌더링 방지
+    return (
+      prevProps.Component === nextProps.Component &&
+      prevProps.isActive === nextProps.isActive
+    );
+  }
+);
+TabPanel.displayName = "TabPanel";
 
 const MainContent: React.FC = () => {
   const { t } = useTranslation();
   const { openTabs, activeTabKey, setActiveTabKey, removeTab, closeAllTabs } =
     useUiStore();
 
-  const onEdit = useCallback(
-    (targetKey: React.MouseEvent | React.KeyboardEvent | string) => {
-      if (typeof targetKey === "string") {
-        removeTab(targetKey);
-      }
-    },
-    [removeTab]
-  );
-
-  const activeIndex = useMemo(() => {
-    return openTabs.findIndex((tab) => tab.path === activeTabKey);
-  }, [openTabs, activeTabKey]);
-
-  const handlePrevTab = useCallback(() => {
-    if (activeIndex > 0) {
-      setActiveTabKey(openTabs[activeIndex - 1].path);
+  // 렌더링 중에 전역 캐시를 동기적으로 업데이트
+  const currentPaths = new Set<string>();
+  openTabs.forEach((tab) => {
+    currentPaths.add(tab.path);
+    if (tab.element && !globalTabComponentCache.has(tab.path)) {
+      globalTabComponentCache.set(tab.path, tab.element as React.ComponentType);
     }
-  }, [activeIndex, openTabs, setActiveTabKey]);
+  });
 
-  const handleNextTab = useCallback(() => {
-    if (activeIndex < openTabs.length - 1) {
-      setActiveTabKey(openTabs[activeIndex + 1].path);
+  // 닫힌 탭을 전역 캐시에서 제거
+  for (const path of Array.from(globalTabComponentCache.keys())) {
+    if (!currentPaths.has(path)) {
+      globalTabComponentCache.delete(path);
     }
-  }, [activeIndex, openTabs, setActiveTabKey]);
+  }
+
+  const tabPanels = openTabs.map((tab) => {
+    const Component = globalTabComponentCache.get(tab.path);
+    if (!Component) {
+      return null;
+    }
+    const isActive = tab.path === activeTabKey;
+    return (
+      <TabPanel key={tab.path} isActive={isActive} Component={Component} />
+    );
+  });
 
   // 로그인 후 열려있는 탭이 없을 때 환영 메시지 표시
   if (openTabs.length === 0) {
@@ -64,64 +93,20 @@ const MainContent: React.FC = () => {
     );
   }
 
-  const tabBarExtraContent = (
-    <Space>
-      <Tooltip title={t("prev_tab", "이전 탭")}>
-        <Button
-          type="text"
-          icon={<LeftSquareOutlined />}
-          onClick={handlePrevTab}
-          disabled={activeIndex <= 0}
-        />
-      </Tooltip>
-      <Tooltip title={t("next_tab", "다음 탭")}>
-        <Button
-          type="text"
-          icon={<RightSquareOutlined />}
-          onClick={handleNextTab}
-          disabled={activeIndex >= openTabs.length - 1}
-        />
-      </Tooltip>
-      <Tooltip title={t("close_all_tabs", "모두 닫기")}>
-        <Button
-          type="text"
-          icon={<CloseSquareOutlined />}
-          onClick={closeAllTabs}
-          disabled={openTabs.length === 0}
-        />
-      </Tooltip>
-    </Space>
-  );
-
   return (
     <StyledContent>
-      <StyledTabs
-        hideAdd
-        type="editable-card"
-        onChange={setActiveTabKey}
-        activeKey={activeTabKey || undefined}
-        onEdit={onEdit}
-        tabBarExtraContent={tabBarExtraContent}
-        items={openTabs.map((tab) => {
-          const Element = tab.element;
-          return {
-            label: t(tab.meta?.title || "No Title"),
-            key: tab.path,
-            children: (
-              <StyledTabContent>
-                <Suspense fallback={<LoadingSpinner />}>
-                  {Element
-                    ? React.isValidElement(Element)
-                      ? Element
-                      : React.createElement(Element as React.ComponentType)
-                    : null}
-                </Suspense>
-              </StyledTabContent>
-            ),
-            closable: true,
-          };
-        })}
+      {/* 탭 바 */}
+      <TabBar
+        openTabs={openTabs}
+        activeTabKey={activeTabKey}
+        setActiveTabKey={setActiveTabKey}
+        removeTab={removeTab}
+        closeAllTabs={closeAllTabs}
       />
+      {/* 탭 내용 영역 - 모든 탭을 렌더링하되 활성화된 탭만 표시 */}
+      <StyledTabContent>
+        {tabPanels}
+      </StyledTabContent>
     </StyledContent>
   );
 };

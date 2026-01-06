@@ -7,7 +7,7 @@
  */
 
 import { post } from "@apis/common";
-import type { ApiResponse } from "@/types/axios.types";
+import type { ApiResponse } from "@/types/com/api/axios.types";
 import type {
   SlipRegistSrchRequest,
   SlipRegistListResponse,
@@ -16,6 +16,8 @@ import type {
   SlipRegistSaveRequest,
   SlipRegistConfmRequest,
   SlipRegistConfmResponse,
+  SlipRegistManageItemNmRequest,
+  SlipRegistManageItemNmResponse,
 } from "@/types/fcm/gl/slip/SlipRegist/SlipRegist.types";
 
 /**
@@ -138,3 +140,26 @@ export const cancelConfm = async (
 ): Promise<ApiResponse<void>> => {
   return await post<void>("/fcm/gl/slip/cancelConfm", request);
 };
+
+/**
+ * 결재 상신
+ * @param request 결재 상신할 데이터
+ * @returns 상신 결과
+ */
+export const approveConfm = async (
+  request: SlipRegistConfmRequest
+): Promise<ApiResponse<void>> => {
+  return await post<void>("/fcm/gl/slip/approveConfm", request);
+};
+
+/**
+ * 관리항목명 조회
+ * @param request 관리항목명 조회 데이터
+ * @returns 관리항목명 조회 결과
+ */
+export const selectManageItemNm = async (
+  request: SlipRegistManageItemNmRequest
+): Promise<ApiResponse<SlipRegistManageItemNmResponse>> => {
+  return await post<SlipRegistManageItemNmResponse>("/fcm/gl/slip/selectManageItemNm", request);
+};
+

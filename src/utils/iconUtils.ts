@@ -1,12 +1,13 @@
 /**
  * 아이콘 관련 유틸리티 함수
  *
- * Ant Design Icons를 사용하여 동적으로 아이콘을 로드하고 반환하는 함수들을 제공합니다.
+ * Ant Design Icons와 리믹스 아이콘을 사용하여 동적으로 아이콘을 로드하고 반환하는 함수들을 제공합니다.
+ * 리믹스 아이콘은 "ri-"로 시작하는 클래스명 형식을 사용합니다.
  */
 import React from "react";
 import * as Icons from "@ant-design/icons";
 import { StarOutlined } from "@ant-design/icons";
-import type { MenuItem } from "@/types/api.types";
+import type { MenuItem } from "@/types/com/api/api.types";
 import { findIconName } from "@config/iconMapping";
 
 /**
@@ -17,26 +18,20 @@ const DEFAULT_ICON_NAME = "AppstoreOutlined";
 /**
  * 아이콘 이름으로 아이콘 컴포넌트 동적 반환
  *
- * Ant Design Icons에서 아이콘 이름으로 컴포넌트를 찾아 반환합니다.
- * 다양한 형태의 아이콘 컴포넌트를 처리할 수 있습니다.
+ * 리믹스 아이콘(ri-로 시작) 또는 Ant Design Icons에서 아이콘을 찾아 반환합니다.
+ * 리믹스 아이콘의 경우 클래스명으로 <i> 요소를 생성하고,
+ * Ant Design Icons의 경우 컴포넌트를 동적으로 로드합니다.
  *
- * @param iconName - 아이콘 이름 (예: "UserOutlined", "DashboardOutlined")
- * @param context - 로깅 컨텍스트 (예: "MainSidebar", "MainHeader")
- * @returns 아이콘 컴포넌트 또는 undefined
- */
-/**
- * 아이콘 이름으로 아이콘 컴포넌트 동적 반환
- *
- * Ant Design Icons에서 아이콘 이름으로 컴포넌트를 찾아 반환합니다.
- * 다양한 형태의 아이콘 컴포넌트를 처리할 수 있습니다.
- *
- * @param iconName - 아이콘 이름 (예: "UserOutlined", "DashboardOutlined")
+ * @param iconName - 아이콘 이름 (예: "ri-user-line", "UserOutlined")
  * @param context - 로깅 컨텍스트 (예: "MainSidebar", "MainHeader"). 기본값: "iconUtils"
  * @returns 아이콘 컴포넌트 또는 undefined
  *
  * @example
  * ```tsx
- * const icon = getIconByName("UserOutlined", "MyComponent");
+ * const icon = getIconByName("ri-user-line", "MyComponent");
+ * // <i className="ri-user-line" /> 반환
+ * 
+ * const icon2 = getIconByName("UserOutlined", "MyComponent");
  * // <UserOutlined /> 컴포넌트 반환
  * ```
  */
@@ -51,6 +46,11 @@ export const getIconByName = (
     iconName.trim().length === 0
   ) {
     return undefined;
+  }
+
+  // 리믹스 아이콘 클래스명인지 확인 (ri-로 시작)
+  if (iconName.startsWith("ri-")) {
+    return React.createElement("i", { className: iconName });
   }
 
   // Ant Design Icons에서 아이콘 찾기

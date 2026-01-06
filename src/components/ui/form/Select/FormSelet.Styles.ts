@@ -5,6 +5,15 @@ export const SelectStyles = styled(Select)`
   border-radius: 0.2rem;
   border: 1px solid #e5e8eb;
   padding-right: 5px;
+  height: 28px;
+  &.ant-select {
+    &-sm {
+      height: 24px;
+    }
+    &-lg {
+      height: 32px;
+    }
+  }
   .anticon-down {
     svg {
       display: none;
@@ -15,7 +24,7 @@ export const SelectStyles = styled(Select)`
       font-family: "remixicon" !important;
       font-weight: normal;
       font-size: 18px;
-      line-height: 28px;
+      line-height: 22px;
     }
   }
 

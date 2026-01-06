@@ -5,7 +5,7 @@
 // - 2025.11.25 : ckkim (최초작성)
 
 import axiosInstance from "@apis/common/axiosInstance";
-import type { ApiResponse } from "@/types/axios.types";
+import type { ApiResponse } from "@/types/com/api/axios.types";
 
 // ============================================================================
 // Types
@@ -32,14 +32,6 @@ export interface MessageSearchRequest {
   lang?: string;
   msgKey?: string;
   msgContents?: string;
-  totalYn?: string;
-  startNum?: number;
-  endNum?: number;
-}
-
-export interface MessageSearchResponse {
-  messages: MessageDto[];
-  totalCnt?: number;
 }
 
 export interface MessageSaveItem {
@@ -65,7 +57,7 @@ export interface MessageSaveRequest {
  */
 export const getMessageListApi = async (
   params: MessageSearchRequest
-): Promise<ApiResponse<MessageSearchResponse>> => {
+): Promise<ApiResponse<MessageDto[]>> => {
   const response = await axiosInstance.get("/system/pgm/lang/message", { params });
   return response.data;
 };

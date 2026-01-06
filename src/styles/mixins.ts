@@ -64,6 +64,8 @@ export const BoxShadow = (value: string) => css`
 `;
 
 export const scrollbar = () => css`
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   scrollbar-width: thin; /* auto | thin | none */
   scrollbar-color: transparent transparent;
 

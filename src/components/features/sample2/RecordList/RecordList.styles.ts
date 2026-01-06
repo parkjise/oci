@@ -45,7 +45,7 @@ export const RecordListStyles = styled.div`
       ${mixins.flex("flex-start", "flex-start", "column", "10px")}
       flex: 1;
       min-height: 0;
-      overflow-y: auto;
+      overflow-y: scroll;
       overflow-x: hidden;
       ${mixins.scrollbar()}
     }

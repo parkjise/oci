@@ -2,14 +2,14 @@
 // 권한 상세 폼 컴포넌트
 // ============================================================================
 // 변경이력:
-// - 2025.11.25 : ckkim (최초작성)
+// - 2025.01.15 : ckkim (최초작성)
 
 import React, { useEffect } from "react";
-import { Form, Tooltip, Button } from "antd";
-import { FormInput, FormSelect } from "@components/ui/form";
+import { Form, Tooltip } from "antd";
+import { FormInput, FormSelect, FormButton } from "@components/ui/form";
 import { useTranslation } from "react-i18next";
 import type { RoleDto } from "@apis/system/permission/permissionApi";
-import type { CodeDetail } from "@/types/api.types";
+import type { CodeDetail } from "@/types/com/api/api.types";
 import { RoleDetailFormStyles } from "./RoleDetailForm.styles";
 
 // ============================================================================
@@ -41,19 +41,6 @@ const RoleDetailForm: React.FC<RoleDetailFormProps> = ({
     }
   }, [role, form]);
 
-  // label 조회 함수 (한글명으로 조회, 없으면 키 반환)
-  const getLabel = (key: string): string => {
-    const value = t(key);
-    return value !== key ? value : key;
-  };
-
-  // label desc 조회 함수 (말풍선용)
-  const getLabelDesc = (key: string): string | undefined => {
-    const descKey = `${key}_desc`;
-    const value = t(descKey);
-    return value !== descKey ? value : undefined;
-  };
-
   // 권한명 변경 핸들러
   const handleUpdateRoleName = () => {
     const formValues = form.getFieldsValue();
@@ -71,44 +58,43 @@ const RoleDetailForm: React.FC<RoleDetailFormProps> = ({
   return (
     <RoleDetailFormStyles>
       <Form form={form} layout="inline" colon={false} style={{ width: "100%" }}>
-        <Form.Item label={getLabel("권한번호")}>
-          <Tooltip title={getLabelDesc("권한번호")}>
+        <Form.Item label={t("권한번호")}>
+          <Tooltip title={t("권한번호_desc")}>
             <FormInput
               name="roleNo"
-              label={getLabel("권한번호")}
+              label=""
               disabled
               style={{ width: "120px" }}
             />
           </Tooltip>
         </Form.Item>
-        <Form.Item label={getLabel("권한타입")}>
-          <Tooltip title={getLabelDesc("권한타입")}>
+        <span className="divider"></span>
+        <Form.Item label={t("권한타입")}>
+          <Tooltip title={t("권한타입_desc")}>
             <FormSelect
               name="roleType"
-              label={getLabel("권한타입")}
+              label=""
               disabled
               options={authTypeOptions}
               style={{ width: "120px" }}
             />
           </Tooltip>
         </Form.Item>
-        <Form.Item label={getLabel("권한명")}>
-          <Tooltip title={getLabelDesc("권한명")}>
-            <FormInput
-              name="roleName"
-              label={getLabel("권한명")}
-              style={{ width: "120px" }}
-            />
+        <span className="divider"></span>
+        <Form.Item label={t("권한명")}>
+          <Tooltip title={t("권한명_desc")}>
+            <FormInput name="roleName" label="" style={{ width: "120px" }} />
           </Tooltip>
         </Form.Item>
         <Form.Item>
-          <Button
+          <FormButton
             type="primary"
             onClick={handleUpdateRoleName}
             disabled={!role?.roleNo}
+            style={{ width: "100px" }}
           >
             {t("권한명 변경")}
-          </Button>
+          </FormButton>
         </Form.Item>
       </Form>
     </RoleDetailFormStyles>
@@ -116,4 +102,3 @@ const RoleDetailForm: React.FC<RoleDetailFormProps> = ({
 };
 
 export default RoleDetailForm;
-

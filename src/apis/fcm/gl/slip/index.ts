@@ -12,5 +12,5 @@
  * - 전표 전기
  */
 
-export * from "./slipApi";
+export * from "./SlipRegist/SlipRegist";
 export * from "./slipPostApi";

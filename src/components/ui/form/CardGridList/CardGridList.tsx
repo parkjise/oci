@@ -80,6 +80,8 @@ function CardGridList<T>({
 
   const [view, setView] = useState<ViewMode>(getInitialView());
   const [selectedId, setSelectedId] = useState<string | number | null>(null);
+  const muteOnSelectRef = useRef(false);
+  const prevSelectedIdRef = useRef<string | number | null>(selectedId);
   const gridApiRef = useRef<{
     forEachNode: (callback: (node: unknown) => void) => void;
     deselectAll: () => void;
@@ -146,8 +148,52 @@ function CardGridList<T>({
     }
   }, [selectedId, extractItemId]);
 
+  // items 변화 감지하여 외부 isActive 상태와 내부 selectedId 동기화 (추가된 로직)
   useEffect(() => {
+    if (!items || items.length === 0) {
+      // 항목이 없으면 선택 해제
+      if (selectedId !== null) {
+        setSelectedId(null);
+      }
+      return;
+    }
+
+    const activeItem = items.find((item) => (item as any).isActive);
+    if (activeItem) {
+      const activeId = extractItemId(activeItem);
+      // 현재 선택된 ID와 다를 경우에만 업데이트하여 불필요한 렌더링/루프 방지
+      if (String(activeId) !== String(selectedId)) {
+        muteOnSelectRef.current = true; // onSelect 호출 방지
+        setSelectedId(activeId);
+      }
+    } else {
+      // isActive인 항목이 없으면 첫 번째 항목 자동 선택
+      const firstItem = items[0];
+      if (firstItem) {
+        const firstId = extractItemId(firstItem);
+        if (String(firstId) !== String(selectedId)) {
+          muteOnSelectRef.current = true;
+          setSelectedId(firstId);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, extractItemId]);
+
+  useEffect(() => {
+    const isChanged = String(selectedId) !== String(prevSelectedIdRef.current);
+    prevSelectedIdRef.current = selectedId;
+
     if (!onSelect) return;
+
+    // 동기화에 의한 변경이면 onSelect 호출 생략
+    if (muteOnSelectRef.current) {
+      muteOnSelectRef.current = false;
+      return;
+    }
+
+    // selectedId가 변경되지 않았다면(단순 items 변경 등) onSelect 호출하지 않음
+    if (!isChanged) return;
 
     if (selectedId == null) {
       onSelect(null);
@@ -242,9 +288,8 @@ function CardGridList<T>({
                   icon={
                     <i className="ri-gallery-view-2" style={{ fontSize: 14 }} />
                   }
-                  className={`record-list__view-button ${
-                    view === "card" ? "record-list__view-button--active" : ""
-                  }`}
+                  className={`record-list__view-button ${view === "card" ? "record-list__view-button--active" : ""
+                    }`}
                   aria-pressed={view === "card"}
                   aria-label="카드형으로 보기"
                   onClick={() => handleToggle("card")}
@@ -254,9 +299,8 @@ function CardGridList<T>({
                 <Button
                   htmlType="button"
                   icon={<i className="ri-menu-line" style={{ fontSize: 14 }} />}
-                  className={`record-list__view-button ${
-                    view === "grid" ? "record-list__view-button--active" : ""
-                  }`}
+                  className={`record-list__view-button ${view === "grid" ? "record-list__view-button--active" : ""
+                    }`}
                   aria-pressed={view === "grid"}
                   aria-label="그리드로 보기"
                   onClick={() => handleToggle("grid")}
@@ -310,23 +354,20 @@ function CardGridList<T>({
               return (
                 <div
                   key={idx}
-                  className={`record-list__item ${
-                    isSelected
-                      ? "record-list__item--selected record-list__item--active"
-                      : ""
-                  } ${
-                    (it as { isActive?: boolean }).isActive
+                  className={`record-list__item ${isSelected
+                    ? "record-list__item--selected record-list__item--active"
+                    : ""
+                    } ${(it as { isActive?: boolean }).isActive
                       ? "record-list__item--active"
                       : ""
-                  }`}
+                    }`}
                   tabIndex={0}
                   role="button"
                   aria-selected={isSelected}
-                  aria-label={`${
-                    (it as { title?: string; name?: string })?.title ||
+                  aria-label={`${(it as { title?: string; name?: string })?.title ||
                     (it as { title?: string; name?: string })?.name ||
                     `아이템 ${idx + 1}`
-                  }`}
+                    }`}
                   onClick={() => {
                     setSelectedId(id);
                     selectItemInGrid(id);
@@ -358,9 +399,8 @@ function CardGridList<T>({
                           return (
                             <Tag
                               key={fieldName}
-                              className={`record-list__status record-list__status--${
-                                (it as { statusClass?: string }).statusClass
-                              }`}
+                              className={`record-list__status record-list__status--${(it as { statusClass?: string }).statusClass
+                                }`}
                             >
                               {(it as { status?: string }).status}
                             </Tag>

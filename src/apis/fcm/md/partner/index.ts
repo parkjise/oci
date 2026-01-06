@@ -5,5 +5,4 @@
  */
 
 export * from "./partnerApi";
-export * from "./bcncRegistApi";
-
+export * from "./BcncRegist/BcncRegistApi";

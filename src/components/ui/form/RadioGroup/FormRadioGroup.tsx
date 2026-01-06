@@ -6,9 +6,10 @@ import type { FormItemLayout } from "antd/es/form/Form";
 import type { RadioGroupProps } from "antd/es/radio";
 import {
   getCodeDetailApi,
+  clearCodeCache,
   type CodeDetailParams,
   type CodeDetail,
-} from "@apis/comCode";
+} from "@apis/com/code";
 import MessageModal from "@/components/ui/feedback/Message/MessageModal";
 import { canShowModal, resetModalFlag } from "@/utils/formModalUtils";
 
@@ -32,6 +33,7 @@ interface FormRadioGroupProps extends Omit<RadioGroupProps, "options"> {
   mode?: "view" | "edit";
   emptyText?: string;
   filterValues?: (string | number)[]; // 필터링하여 숨길 값들의 배열
+  clearCacheBeforeFetch?: boolean; // API 호출 전 캐시 무효화 여부 (기본값: false)
 }
 
 const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
@@ -47,6 +49,7 @@ const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
   mode = "edit",
   emptyText = "-",
   filterValues,
+  clearCacheBeforeFetch = false,
   ...rest
 }) => {
   const [options, setOptions] = useState<RadioOption[]>(propOptions || []);
@@ -62,6 +65,11 @@ const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
       const fetchOptions = async () => {
         setLoading(true);
         try {
+          // 캐시 무효화 옵션이 활성화된 경우 캐시를 먼저 무효화
+          if (clearCacheBeforeFetch) {
+            clearCodeCache(comCodeParams);
+          }
+
           const response = await getCodeDetailApi(comCodeParams);
           if (response.success && response.data) {
             // 응답이 배열인 경우
@@ -101,7 +109,7 @@ const FormRadioGroup: React.FC<FormRadioGroupProps> = ({
       // comCodeParams가 없고 propOptions가 제공된 경우
       setOptions(propOptions);
     }
-  }, [comCodeParams, propOptions, valueKey, labelKey]);
+  }, [comCodeParams, propOptions, valueKey, labelKey, clearCacheBeforeFetch]);
 
   // filterValues에 따라 옵션 필터링
   const filteredOptions = React.useMemo(() => {

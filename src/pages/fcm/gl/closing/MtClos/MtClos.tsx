@@ -1,10 +1,22 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { FC } from "react";
 import { Space, Form } from "antd";
 import { type InjectedProps } from "@/components/ui/feedback/Modal";
-import { showError, showSuccess } from "@/components/ui/feedback/Message";
-import { FormSelect, FormInput, FormButton } from "@components/ui/form";
+import {
+  showError,
+  showSuccess,
+  confirm,
+} from "@/components/ui/feedback/Message";
+import { FormSelect, FormInput } from "@components/ui/form";
+import { useAuthStore } from "@store/com/auth/authStore";
+import {
+  createMtClosPopupTagCreat,
+  selectMtClosPopupMT,
+} from "@apis/fcm/gl/closing";
+import type { MtClosPopupCreatRequest } from "@apis/fcm/gl/closing";
+import { formatYearMonth } from "@utils/dateUtils";
 import dayjs from "dayjs";
+import { useTranslation } from "react-i18next";
 
 /**
  * 월마감 모달에서 반환할 데이터 타입
@@ -30,89 +42,103 @@ interface MtClosProps {
  * Period 옵션 타입
  */
 interface PeriodOption {
-  value: string; // YYMM 형식
-  label: string; // PERIOD_NAME
+  value: string; // YYMM 형식 (예: "202501")
+  label: string; // PERIOD_NAME (예: "2025-01")
+  dateF?: string; // 시작일
+  dateT?: string; // 종료일
 }
 
 /**
  * 월마감 모달 팝업 컴포넌트
  * usePageModal 훅과 함께 사용됩니다.
  */
-const MtClos: FC<MtClosProps & InjectedProps<MtClosResult>> = ({
-  initialYear,
-  returnValue: _returnValue, // eslint-disable-line @typescript-eslint/no-unused-vars
-  close,
-}) => {
+const MtClos: FC<
+  MtClosProps &
+    InjectedProps<MtClosResult> & {
+      setConfirmHandler?: (handler: (() => void) | null) => void;
+    }
+> = ({ initialYear, returnValue, setConfirmHandler }) => {
+  const { t } = useTranslation();
+  const { user } = useAuthStore();
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
-  const [selectedYear, setSelectedYear] = useState<string>("");
+  const [, setLoading] = useState(false);
+
+  // Period 옵션을 State로 관리
+  const [periodOptions, setPeriodOptions] = useState<PeriodOption[]>([]);
 
   // 현재 연도 가져오기
   const currentYear = dayjs().format("YYYY");
 
-  // Period 옵션을 useMemo로 캐시 (연도 변경 시에만 재생성)
-  const periodOptions = useMemo<PeriodOption[]>(() => {
-    const year = selectedYear || initialYear || currentYear;
-    const mockPeriods: PeriodOption[] = [];
-    for (let i = 1; i <= 12; i++) {
-      const month = String(i).padStart(2, "0");
-      mockPeriods.push({
-        value: year + month,
-        label: `${year}-${month}`, // YYYY-MM 형식
-      });
-    }
-    return mockPeriods;
-  }, [selectedYear, initialYear, currentYear]);
+  // Period 목록 DB 조회
+  const loadPeriodOptions = useCallback(
+    async (year: string) => {
+      if (!user?.officeId || !year) return;
 
-  // YYYYMM을 YYYY.MM 형식으로 변환 (실제 회계연월 포맷)
-  const formatYearMonth = useCallback((yyyymm: string): string => {
-    if (!yyyymm || yyyymm.length !== 6) return yyyymm;
-    return `${yyyymm.substring(0, 4)}.${yyyymm.substring(4, 6)}`;
-  }, []);
+      try {
+        setLoading(true);
 
-  // Period 목록 로드 (useMemo로 대체되어 연도 상태만 업데이트)
-  const loadPeriodOptions = useCallback(async (year: string) => {
-    setSelectedYear(year);
-  }, []);
+        const response = await selectMtClosPopupMT({
+          officeId: user.officeId,
+          year: year,
+          adjustFlag: "N", // 마감되지 않은 기간만 조회
+        });
+
+        if (response.success && response.data) {
+          const periods: PeriodOption[] = response.data.map((item) => ({
+            value: item.yymm || "",
+            label: item.periodName || "",
+            dateF: item.dateF,
+            dateT: item.dateT,
+          }));
+
+          setPeriodOptions(periods);
+
+          // 첫 번째와 마지막 기간으로 자동 설정
+          if (periods.length > 0) {
+            form.setFieldsValue({
+              periodFrom: periods[0].value,
+              periodTo: periods[periods.length - 1].value,
+              realYmFrom: formatYearMonth(periods[0].value),
+              realYmTo: formatYearMonth(periods[periods.length - 1].value),
+            });
+          }
+        }
+      } catch {
+        showError("회계기간 조회에 실패했습니다.");
+        setPeriodOptions([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user, form]
+  );
 
   // 모달 열릴 때 초기값 설정
   useEffect(() => {
     const year = initialYear || currentYear;
-    const periodFrom = year + "01";
-    const periodTo = year + "12";
 
     form.setFieldsValue({
       year: year,
-      periodFrom: periodFrom,
-      periodTo: periodTo,
-      realYmFrom: formatYearMonth(periodFrom),
-      realYmTo: formatYearMonth(periodTo),
+      periodFrom: "",
+      periodTo: "",
+      realYmFrom: "",
+      realYmTo: "",
     });
 
-    // Period 목록 조회
+    // Period 목록 조회 (자동으로 첫/마지막 값 설정됨)
     loadPeriodOptions(year);
-  }, [initialYear, currentYear, form, loadPeriodOptions, formatYearMonth]);
+  }, [initialYear, currentYear, form, loadPeriodOptions]);
 
   // 회계연도 변경 핸들러
   const handleYearChange = useCallback(
     (value: string) => {
       if (!value) return;
+      if (value.length !== 4) return; // 4자리가 아니면 무시
 
-      const periodFrom = value + "01";
-      const periodTo = value + "12";
-
-      // 연도 상태 업데이트 (useMemo가 자동으로 periodOptions 재계산)
-      setSelectedYear(value);
-
-      // 폼 필드 업데이트
-      form.setFieldsValue({
-        periodFrom: periodFrom,
-        periodTo: periodTo,
-        realYmFrom: formatYearMonth(periodFrom),
-        realYmTo: formatYearMonth(periodTo),
-      });
+      // DB에서 Period 목록 재조회 (자동으로 첫/마지막 값 설정됨)
+      loadPeriodOptions(value);
     },
-    [form, formatYearMonth]
+    [loadPeriodOptions]
   );
 
   // Period 시작 변경 핸들러
@@ -139,7 +165,7 @@ const MtClos: FC<MtClosProps & InjectedProps<MtClosResult>> = ({
         realYmFrom: formatYearMonth(value),
       });
     },
-    [form, formatYearMonth]
+    [form]
   );
 
   // Period 종료 변경 핸들러
@@ -166,45 +192,99 @@ const MtClos: FC<MtClosProps & InjectedProps<MtClosResult>> = ({
         realYmTo: formatYearMonth(value),
       });
     },
-    [form, formatYearMonth]
+    [form]
   );
 
-  // 확인 버튼 핸들러
+  // 확인 버튼 핸들러 (모달 기본 확인 버튼용)
   const handleConfirm = useCallback(async () => {
     try {
-      await form.validateFields();
-      setLoading(true);
+      const values = await form.validateFields();
 
-      // TODO: 월마감 처리 API 호출
-      // const result: MtClosResult = {
-      //   division: values.division,
-      //   year: values.year,
-      //   periodFrom: values.periodFrom,
-      //   periodTo: values.periodTo,
-      //   realYmFrom: values.realYmFrom,
-      //   realYmTo: values.realYmTo,
-      // };
-      // const response = await monthCloseTag({
-      //   division: result.division,
-      //   year: result.year,
-      //   periodFrom: result.periodFrom,
-      //   periodTo: result.periodTo,
-      //   realYmFrom: result.realYmFrom,
-      //   realYmTo: result.realYmTo,
-      // });
+      // 마감 확인 모달 추가
+      confirm({
+        content: "마감하시겠습니까?",
+        onOk: async () => {
+          try {
+            setLoading(true);
 
-      showSuccess("정상적으로 마감되었습니다.");
-      // 모달은 닫지 않고 유지
+            // 사용자 정보 확인
+            if (!user?.officeId || !user?.empCode) {
+              showError("사용자 정보를 찾을 수 없습니다.");
+              return;
+            }
+
+            // Period 값이 YYYYMM 형식이므로 그대로 사용
+            const realYmF = values.periodFrom || "";
+            const realYmT = values.periodTo || "";
+
+            if (!realYmF || !realYmT) {
+              showError("Period를 선택해주세요.");
+              return;
+            }
+
+            // API 요청 데이터 구성
+            const request: MtClosPopupCreatRequest = {
+              rspnOfficeId: user.officeId, // 대표사업장 ID
+              officeId: user.officeId, // 사업장 ID
+              realYmF: realYmF, // 실제 회계연월 시작 (YYYYMM 형식)
+              realYmT: realYmT, // 실제 회계연월 종료 (YYYYMM 형식)
+              dvs: values.division || "", // 사업부
+              rapDept: "", // 담당부서 (필요시 추가)
+              userId: user.empCode, // 사용자 ID
+              programId: "MtClosPopup", // 프로그램 ID
+              terminalId: "SYSTEM", // 터미널 ID
+            };
+
+            // API 호출
+            const response = await createMtClosPopupTagCreat(request);
+
+            if (response.success) {
+              // 처리 성공 시 결과 반환
+              const result: MtClosResult = {
+                division: values.division,
+                year: values.year,
+                periodFrom: values.periodFrom,
+                periodTo: values.periodTo,
+                realYmFrom: values.realYmFrom,
+                realYmTo: values.realYmTo,
+              };
+
+              showSuccess("정상적으로 마감되었습니다.");
+
+              // 모달 닫기 및 결과 반환
+              returnValue(result);
+            } else {
+              showError(
+                response.message || "월마감 처리 중 오류가 발생했습니다."
+              );
+            }
+          } catch {
+            showError("월마감 처리 중 오류가 발생했습니다.");
+          } finally {
+            setLoading(false);
+          }
+        },
+      });
     } catch (error) {
       if (error && typeof error === "object" && "errorFields" in error) {
         // Form validation 에러는 무시 (Ant Design이 자동 처리)
         return;
       }
-      showError("월마감 처리 중 오류가 발생했습니다.");
-    } finally {
-      setLoading(false);
+      showError("입력값을 확인해주세요.");
     }
-  }, [form]);
+  }, [form, returnValue, user]);
+
+  // 모달 기본 확인 버튼에 핸들러 등록
+  useEffect(() => {
+    if (setConfirmHandler) {
+      setConfirmHandler(() => handleConfirm());
+    }
+    return () => {
+      if (setConfirmHandler) {
+        setConfirmHandler(null);
+      }
+    };
+  }, [setConfirmHandler, handleConfirm]);
 
   return (
     <div
@@ -298,7 +378,7 @@ const MtClos: FC<MtClosProps & InjectedProps<MtClosResult>> = ({
 
         <FormSelect
           name="division"
-          label="사업부"
+          label={t("사업부")}
           placeholder="전체"
           comCodeParams={{
             module: "PF",
@@ -312,7 +392,7 @@ const MtClos: FC<MtClosProps & InjectedProps<MtClosResult>> = ({
 
         <FormInput
           name="year"
-          label="회계연도"
+          label={t("회계연도")}
           placeholder="예: 2025"
           maxLength={4}
           style={{ width: "150px" }}
@@ -360,7 +440,7 @@ const MtClos: FC<MtClosProps & InjectedProps<MtClosResult>> = ({
         </Form.Item>
 
         <Form.Item
-          label="실제 회계연월"
+          label={t("실제_회계연월")}
           colon={false}
           style={{ marginBottom: 0 }}
         >
@@ -380,23 +460,6 @@ const MtClos: FC<MtClosProps & InjectedProps<MtClosResult>> = ({
               disabled
               style={{ width: "150px" }}
             />
-          </Space>
-        </Form.Item>
-
-        <Form.Item
-          label=""
-          className="button-row"
-          style={{ marginTop: "16px", marginBottom: 0 }}
-        >
-          <Space style={{ width: "100%", justifyContent: "flex-end" }}>
-            <FormButton onClick={close}>취소</FormButton>
-            <FormButton
-              type="primary"
-              onClick={handleConfirm}
-              loading={loading}
-            >
-              저장
-            </FormButton>
           </Space>
         </Form.Item>
       </Form>

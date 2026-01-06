@@ -5,7 +5,7 @@
 // - 2025.12.04 : ckkim (최초작성)
 
 import { post } from "@apis/common/api";
-import type { ApiResponse } from "@/types/axios.types";
+import type { ApiResponse } from "@/types/com/api/axios.types";
 
 // ============================================================================
 // Types
@@ -43,4 +43,5 @@ export const searchDeptListApi = async (
 ): Promise<ApiResponse<DeptDto[]>> => {
   return post<DeptDto[]>("/system/org/dept/search", request);
 };
+
 

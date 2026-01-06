@@ -4,7 +4,7 @@
  * 로컬스토리지를 사용하여 메뉴 데이터를 캐싱하고 관리합니다.
  * 캐시 만료 시간을 설정하여 일정 시간 후 자동으로 만료되도록 합니다.
  */
-import type { MenuItem } from "@/types/api.types";
+import type { MenuItem } from "@/types/com/api/api.types";
 import {
   MENU_CACHE_KEY,
   MENU_CACHE_EXPIRY_KEY,

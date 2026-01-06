@@ -5,7 +5,7 @@
 // - 2025.11.25 : ckkim (최초작성)
 
 import { get, post, del } from "@apis/common/api";
-import type { ApiResponse } from "@/types/axios.types";
+import type { ApiResponse } from "@/types/com/api/axios.types";
 
 // ============================================================================
 // Types
@@ -114,16 +114,3 @@ export const deleteMenuApi = async (
 ): Promise<ApiResponse<MenuSaveResponse>> => {
   return del<MenuSaveResponse>(`/system/pgm/access/menu/${pgmNo}`);
 };
-
-/**
- * 시스템 코드 리스트 조회
- */
-export const getCodeListApi = async (
-  codeList: string[]
-): Promise<ApiResponse<Record<string, unknown>[]>> => {
-  return get<Record<string, unknown>[]>("/system/pgm/access/menu/codes", {
-    params: { code: codeList },
-  });
-};
-
-

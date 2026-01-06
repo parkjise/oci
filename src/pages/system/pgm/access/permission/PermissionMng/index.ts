@@ -1,2 +1,2 @@
-export { default } from "./PermissionMng";
-
+import PermissionMng from "./PermissionMng";
+export default PermissionMng;

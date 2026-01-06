@@ -1,545 +1,235 @@
-import React, { useRef, useCallback, useMemo, useState } from "react";
-import { message, Tag, Input } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
+import React, {
+  useRef,
+  useCallback,
+  useMemo,
+  useState,
+  memo,
+  Suspense,
+} from "react";
+import {
+  showError,
+  showWarning,
+  showSuccess,
+  showInfo,
+} from "@/components/ui/feedback/Message";
+import { useBcncRegistStore } from "@store/fcm/md/partner/BcncRegist/BcncRegistStore";
+import type { BcncShipResponse } from "@/types/fcm/md/partner/BcncRegist/BcncRegist.types";
+import SearchIconCellRenderer from "@components/ui/form/AgGrid/cells/SearchIconCellRenderer";
+import { StatusTagRenderer } from "@components/ui/form/AgGrid/cells/TagCellRenderer";
+import { createComboBoxColumn } from "@components/ui/form/AgGrid/columns/comboBoxColumn";
+import { useGridCellEditor } from "./useGridCellEditor";
+import dayjs from "dayjs";
 import type {
   ColDef,
   GridApi,
   GridReadyEvent,
   CellStyle,
-  ICellRendererParams,
-  CellEditingStoppedEvent,
   IRowNode,
+  ValueFormatterParams,
+  CellValueChangedEvent,
 } from "ag-grid-community";
-import { FormAgGrid, FormButton } from "@components/ui/form";
-import { usePageModal } from "@hooks/usePageModal";
+import { FormAgGrid } from "@components/ui/form";
 import { AppPageModal } from "@components/ui/feedback";
-import { useBcncRegistStore } from "@store/bcncRegistStore";
-import type { BcncShipResponse } from "@/types/fcm/md/partner/bcncRegist.types";
+import { useTranslation } from "react-i18next";
 
 type DetailGridProps = {
   className?: string;
   rowData?: BcncShipResponse[];
 };
 
-type GridRowData = BcncShipResponse & {
+export type GridRowData = BcncShipResponse & {
   id?: string;
   rowStatus?: "C" | "U" | "D";
 };
 
-// 팝업에서 반환할 데이터 타입
-type SearchResult = {
-  code: string;
-  name: string;
-};
-
-// 검색 팝업 컴포넌트 Props
-type SearchPopupProps = {
-  initialValue?: string;
-  searchParam?: string; // 검색 파라미터 (영업사원번호 또는 이름)
-};
-
-// 영업사원 조회 결과 타입
-type SalesManSearchResult = {
-  code: string;
-  name: string;
-};
-
-// 국가코드 조회 결과 타입
-type CountrySearchResult = {
-  code: string;
-  name: string;
-};
-
-// 화폐단위 조회 결과 타입
-type CurrencySearchResult = {
-  code: string;
-};
-
-// 주소 조회 결과 타입
-type AddressSearchResult = {
-  address: string;
-};
-
-// 영업사원 셀 렌더러 컴포넌트 Props
-type SalesManCellRendererProps = {
-  params: ICellRendererParams<GridRowData>;
-  gridRef: React.RefObject<GridApi | null>;
-};
-
-// 공통 검색 셀 렌더러 컴포넌트 Props
-type SearchCellRendererProps = {
-  params: ICellRendererParams<GridRowData>;
-  gridRef: React.RefObject<GridApi | null>;
-  columnId: string; // 컬럼 ID (salesMan, country, currency, shipAddr)
-  modalTitle: string; // 팝업 제목
-};
-
-// 영업사원 조회 API 함수 (placeholder - 실제 API로 교체 필요)
-const searchSalesManApi = async (
-  searchValue: string
-): Promise<SalesManSearchResult[]> => {
-  // TODO: 실제 영업사원 조회 API 호출로 교체
-  // 예: return await getSalesManApi({ code: searchValue, name: searchValue });
-
-  // 임시: 빈 배열 반환 (실제 API 연결 시 searchValue 파라미터 사용)
-  void searchValue; // 린터 경고 방지용 (실제 API 연결 시 제거)
-  return [];
-};
-
-// 국가코드 조회 API 함수 (placeholder - 실제 API로 교체 필요)
-const searchCountryApi = async (
-  searchValue: string
-): Promise<CountrySearchResult[]> => {
-  // TODO: 실제 국가코드 조회 API 호출로 교체
-  // 예: return await getCountryApi({ code: searchValue, name: searchValue });
-
-  // 임시: 빈 배열 반환 (실제 API 연결 시 searchValue 파라미터 사용)
-  void searchValue; // 린터 경고 방지용 (실제 API 연결 시 제거)
-  return [];
-};
-
-// 화폐단위 조회 API 함수 (placeholder - 실제 API로 교체 필요)
-const searchCurrencyApi = async (
-  searchValue: string
-): Promise<CurrencySearchResult[]> => {
-  // TODO: 실제 화폐단위 조회 API 호출로 교체
-  // 예: return await getCurrencyApi({ code: searchValue });
-
-  // 임시: 빈 배열 반환 (실제 API 연결 시 searchValue 파라미터 사용)
-  void searchValue; // 린터 경고 방지용 (실제 API 연결 시 제거)
-  return [];
-};
-
-// 주소 조회 API 함수 (placeholder - 실제 API로 교체 필요)
-const searchAddressApi = async (
-  searchValue: string
-): Promise<AddressSearchResult[]> => {
-  // TODO: 실제 주소 조회 API 호출로 교체
-  // 예: return await getAddressApi({ address: searchValue });
-
-  // 임시: 빈 배열 반환 (실제 API 연결 시 searchValue 파라미터 사용)
-  void searchValue; // 린터 경고 방지용 (실제 API 연결 시 제거)
-  return [];
-};
-
-// 검색 팝업 컴포넌트 (예제 - 실제 팝업 컴포넌트로 교체 필요)
-const SearchPopup: React.FC<
-  SearchPopupProps & {
-    returnValue: (value: SearchResult) => void;
-    close: () => void;
-  }
-> = ({ initialValue, searchParam, returnValue, close }) => {
-  // TODO: searchParam을 사용하여 팝업에서 초기 검색 수행
-  void searchParam; // 린터 경고 방지용 (실제 구현 시 사용)
-  const [selectedCode, setSelectedCode] = useState("");
-  const [selectedName, setSelectedName] = useState("");
-
-  const handleSelect = () => {
-    if (selectedCode && selectedName) {
-      returnValue({ code: selectedCode, name: selectedName });
-    } else {
-      message.warning("코드와 이름을 입력해주세요.");
-    }
-  };
-
-  return (
-    <div style={{ padding: "20px" }}>
-      <h3>영업사원 검색</h3>
-      <p>영업사원 코드와 이름을 입력한 후 선택 버튼을 클릭하세요.</p>
-      {initialValue && <p style={{ color: "#666" }}>현재 값: {initialValue}</p>}
-      <div style={{ marginBottom: "16px" }}>
-        <Input
-          placeholder="영업사원 코드 입력"
-          value={selectedCode}
-          onChange={(e) => setSelectedCode(e.target.value)}
-          style={{ marginBottom: "8px" }}
-        />
-        <Input
-          placeholder="영업사원명 입력"
-          value={selectedName}
-          onChange={(e) => setSelectedName(e.target.value)}
-        />
-      </div>
-      <div>
-        <FormButton
-          type="primary"
-          onClick={handleSelect}
-          style={{ marginRight: "8px" }}
-        >
-          선택
-        </FormButton>
-        <FormButton onClick={close}>취소</FormButton>
-      </div>
-    </div>
-  );
-};
-
 // 영업사원 셀 렌더러 컴포넌트
-const SalesManCellRenderer: React.FC<SalesManCellRendererProps> = ({
-  params,
-  gridRef,
-}) => {
-  const value = params.value || "";
-
-  // params를 ref로 저장하여 최신 값 유지
-  const paramsRef = React.useRef(params);
-  React.useEffect(() => {
-    paramsRef.current = params;
-  }, [params]);
-
-  // 검색 팝업 모달 관리
-  const searchModal = usePageModal<SearchPopupProps, SearchResult>(
-    SearchPopup,
-    {
-      title: "영업사원 검색",
-      centered: true,
-      width: 500,
-      height: 300,
-      destroyOnHidden: true,
-      onReturn: (returnValue) => {
-        const currentParams = paramsRef.current;
-        const rowData = currentParams.data as GridRowData;
-        if (rowData && currentParams.node) {
-          // 영업사원 선택 시: 영업사원 코드와 영업사원명 모두 업데이트
-          rowData.salesMan = returnValue.code;
-          rowData.salesName = returnValue.name;
-          // 두 컬럼 모두 업데이트
-          if (gridRef.current) {
-            gridRef.current.refreshCells({
-              rowNodes: [currentParams.node],
-              columns: ["salesMan", "salesName"],
-            });
-            // 상태 업데이트 (rowStatus 변경)
-            if (rowData.rowStatus !== "C") {
-              rowData.rowStatus = "U";
-              gridRef.current.refreshCells({
-                rowNodes: [currentParams.node],
-                columns: ["rowStatus"],
-                force: true,
-              });
-            }
-          }
-        }
-      },
-    }
-  );
-
-  const handleSearchClick = () => {
-    searchModal.openModal({ initialValue: value });
-  };
-
-  // 스타일 정의
-  const containerStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100%",
-    width: "100%",
-    position: "relative",
-  };
-
-  const textStyle: React.CSSProperties = {
-    flex: 1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    textAlign: "center",
-  };
-
-  const buttonStyle: React.CSSProperties = {
-    padding: "0 4px",
-    flexShrink: 0,
-  };
-
-  return (
-    <>
-      <div style={containerStyle}>
-        <span style={textStyle}>{value}</span>
-        <FormButton
-          type="text"
-          icon={<SearchOutlined />}
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleSearchClick();
-          }}
-          style={buttonStyle}
-        />
-      </div>
-      <AppPageModal {...searchModal.modalProps} />
-    </>
-  );
-};
 
 // 공통 검색 셀 렌더러 컴포넌트 (국가코드, 화폐단위, 주소용)
-const SearchCellRenderer: React.FC<SearchCellRendererProps> = ({
-  params,
-  gridRef,
-  columnId,
-  modalTitle,
-}) => {
-  const value = params.value || "";
-
-  // params를 ref로 저장하여 최신 값 유지
-  const paramsRef = React.useRef(params);
-  React.useEffect(() => {
-    paramsRef.current = params;
-  }, [params]);
-
-  // 검색 팝업 모달 관리
-  const searchModal = usePageModal<SearchPopupProps, SearchResult>(
-    SearchPopup,
-    {
-      title: modalTitle,
-      centered: true,
-      width: 500,
-      height: 300,
-      destroyOnHidden: true,
-      onReturn: (returnValue) => {
-        const currentParams = paramsRef.current;
-        const rowData = currentParams.data as GridRowData;
-        if (rowData && currentParams.node) {
-          if (columnId === "country") {
-            // 국가코드: 코드와 국가명 모두 업데이트
-            rowData.country = returnValue.code;
-            rowData.nationName = returnValue.name;
-            if (gridRef.current) {
-              gridRef.current.refreshCells({
-                rowNodes: [currentParams.node],
-                columns: ["country", "nationName"],
-              });
-              // 상태 업데이트 (rowStatus 변경)
-              if (rowData.rowStatus !== "C") {
-                rowData.rowStatus = "U";
-                gridRef.current.refreshCells({
-                  rowNodes: [currentParams.node],
-                  columns: ["rowStatus"],
-                  force: true,
-                });
-              }
-            }
-          } else if (columnId === "currency") {
-            // 화폐단위: 자기 컬럼만 업데이트
-            rowData.currency = returnValue.code;
-            if (gridRef.current) {
-              gridRef.current.refreshCells({
-                rowNodes: [currentParams.node],
-                columns: ["currency"],
-              });
-              // 상태 업데이트 (rowStatus 변경)
-              if (rowData.rowStatus !== "C") {
-                rowData.rowStatus = "U";
-                gridRef.current.refreshCells({
-                  rowNodes: [currentParams.node],
-                  columns: ["rowStatus"],
-                  force: true,
-                });
-              }
-            }
-          } else if (columnId === "shipAddr") {
-            // 주소: 자기 컬럼만 업데이트
-            rowData.shipAddr = returnValue.code || returnValue.name || "";
-            if (gridRef.current) {
-              gridRef.current.refreshCells({
-                rowNodes: [currentParams.node],
-                columns: ["shipAddr"],
-              });
-              // 상태 업데이트 (rowStatus 변경)
-              if (rowData.rowStatus !== "C") {
-                rowData.rowStatus = "U";
-                gridRef.current.refreshCells({
-                  rowNodes: [currentParams.node],
-                  columns: ["rowStatus"],
-                  force: true,
-                });
-              }
-            }
-          }
-        }
-      },
-    }
-  );
-
-  const handleSearchClick = () => {
-    searchModal.openModal({ initialValue: value });
-  };
-
-  // 스타일 정의
-  const containerStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100%",
-    width: "100%",
-    position: "relative",
-  };
-
-  const textStyle: React.CSSProperties = {
-    flex: 1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    textAlign: "center",
-  };
-
-  const buttonStyle: React.CSSProperties = {
-    padding: "0 4px",
-    flexShrink: 0,
-  };
-
-  return (
-    <>
-      <div style={containerStyle}>
-        <span style={textStyle}>{value}</span>
-        <FormButton
-          type="text"
-          icon={<SearchOutlined />}
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleSearchClick();
-          }}
-          style={buttonStyle}
-        />
-      </div>
-      <AppPageModal {...searchModal.modalProps} />
-    </>
-  );
-};
 
 const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
+  const { t } = useTranslation();
   const gridRef = useRef<GridApi | null>(null);
-  // Store 연결
-  const { shipListData, setGridApi } = useBcncRegistStore();
+  // ✅ Store 통구독 문제 해결: 필요한 상태만 개별 selector로 구독
+  const shipListData = useBcncRegistStore((state) => state.shipListData);
+  const detailViewMode = useBcncRegistStore((state) => state.detailViewMode);
+
+  const { handleOpenSearch, handleCellEditingStopped, modalProps } =
+    useGridCellEditor();
+
+  // DetailView의 edit 모드일 때만 버튼 활성화
+  const isEditMode = detailViewMode === "edit";
 
   // Store의 shipListData를 우선 사용하고, 없으면 propRowData 사용
+  // shipListData가 빈 배열이어도 명시적으로 설정된 것이므로 우선 사용
   const sourceData = useMemo(() => {
-    return shipListData && shipListData.length > 0
-      ? shipListData
-      : propRowData || [];
+    // shipListData가 undefined가 아니면 사용 (빈 배열도 포함)
+    if (shipListData !== undefined) {
+      return shipListData;
+    }
+    return propRowData || [];
   }, [shipListData, propRowData]);
 
   // 내부 상태로 rowData 관리
   const [internalRowData, setInternalRowData] = useState<GridRowData[]>(() => {
     return sourceData.map((item, index) => ({
       ...item,
-      id: item.shipId ?? `row-${index}`,
-      rowStatus: undefined as "C" | "U" | "D" | undefined,
+      id: item.shipId || (item as GridRowData).id || `row-${index}`,
+      rowStatus: (item as GridRowData).rowStatus,
     }));
   });
 
-  // sourceData가 변경되면 내부 상태 업데이트
+  // ⚡ sourceData 동기화 최적화: 초기 로드 시에만 적용
   React.useEffect(() => {
-    const newRowData = sourceData.map((item, index) => ({
-      ...item,
-      id: item.shipId ?? `row-${index}`,
-      rowStatus: undefined as "C" | "U" | "D" | undefined,
-    }));
-    setInternalRowData(newRowData);
-  }, [sourceData]);
+    // ✅ 편집 모드가 아닐 때만 Store → Grid 동기화
+    // 편집 중에는 Grid API가 단일 진실의 원천(Single Source of Truth)
+    // 단, sourceData가 빈 배열이면 무조건 초기화 (입력 버튼 클릭 시)
+    if (detailViewMode !== "edit" || sourceData.length === 0) {
+      const newRowData = sourceData.map((item, index) => ({
+        ...item,
+        id: item.shipId || (item as GridRowData).id || `row-${index}`,
+        rowStatus: (item as GridRowData).rowStatus,
+      }));
+      setInternalRowData(newRowData);
+
+      if (gridRef.current) {
+        gridRef.current.setGridOption("rowData", newRowData);
+      }
+    }
+  }, [sourceData, detailViewMode]); // ⚡ detailViewMode 추가: 편집 중 동기화 방지
 
   const rowData = internalRowData;
 
   // 그리드 준비 핸들러
-  const handleGridReady = useCallback(
-    (params: GridReadyEvent) => {
-      gridRef.current = params.api;
-      // Store에 gridApi 저장
-      setGridApi(params.api);
-    },
-    [setGridApi]
-  );
+  const handleGridReady = useCallback((params: GridReadyEvent) => {
+    gridRef.current = params.api;
+    // Store에 detailGridApi 저장
+    useBcncRegistStore.getState().setDetailGridApi(params.api);
+  }, []);
 
   // 새 ID 생성 함수
   const generateNewId = useCallback((): string => {
     if (rowData.length === 0) return "1";
-    const maxId = Math.max(
-      ...rowData
-        .map((row) => {
-          const id = row.id;
-          if (typeof id === "string") {
-            const numId = parseInt(id, 10);
-            return isNaN(numId) ? 0 : numId;
-          }
-          return 0;
-        })
-        .filter((id) => id > 0)
-    );
+    // rowData의 ID들을 숫자로 변환하여 최대값 찾기 (문자열 등 섞여있을 수 있음 대비)
+    const maxId = rowData.reduce((max, row) => {
+      const idStr = String(row.id || "");
+      // "row-" 시작하는 임시 ID는 제외
+      if (idStr.startsWith("row-")) return max;
+      const num = parseInt(idStr, 10);
+      return !isNaN(num) && num > max ? num : max;
+    }, 0);
     return String(maxId + 1);
   }, [rowData]);
 
   // 새 행 생성 함수
-  const createNewRow = useCallback((newId: number | string): GridRowData => {
+  const createNewRow = useCallback((newId?: number | string): GridRowData => {
+    const idStr =
+      newId !== undefined
+        ? String(newId)
+        : `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     return {
-      shipId: String(newId),
-      id: String(newId),
+      // shipId와 shipCustNo는 새 행일 때 비어있어야 함 (백엔드에서 생성)
+      id: idStr, // 그리드 내부 식별용 ID
       useYn: "Y",
       primaryChk: "N",
+      country: "KOR", // 기본값: 대한민국
+      nationName: "대한민국",
+      orgId: "HO", // 기본값: HO
       rowStatus: "C",
+      currency: "KRW",
     } as GridRowData;
   }, []);
 
   // 행 추가 핸들러
   const handleAddRow = useCallback(() => {
     if (!gridRef.current) {
-      message.error("그리드가 초기화되지 않았습니다.");
+      showError("그리드가 초기화되지 않았습니다.");
       return;
     }
-
-    const newId = generateNewId();
+    const newId = generateNewId(); // 임시 ID 생성
     const newRow = createNewRow(newId);
+
+    // ✅ 로컬 상태에 직접 추가 (edit 모드에서는 Store 동기화 안 되므로)
     setInternalRowData((prev) => [newRow, ...prev]);
 
-    // 새 행에 포커스 이동
+    // Store에도 추가 (저장 시 활용)
+    useBcncRegistStore.getState().addShipListItem(newRow);
+
+    // 기존 선택 해제
+    gridRef.current.deselectAll();
+
+    // 새 행에 포커스 이동 (비동기 처리 - 그리드 렌더링 대기)
     setTimeout(() => {
       if (gridRef.current) {
-        const firstNode = gridRef.current.getDisplayedRowAtIndex(0);
-        if (firstNode) {
-          firstNode.setSelected(true);
-          gridRef.current.ensureNodeVisible(firstNode, "top");
-          gridRef.current.setFocusedCell(0, "shipName");
+        // ID 필드로 노드를 찾음
+        const rowNode = gridRef.current.getRowNode(newRow.id || "");
+        if (rowNode) {
+          rowNode.setSelected(true);
+          gridRef.current.ensureNodeVisible(rowNode, "top");
+          gridRef.current.setFocusedCell(rowNode.rowIndex || 0, "shipName");
+        } else {
+          // fallback: 첫 번째 행 선택
+          const firstNode = gridRef.current.getDisplayedRowAtIndex(0);
+          if (firstNode) {
+            firstNode.setSelected(true);
+            gridRef.current.ensureNodeVisible(firstNode, "top");
+          }
         }
       }
     }, 100);
 
-    message.success("새 행이 추가되었습니다.");
+    showSuccess("새 행이 추가되었습니다.");
   }, [generateNewId, createNewRow]);
 
   // 행 복사 핸들러
   const handleCopyRow = useCallback(() => {
     if (!gridRef.current) {
-      message.error("그리드가 초기화되지 않았습니다.");
+      showError("그리드가 초기화되지 않았습니다.");
       return;
     }
 
     const selectedRows = gridRef.current.getSelectedRows() as GridRowData[];
     if (selectedRows.length === 0) {
-      message.warning("복사할 행을 선택해주세요.");
+      showWarning("복사할 행을 선택해주세요.");
       return;
     }
 
-    const newRows: GridRowData[] = selectedRows.map((row) => {
-      const newId = generateNewId();
-      return {
+    // 기존 선택 해제
+    gridRef.current.deselectAll();
+
+    // ✅ 복사할 행들을 배열로 모음
+    const newRows: GridRowData[] = [];
+
+    selectedRows.forEach((row, index) => {
+      const newId = String(Date.now()) + index; // 충돌 방지용 간편 ID
+      const newRow: GridRowData = {
         ...row,
-        shipId: String(newId),
-        id: String(newId),
+        shipId: undefined, // 새 행이므로 shipId 제거
+        shipCustno: undefined, // 새 행이므로 shipCustno 제거
+        id: newId, // 그리드 내부 식별용 임시 ID
         rowStatus: "C" as const,
       };
+
+      newRows.push(newRow);
+      // Store에도 추가 (저장 시 활용)
+      useBcncRegistStore.getState().addShipListItem(newRow);
     });
 
+    // ✅ 로컬 상태에 직접 추가 (edit 모드에서는 Store 동기화 안 되므로)
     setInternalRowData((prev) => [...newRows, ...prev]);
-    message.success(`${selectedRows.length}건의 행이 복사되었습니다.`);
-  }, [generateNewId]);
+
+    showSuccess(`${selectedRows.length}건의 행이 복사되었습니다.`);
+  }, []);
 
   // 행 삭제 핸들러
   const handleDeleteRow = useCallback(() => {
     if (!gridRef.current) {
-      message.error("그리드가 초기화되지 않았습니다.");
+      showError("그리드가 초기화되지 않았습니다.");
       return;
     }
 
     const selectedRows = gridRef.current.getSelectedRows() as GridRowData[];
     if (selectedRows.length === 0) {
-      message.warning("삭제할 행을 선택해주세요.");
+      showWarning("삭제할 행을 선택해주세요.");
       return;
     }
 
@@ -563,7 +253,7 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
 
     gridRef.current?.refreshCells();
     gridRef.current?.deselectAll();
-    message.success(
+    showSuccess(
       `선택된 ${selectedRows.length}건의 행이 삭제 상태로 표시되었습니다. 저장 시 반영됩니다.`
     );
   }, []);
@@ -573,276 +263,71 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
     setInternalRowData(data);
   }, []);
 
-  // 저장 버튼 핸들러
+  // ⚡ 저장 버튼 핸들러 최적화: Grid API에서 데이터 수집
   const handleSave = useCallback(async () => {
     if (!gridRef.current) {
-      message.error("그리드가 초기화되지 않았습니다.");
+      showError("그리드가 초기화되지 않았습니다.");
       return;
     }
 
-    // 변경된 행 필터링 (rowStatus가 "C", "U", "D"인 행)
-    const changedRows = rowData.filter(
-      (row) =>
-        row.rowStatus === "C" || row.rowStatus === "U" || row.rowStatus === "D"
-    );
+    // ✅ AG-Grid API에서 직접 데이터 수집 (로컬 상태/Store 상태 대신)
+    const changedRows: GridRowData[] = [];
+    gridRef.current.forEachNode((node) => {
+      if (
+        node.data &&
+        (node.data.rowStatus === "C" ||
+          node.data.rowStatus === "U" ||
+          node.data.rowStatus === "D")
+      ) {
+        changedRows.push(node.data);
+      }
+    });
 
     if (changedRows.length === 0) {
-      message.warning("저장할 변경사항이 없습니다.");
+      showWarning("저장할 변경사항이 없습니다.");
       return;
     }
+
+    // ✅ 저장 시점에 Store 업데이트
+    useBcncRegistStore.getState().setShipListData(changedRows);
 
     // TODO: API 호출
     // await save(changedRows);
-    message.info(
+    showInfo(
       `저장 기능은 API 연결 후 구현 예정입니다. (변경된 행: ${changedRows.length}건)`
     );
-  }, [rowData]);
-
-  // 편집 종료 시 사용할 노드 참조 및 컬럼 정보
-  const editingNodeRef = useRef<{
-    node: IRowNode<GridRowData>;
-    data: GridRowData;
-    columnId: string; // 컬럼 ID (salesMan, country, currency, shipAddr)
-  } | null>(null);
-
-  // 검색 팝업 모달 관리 (셀 편집 종료 시 사용)
-  const searchModalForEdit = usePageModal<SearchPopupProps, SearchResult>(
-    SearchPopup,
-    {
-      title: "검색", // 동적으로 변경됨
-      centered: true,
-      width: 500,
-      height: 300,
-      destroyOnHidden: true,
-      onReturn: (returnValue) => {
-        // 팝업에서 선택한 값으로 업데이트
-        if (gridRef.current && editingNodeRef.current) {
-          const { node, data, columnId } = editingNodeRef.current;
-
-          if (columnId === "salesMan") {
-            // 영업사원: 코드와 이름 모두 업데이트
-            data.salesMan = returnValue.code;
-            data.salesName = returnValue.name;
-            gridRef.current.refreshCells({
-              rowNodes: [node],
-              columns: ["salesMan", "salesName"],
-            });
-          } else if (columnId === "country") {
-            // 국가코드: 코드와 국가명 모두 업데이트
-            data.country = returnValue.code;
-            data.nationName = returnValue.name;
-            gridRef.current.refreshCells({
-              rowNodes: [node],
-              columns: ["country", "nationName"],
-            });
-          } else if (columnId === "currency") {
-            // 화폐단위: 자기 컬럼만 업데이트
-            data.currency = returnValue.code;
-            gridRef.current.refreshCells({
-              rowNodes: [node],
-              columns: ["currency"],
-            });
-          } else if (columnId === "shipAddr") {
-            // 주소: 자기 컬럼만 업데이트 (code 또는 name 필드 사용)
-            data.shipAddr = returnValue.code || returnValue.name || "";
-            gridRef.current.refreshCells({
-              rowNodes: [node],
-              columns: ["shipAddr"],
-            });
-          }
-
-          // 상태 업데이트 (rowStatus 변경)
-          if (data.rowStatus !== "C") {
-            data.rowStatus = "U";
-            gridRef.current.refreshCells({
-              rowNodes: [node],
-              columns: ["rowStatus"],
-              force: true,
-            });
-          }
-          editingNodeRef.current = null; // 참조 초기화
-        }
-      },
-    }
-  );
-
-  // 셀 편집 종료 핸들러 (영업사원, 국가코드, 화폐단위, 주소)
-  const handleCellEditingStopped = useCallback(
-    async (params: CellEditingStoppedEvent<GridRowData>) => {
-      const columnId = params.column?.getColId();
-
-      // 처리할 컬럼인지 확인
-      if (
-        columnId !== "salesMan" &&
-        columnId !== "country" &&
-        columnId !== "currency" &&
-        columnId !== "shipAddr"
-      ) {
-        return;
-      }
-
-      // 입력값 확인
-      const inputValue = params.newValue?.toString().trim() || "";
-      if (!inputValue) {
-        return; // 빈 값이면 무시
-      }
-
-      // 기존 값과 동일하면 무시
-      const oldValue = params.oldValue?.toString().trim() || "";
-      if (inputValue === oldValue) {
-        return;
-      }
-
-      try {
-        let searchResults: Array<
-          | SalesManSearchResult
-          | CountrySearchResult
-          | CurrencySearchResult
-          | AddressSearchResult
-        > = [];
-
-        // 컬럼별로 적절한 API 호출
-        if (columnId === "salesMan") {
-          searchResults = await searchSalesManApi(inputValue);
-        } else if (columnId === "country") {
-          searchResults = await searchCountryApi(inputValue);
-        } else if (columnId === "currency") {
-          searchResults = await searchCurrencyApi(inputValue);
-        } else if (columnId === "shipAddr") {
-          searchResults = await searchAddressApi(inputValue);
-        }
-
-        if (searchResults.length === 0) {
-          // 조회 결과가 없으면 팝업 띄우기
-          editingNodeRef.current = {
-            node: params.node,
-            data: params.data as GridRowData,
-            columnId,
-          };
-          // 모달 제목 동적 변경을 위해 새로운 모달 인스턴스 생성
-          searchModalForEdit.openModal({
-            initialValue: inputValue,
-            searchParam: inputValue,
-          });
-          // 모달 제목 업데이트 (임시로 동일한 모달 사용)
-        } else if (searchResults.length === 1) {
-          // 단건이면 바로 세팅
-          const rowData = params.data as GridRowData;
-          if (rowData && params.node) {
-            const result = searchResults[0] as
-              | SalesManSearchResult
-              | CountrySearchResult
-              | CurrencySearchResult
-              | AddressSearchResult;
-
-            if (columnId === "salesMan") {
-              const salesResult = result as SalesManSearchResult;
-              rowData.salesMan = salesResult.code;
-              rowData.salesName = salesResult.name;
-              if (gridRef.current) {
-                gridRef.current.refreshCells({
-                  rowNodes: [params.node],
-                  columns: ["salesMan", "salesName"],
-                });
-              }
-              message.success("영업사원 정보가 자동으로 설정되었습니다.");
-            } else if (columnId === "country") {
-              const countryResult = result as CountrySearchResult;
-              rowData.country = countryResult.code;
-              rowData.nationName = countryResult.name;
-              if (gridRef.current) {
-                gridRef.current.refreshCells({
-                  rowNodes: [params.node],
-                  columns: ["country", "nationName"],
-                });
-              }
-              message.success("국가코드 정보가 자동으로 설정되었습니다.");
-            } else if (columnId === "currency") {
-              const currencyResult = result as CurrencySearchResult;
-              rowData.currency = currencyResult.code;
-              if (gridRef.current) {
-                gridRef.current.refreshCells({
-                  rowNodes: [params.node],
-                  columns: ["currency"],
-                });
-              }
-              message.success("화폐단위가 자동으로 설정되었습니다.");
-            } else if (columnId === "shipAddr") {
-              const addressResult = result as AddressSearchResult;
-              rowData.shipAddr = addressResult.address;
-              if (gridRef.current) {
-                gridRef.current.refreshCells({
-                  rowNodes: [params.node],
-                  columns: ["shipAddr"],
-                });
-              }
-              message.success("주소가 자동으로 설정되었습니다.");
-            }
-
-            // 상태 업데이트 (rowStatus 변경)
-            if (rowData.rowStatus !== "C" && gridRef.current) {
-              rowData.rowStatus = "U";
-              gridRef.current.refreshCells({
-                rowNodes: [params.node],
-                columns: ["rowStatus"],
-                force: true,
-              });
-            }
-          }
-        } else {
-          // 다건이면 팝업 띄우기
-          editingNodeRef.current = {
-            node: params.node,
-            data: params.data as GridRowData,
-            columnId,
-          };
-          searchModalForEdit.openModal({
-            initialValue: inputValue,
-            searchParam: inputValue,
-          });
-        }
-      } catch (error) {
-        message.error(`${columnId} 조회 중 오류가 발생했습니다.`);
-        if (import.meta.env.DEV) {
-          console.error(`${columnId} 조회 실패:`, error);
-        }
-      }
-    },
-    [searchModalForEdit]
-  );
+  }, []); // ⚡ 의존성 배열 비움: gridRef는 ref이므로 안정적
 
   // 컬럼 정의 (useMemo로 최적화)
   const columnDefs: ColDef<
     BcncShipResponse & { id?: string; rowStatus?: "C" | "U" | "D" }
-  >[] = useMemo(
-    () => [
+  >[] = useMemo(() => {
+    // 편집 가능 여부 결정 함수 (DetailView가 edit 모드이고 삭제된 행이 아닐 때만 편집 가능)
+    const getEditable = (params: { data?: GridRowData }) => {
+      if (!isEditMode) return false;
+      return params.data?.rowStatus !== "D";
+    };
+
+    return [
       {
         field: "rowStatus",
-        headerName: "상태",
+        headerName: t("상태"),
         width: 80,
         pinned: "left",
-        excludeFromExcel: true, // 엑셀 다운로드에서 제외
+        suppressExport: true, // 엑셀 다운로드에서 제외
         headerClass: "ag-header-cell-center",
         sortable: false,
         filter: false,
-        cellRenderer: (params: { value?: "C" | "U" | "D" }) => {
-          if (!params.value) return null;
-          const statusMap = {
-            C: { text: "추가", color: "blue" },
-            U: { text: "수정", color: "orange" },
-            D: { text: "삭제", color: "red" },
-          };
-          const statusInfo = statusMap[params.value];
-          if (!statusInfo) return null;
-          return (
-            <Tag color={statusInfo.color} style={{ margin: 0 }}>
-              {statusInfo.text}
-            </Tag>
-          );
+        checkboxSelection: false, // 체크박스가 이 컬럼에 들어가지 않도록 명시
+        valueGetter: (params) => {
+          // rowStatus 필드가 없으면 data에서 가져오기
+          return params.data?.rowStatus;
         },
+        cellRenderer: StatusTagRenderer,
         cellStyle: (params) => {
           const baseStyle: CellStyle = { textAlign: "center" };
-          if (params.value === "D") {
+          const rowStatus = params.value || params.data?.rowStatus;
+          if (rowStatus === "D") {
             return { ...baseStyle, backgroundColor: "#fff1f0" };
           }
           return baseStyle;
@@ -850,9 +335,9 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
       },
       {
         field: "useYn",
-        headerName: "사용",
+        headerName: t("사용"),
         width: 80,
-        editable: true,
+        editable: getEditable,
         cellEditor: "agCheckboxCellEditor",
         cellRenderer: "agCheckboxCellRenderer",
         valueGetter: (params) => {
@@ -865,21 +350,23 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
           }
           return false;
         },
+        cellStyle: { textAlign: "center" } as CellStyle,
         cellClass: "ag-checkbox-cell-center",
-        headerClass: "ag-header-cell-center",
+        headerClass: "ag-header-cell-center required-header",
       },
       {
         field: "shipName",
-        headerName: "배송지 명",
+        headerName: t("배송지명"),
         width: 200,
         cellStyle: { textAlign: "left" } as CellStyle,
-        editable: true,
+        editable: getEditable,
+        headerClass: "required-header",
       },
       {
         field: "primaryChk",
         headerName: "Primary",
         width: 80,
-        editable: true,
+        editable: getEditable,
         cellEditor: "agCheckboxCellEditor",
         cellRenderer: "agCheckboxCellRenderer",
         valueGetter: (params) => {
@@ -892,164 +379,279 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
           }
           return false;
         },
+        cellStyle: { textAlign: "center" } as CellStyle,
         cellClass: "ag-checkbox-cell-center",
         headerClass: "ag-header-cell-center",
       },
       {
         field: "orgId",
-        headerName: "사업장",
+        headerName: t("사업장"),
         width: 120,
         cellStyle: { textAlign: "center" } as CellStyle,
         headerClass: "ag-header-cell-center",
-        editable: true,
+        // editable: getEditable,
       },
       {
         field: "salesMan",
-        headerName: "영업사원",
+        headerName: t("영업사원"),
         width: 100,
         cellStyle: { textAlign: "center" } as CellStyle,
         headerClass: "ag-header-cell-center",
-        editable: true, // 편집 기능 활성화
-        cellEditor: "agTextCellEditor", // 기본 텍스트 에디터 사용
-        cellRenderer: (params: ICellRendererParams<GridRowData>) => {
-          return <SalesManCellRenderer params={params} gridRef={gridRef} />;
+        editable: getEditable,
+        cellRenderer: SearchIconCellRenderer,
+        cellRendererParams: {
+          onSearchClick: (node: IRowNode<GridRowData>, field: string) =>
+            handleOpenSearch(node, field),
+          field: "salesMan",
+        },
+        valueFormatter: (params) => {
+          // salesName이 있으면 "salesMan (salesName)" 형식, 아니면 salesMan
+          const { salesMan, salesName } = params.data || {};
+          if (salesName) return `${salesMan || ""} (${salesName})`;
+          return salesMan || "";
         },
       },
       {
         field: "salesName",
-        headerName: "영업사원명",
+        headerName: t("영업사원명"),
         width: 150,
         cellStyle: { textAlign: "left" } as CellStyle,
+        // hide: true, // 영업사원 컬럼에 병합 표시하므로 숨김
       },
       {
         field: "country",
-        headerName: "국가코드",
+        headerName: t("국가코드"),
         width: 100,
         cellStyle: { textAlign: "center" } as CellStyle,
-        headerClass: "ag-header-cell-center",
-        editable: true,
-        cellEditor: "agTextCellEditor",
-        cellRenderer: (params: ICellRendererParams<GridRowData>) => {
-          return (
-            <SearchCellRenderer
-              params={params}
-              gridRef={gridRef}
-              columnId="country"
-              modalTitle="국가코드 검색"
-            />
-          );
+        headerClass: "ag-header-cell-center required-header",
+        editable: getEditable,
+        cellRenderer: SearchIconCellRenderer,
+        cellRendererParams: {
+          onSearchClick: (node: IRowNode<GridRowData>, field: string) =>
+            handleOpenSearch(node, field),
+          field: "country",
         },
       },
       {
         field: "nationName",
-        headerName: "국가명",
+        headerName: t("국가명"),
         width: 150,
         cellStyle: { textAlign: "left" } as CellStyle,
+        // hide: true, // 국가코드에 병합 표시 고려 (일단 유지하거나 숨김)
       },
       {
-        field: "currency",
-        headerName: "화폐단위",
-        width: 100,
+        ...createComboBoxColumn<GridRowData>(
+          "currency",
+          t("화폐단위"),
+          {
+            comCodeParams: {
+              module: "GL",
+              type: "FRNCUR",
+              enabledFlag: "Y",
+            },
+            allOptionLabel: "-선택-",
+            labelKey: "code",
+            // valueKey: "code",
+            editable: true, // createComboBoxColumn에서 기본값으로 사용, 아래에서 함수로 덮어씀
+          },
+          100
+        ),
         cellStyle: { textAlign: "center" } as CellStyle,
         headerClass: "ag-header-cell-center",
-        editable: true,
-        cellEditor: "agTextCellEditor",
-        cellRenderer: (params: ICellRendererParams<GridRowData>) => {
-          return (
-            <SearchCellRenderer
-              params={params}
-              gridRef={gridRef}
-              columnId="currency"
-              modalTitle="화폐단위 검색"
-            />
-          );
-        },
+        editable: getEditable,
       },
       {
         field: "shipAddr",
-        headerName: "주소",
+        headerName: t("주소"),
         width: 300,
         cellStyle: { textAlign: "left" } as CellStyle,
-        editable: true,
-        cellEditor: "agTextCellEditor",
-        cellRenderer: (params: ICellRendererParams<GridRowData>) => {
-          return (
-            <SearchCellRenderer
-              params={params}
-              gridRef={gridRef}
-              columnId="shipAddr"
-              modalTitle="주소 검색"
-            />
-          );
+        editable: getEditable,
+        cellRenderer: SearchIconCellRenderer,
+        cellRendererParams: {
+          onSearchClick: (node: IRowNode<GridRowData>, field: string) =>
+            handleOpenSearch(node, field),
+          field: "shipAddr",
         },
+        tooltipField: "shipAddr", // 툴팁 추가
       },
       {
         field: "chargeMan",
-        headerName: "담당자",
+        headerName: t("담당자"),
         width: 120,
         cellStyle: { textAlign: "left" } as CellStyle,
-        editable: true,
+        editable: getEditable,
       },
       {
         field: "phoneNum",
-        headerName: "전화번호",
+        headerName: t("전화번호"),
         width: 150,
         cellStyle: { textAlign: "left" } as CellStyle,
-        editable: true,
+        editable: getEditable,
       },
       {
         field: "chargeNumber",
-        headerName: "담당자번호",
+        headerName: t("담당자번호"),
         width: 120,
         cellStyle: { textAlign: "left" } as CellStyle,
-        editable: true,
+        editable: getEditable,
       },
       {
         field: "siteFaxNo",
-        headerName: "팩스번호",
+        headerName: t("팩스번호"),
         width: 150,
         cellStyle: { textAlign: "left" } as CellStyle,
-        editable: true,
+        editable: getEditable,
       },
       {
         field: "contractFrom",
-        headerName: "계약일",
+        headerName: t("계약일"),
         width: 120,
         cellStyle: { textAlign: "center" } as CellStyle,
         headerClass: "ag-header-cell-center",
-        editable: true,
+        editable: getEditable,
+        cellEditor: "agDateCellEditor",
+        cellEditorParams: {
+          format: "yyyy-MM-dd",
+        },
+        valueGetter: (params) => {
+          if (!params.data) return null;
+          const value = params.data.contractFrom;
+          if (!value) return null;
+          // 문자열이면 Date 객체로 변환
+          if (typeof value === "string") {
+            const date = dayjs(value);
+            return date.isValid() ? date.toDate() : null;
+          }
+          // Date 객체면 그대로 반환
+          if (
+            value &&
+            typeof value === "object" &&
+            (value as any) instanceof Date
+          ) {
+            return value;
+          }
+          return null;
+        },
+        valueSetter: (params) => {
+          if (!params.data) return false;
+          // dayjs.isValid() check instead of instanceof Date
+          const newVal = params.newValue;
+          if (dayjs(newVal).isValid()) {
+            params.data.contractFrom = dayjs(newVal).format("YYYY-MM-DD");
+            return true;
+          }
+          return false;
+        },
+        valueFormatter: (params: ValueFormatterParams<GridRowData>) => {
+          if (!params.value) return "";
+          // Date 객체를 yyyy-MM-dd 형식으로 변환
+          if (params.value instanceof Date) {
+            return dayjs(params.value).format("YYYY-MM-DD");
+          }
+          // 문자열이면 dayjs로 파싱 후 포맷팅
+          const date = dayjs(params.value);
+          return date.isValid()
+            ? date.format("YYYY-MM-DD")
+            : String(params.value);
+        },
       },
       {
         field: "contractTo",
-        headerName: "계약만료일",
+        headerName: t("계약만료일"),
         width: 120,
         cellStyle: { textAlign: "center" } as CellStyle,
         headerClass: "ag-header-cell-center",
-        editable: true,
+        editable: getEditable,
+        cellEditor: "agDateCellEditor",
+        cellEditorParams: {
+          format: "yyyy-MM-dd",
+        },
+        valueGetter: (params) => {
+          if (!params.data) return null;
+          const value = params.data.contractTo;
+          if (!value) return null;
+          // 문자열이면 Date 객체로 변환
+          if (typeof value === "string") {
+            const date = dayjs(value);
+            return date.isValid() ? date.toDate() : null;
+          }
+          // Date 객체면 그대로 반환
+          if (
+            value &&
+            typeof value === "object" &&
+            (value as any) instanceof Date
+          ) {
+            return value;
+          }
+          return null;
+        },
+        valueSetter: (params) => {
+          if (!params.data) return false;
+          // dayjs.isValid() check instead of instanceof Date
+          const newVal = params.newValue;
+          if (dayjs(newVal).isValid()) {
+            params.data.contractTo = dayjs(newVal).format("YYYY-MM-DD");
+            return true;
+          }
+          return false;
+        },
+        valueFormatter: (params: ValueFormatterParams<GridRowData>) => {
+          if (!params.value) return "";
+          // Date 객체를 yyyy-MM-dd 형식으로 변환
+          if (params.value instanceof Date) {
+            return dayjs(params.value).format("YYYY-MM-DD");
+          }
+          // 문자열이면 dayjs로 파싱 후 포맷팅
+          const date = dayjs(params.value);
+          return date.isValid()
+            ? date.format("YYYY-MM-DD")
+            : String(params.value);
+        },
       },
       {
-        field: "channel",
-        headerName: "Channel1",
-        width: 100,
+        ...createComboBoxColumn<GridRowData>(
+          "channel",
+          t("채널") + "1",
+          {
+            comCodeParams: {
+              module: "AR",
+              type: "CHANEL",
+              enabledFlag: "Y",
+            },
+            allOptionLabel: "-선택-",
+            editable: true, // createComboBoxColumn에서 기본값으로 사용, 아래에서 함수로 덮어씀
+          },
+          100
+        ),
         cellStyle: { textAlign: "center" } as CellStyle,
-        headerClass: "ag-header-cell-center",
-        editable: true,
+        headerClass: "ag-header-cell-center required-header",
+        editable: getEditable,
       },
       {
         field: "channel2",
-        headerName: "Channel2",
+        headerName: t("채널") + "2",
         width: 100,
         cellStyle: { textAlign: "center" } as CellStyle,
         headerClass: "ag-header-cell-center",
-        editable: true,
+        editable: getEditable,
+        cellEditor: "agSelectCellEditor",
+        cellEditorParams: {
+          values: [""],
+        },
+        valueFormatter: () => "-선택-",
       },
       {
         field: "channel3",
-        headerName: "Channel3",
+        headerName: t("채널") + "3",
         width: 100,
         cellStyle: { textAlign: "center" } as CellStyle,
         headerClass: "ag-header-cell-center",
-        editable: true,
+        editable: getEditable,
+        cellEditor: "agSelectCellEditor",
+        cellEditorParams: {
+          values: [""],
+        },
+        valueFormatter: () => "-선택-",
       },
       {
         field: "category1",
@@ -1057,7 +659,12 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
         width: 100,
         cellStyle: { textAlign: "center" } as CellStyle,
         headerClass: "ag-header-cell-center",
-        editable: true,
+        editable: getEditable,
+        cellEditor: "agSelectCellEditor",
+        cellEditorParams: {
+          values: [""],
+        },
+        valueFormatter: () => "-선택-",
       },
       {
         field: "category2",
@@ -1065,7 +672,12 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
         width: 100,
         cellStyle: { textAlign: "center" } as CellStyle,
         headerClass: "ag-header-cell-center",
-        editable: true,
+        editable: getEditable,
+        cellEditor: "agSelectCellEditor",
+        cellEditorParams: {
+          values: [""],
+        },
+        valueFormatter: () => "-선택-",
       },
       {
         field: "category3",
@@ -1073,7 +685,12 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
         width: 100,
         cellStyle: { textAlign: "center" } as CellStyle,
         headerClass: "ag-header-cell-center",
-        editable: true,
+        editable: getEditable,
+        cellEditor: "agSelectCellEditor",
+        cellEditorParams: {
+          values: [""],
+        },
+        valueFormatter: () => "-선택-",
       },
       {
         field: "category4",
@@ -1081,33 +698,40 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
         width: 100,
         cellStyle: { textAlign: "center" } as CellStyle,
         headerClass: "ag-header-cell-center",
-        editable: true,
+        editable: getEditable,
+        cellEditor: "agSelectCellEditor",
+        cellEditorParams: {
+          values: [""],
+        },
+        valueFormatter: () => "-선택-",
       },
       {
         field: "attribute1",
-        headerName: "비고",
+        headerName: t("비고"),
         width: 200,
         cellStyle: { textAlign: "left" } as CellStyle,
-        editable: true,
+        editable: getEditable,
       },
       {
         field: "attribute2",
-        headerName: "메모",
+        headerName: t("메모"),
         width: 200,
         cellStyle: { textAlign: "left" } as CellStyle,
-        editable: true,
+        editable: getEditable,
       },
-    ],
-    []
-  );
+    ];
+  }, [t, isEditMode, handleOpenSearch]);
+
+  // 행 선택 여부 상태
+  const [hasSelection, setHasSelection] = useState(false);
 
   return (
     <div className="data-grid-panel">
-      {/* 임시 주석처리 - 빌드 에러 방지 */}
-      {/* <style>{`
+      <style>{`
         .ag-checkbox-cell-center {
           padding: 0 !important;
           text-align: center !important;
+          vertical-align: middle !important;
         }
         .ag-checkbox-cell-center > div {
           display: flex !important;
@@ -1118,7 +742,7 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
         .ag-checkbox-cell-center .ag-checkbox {
           margin: 0 !important;
         }
-      `}</style> */}
+      `}</style>
       {/* 그리드 */}
       <FormAgGrid<
         BcncShipResponse & { id?: string; rowStatus?: "C" | "U" | "D" }
@@ -1153,41 +777,65 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
             paginationPageSizeSelector: [10, 20, 50, 100],
             suppressRowClickSelection: false, // 행 클릭 선택 활성화
             onGridReady: handleGridReady,
+            getRowId: (params) => {
+              return params.data.id || params.data.shipId;
+            },
             onSelectionChanged: (params) => {
-              // 선택된 행 변경 시 필요한 로직 추가 가능
               if (params.api) {
-                // const selectedRows = params.api.getSelectedRows();
-                // 선택된 행 수 확인 등 필요한 로직 추가 가능
+                const selectedRows = params.api.getSelectedRows();
+                setHasSelection(selectedRows.length > 0);
               }
             },
-            onCellValueChanged: (params) => {
+            onCellValueChanged: (
+              params: CellValueChangedEvent<GridRowData>
+            ) => {
               if (params.data) {
                 const updatedRow = params.data as GridRowData;
+                const colId = params.column.getColId();
+
+                // ✅ ComboBox 값 되돌림 방지
+                // ComboBox가 값을 설정한 직후 AG-Grid가 빈 값으로 되돌리는 경우
+                if (
+                  params.oldValue &&
+                  params.oldValue !== "" &&
+                  params.oldValue !== null &&
+                  params.oldValue !== undefined &&
+                  (params.newValue === null ||
+                    params.newValue === undefined ||
+                    params.newValue === "")
+                ) {
+                  // 값을 즉시 복원
+                  params.node.setDataValue(colId, params.oldValue);
+                  return;
+                }
 
                 // 삭제된 행은 편집 불가
                 if (updatedRow.rowStatus === "D") {
-                  message.error("삭제된 행은 편집할 수 없습니다.");
+                  showError("삭제된 행은 편집할 수 없습니다.");
                   if (gridRef.current) {
                     gridRef.current.refreshCells({ rowNodes: [params.node] });
                   }
                   return;
                 }
 
-                // 신규 행이 아니면 수정 상태로 변경
-                if (updatedRow.rowStatus !== "C") {
-                  updatedRow.rowStatus = "U";
+                // rowStatus 필드 변경은 무한 루프 방지를 위해 무시
+                if (colId === "rowStatus") return;
+
+                // ⚡ 성능 최적화: Store 실시간 업데이트 제거
+                // AG-Grid 내부 상태만 업데이트하고, Store는 저장 시에만 업데이트
+                if (
+                  updatedRow.rowStatus !== "C" &&
+                  updatedRow.rowStatus !== "U"
+                ) {
+                  params.node.setDataValue("rowStatus", "U");
                 }
 
-                // 상태 컬럼만 refresh
-                if (gridRef.current) {
-                  gridRef.current.refreshCells({
-                    rowNodes: [params.node],
-                    columns: ["rowStatus"],
-                    force: true,
-                  });
-                }
+                // ❌ Store 업데이트 제거: 매 셀 변경마다 Store를 업데이트하면
+                // Store 변경 → 컴포넌트 리렌더링 → 그리드 깜빡임/버벅임 발생
+                // 저장 버튼 클릭 시 gridApi에서 데이터를 수집하여 한 번에 처리
               }
             },
+            // ✅ 콤보박스 선택 완료를 위해 onCellEditingStopped 활성화 (Store 업데이트는 안 함)
             onCellEditingStopped: handleCellEditingStopped,
           }),
           [handleGridReady, handleCellEditingStopped]
@@ -1195,9 +843,12 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
         toolbarButtons={{
           showDelete: true,
           showCopy: true,
-          showAdd: true,
+          showAdd: true, // 추가는 선택 여부와 관계없음
+          enableDelete: isEditMode && hasSelection, // 수정 모드이고 행이 선택되어야 함
+          enableCopy: isEditMode && hasSelection, // 수정 모드이고 행이 선택되어야 함
+          enableAdd: isEditMode, // 수정 모드이면 가능
           enableExcelDownload: true,
-          showSave: true,
+          // showSave: true,
         }}
         onAddRow={handleAddRow}
         onCopyRow={handleCopyRow}
@@ -1206,10 +857,14 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
         setRowData={handleSetRowData}
         onSave={handleSave}
       />
-      {/* 영업사원 검색 팝업 모달 (셀 편집 종료 시 사용) */}
-      <AppPageModal {...searchModalForEdit.modalProps} />
+      <Suspense fallback={<div />}>
+        <AppPageModal {...modalProps.writerModalProps} />
+        <AppPageModal {...modalProps.nationalCodeModalProps} />
+        <AppPageModal {...modalProps.addressModalProps} />
+      </Suspense>
     </div>
   );
 };
 
-export default DetailGrid;
+// React.memo로 감싸서 불필요한 리렌더링 방지
+export default memo(DetailGrid);

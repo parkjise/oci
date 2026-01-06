@@ -1,24 +1,38 @@
 import React, { useRef, useCallback, useMemo } from "react";
-import type { GridApi, GridReadyEvent, CellStyle, ColDef, IHeaderParams } from "ag-grid-community";
-import { FormAgGrid, FormButton } from "@components/ui/form";
+import type { GridApi, GridReadyEvent, CellStyle, ColDef, IHeaderParams, RowClickedEvent } from "ag-grid-community";
+import { FormAgGrid } from "@components/ui/form";
 import { createCheckboxColumn, formatNumber } from "@utils/agGridUtils";
+import { parseExcelFile } from "@utils/excelUtils";
 import type { AdvpayCtDtaCreatSearchResponse } from "@/types/fcm/gl/settlement/AdvpayCtDtaCreat.types";
 import { useAdvpayCtDtaCreatStore } from "@/store/fcm/gl/settlement/AdvpayCtDtaCreatStore";
-
-
+import { message, Tag, type FormInstance } from "antd";
+import { FormAgGridLayoutStyles } from "@components/ui/form/AgGrid/FormAgGridLayout.style";
 type DetailGridProps = {
   className?: string;
   rowData?: AdvpayCtDtaCreatSearchResponse[];
+  formRef?: React.RefObject<FormInstance | null>;
 };
 
 type AdvpayCtDtaCreatDataWithStatus = AdvpayCtDtaCreatSearchResponse & {
   rowStatus?: "C" | "U" | "D";
 };
 
-const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
-  // store에서 searchData 구독 추가
-  const { searchData, setGridApi } = useAdvpayCtDtaCreatStore();
+const DetailGrid: React.FC<DetailGridProps> = ({
+   rowData: propRowData,
+   className,
+   //formRef: propFormRef
+  }) => {
+  // store에서 필요한 값들만 selector로 가져오기
+  const searchData = useAdvpayCtDtaCreatStore((state) => state.searchData);
+  const setSearchData = useAdvpayCtDtaCreatStore((state) => state.setSearchData);
+  const setGridApi = useAdvpayCtDtaCreatStore((state) => state.setGridApi);
+  const isCall = useAdvpayCtDtaCreatStore((state) => state.isCall);
+  
   const gridRef = useRef<GridApi | null>(null);
+  //const internalFormRef = useRef<FormInstance | null>(null);
+  
+  // propFormRef가 있으면 사용, 없으면 internalFormRef 사용
+  //const formRef = propFormRef || internalFormRef;
 
   // propRowData가 있으면 propRowData 사용, 없으면 store의 searchData 사용
   // searchData가 없거나 빈 배열이면 빈 배열 반환 (조회 결과 없음)
@@ -31,11 +45,60 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
     }));
   }, [propRowData, searchData]); // searchData를 dependency에 추가
 
+
+
   //그리드 준비 핸들러
   const handleGridReady = useCallback((params: GridReadyEvent) => {
     gridRef.current = params.api;
     setGridApi(params.api); // store에 gridApi 저장
   }, [setGridApi]);
+
+  // 행 클릭 시 전체 행 선택 및 포커스 설정 핸들러
+  const handleRowClicked = useCallback((params: RowClickedEvent<AdvpayCtDtaCreatDataWithStatus>) => {
+    if (!gridRef.current || !params.node) return;
+
+    const clickedNode = params.node;
+    // 행 선택 (전체 행 선택)
+    clickedNode.setSelected(true);
+    // 행이 보이도록 스크롤
+    gridRef.current.ensureNodeVisible(clickedNode, "middle");
+    // 전체 행이 선택된 상태로 표시되도록 포커스 제거 (행 선택 상태만 유지)
+  }, []);
+
+  // 엑셀 업로드 핸들러
+  const handleExcelUpload = useCallback(async (file: File) => {
+    try {
+      const uploadedData = await parseExcelFile<AdvpayCtDtaCreatSearchResponse>(file);
+      if (uploadedData && uploadedData.length > 0) {
+        // 업로드된 데이터를 그리드 형식에 맞게 변환
+        const newRows = uploadedData.map((item) => ({
+          ...item,
+          id: item.invoiceId ?? undefined,
+          chk: item.chk || "N",
+          rowStatus: "C" as const, // 신규 상태
+        }));
+
+        // 그리드에 추가
+        gridRef.current?.applyTransaction({ add: newRows });
+
+        // store의 searchData에도 추가
+        const currentData = useAdvpayCtDtaCreatStore.getState().searchData;
+        const updatedData = [...currentData, ...newRows];
+        setSearchData(updatedData);
+
+        message.success(`${newRows.length}건이 업로드되었습니다.`);
+      } else {
+        message.warning("업로드할 데이터가 없습니다.");
+      }
+    } catch (e) {
+      console.error("엑셀 업로드 오류:", e);
+      message.error("엑셀 업로드에 실패했습니다.");
+    }
+    return false;
+  }, [setSearchData]);
+
+  
+
 
   // 체크박스 헤더 컴포넌트
   const CheckboxHeaderRenderer = React.memo((params: IHeaderParams) => {
@@ -83,11 +146,27 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
 
         const checked = e.target.checked;
         const rowNodes: any[] = [];
+        const isCall = useAdvpayCtDtaCreatStore.getState().isCall;
+        const setSearchData = useAdvpayCtDtaCreatStore.getState().setSearchData;
+        const currentData = useAdvpayCtDtaCreatStore.getState().searchData;
         
         params.api.forEachNode((node) => {
           if (node.data && node.data.modified !== "Y") {
             // 이관여부가 Y가 아닌 행만 업데이트
-            node.data.chk = checked ? "Y" : "N";
+            const newChkValue = checked ? "Y" : "N";
+            node.data.chk = newChkValue;
+            
+            // isCall이 "Y"일 때 CREATION_YN 설정
+            // 웹스퀘어 로직: creation_yn == "N" && modified == "N"일 때만 CREATION_YN을 "Y"로 설정
+            if (isCall === "Y") {
+              const currentCreationYn = node.data.creationYn || "N";
+              if (checked && currentCreationYn === "N" && node.data.modified !== "Y") {
+                node.data.creationYn = "Y";
+              } else if (!checked) {
+                node.data.creationYn = "N";
+              }
+            }
+            
             rowNodes.push(node);
           }
         });
@@ -99,12 +178,30 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
             columns: ["chk"],
             force: true,
           });
+          
+          // searchData도 업데이트
+          const updatedData = currentData.map((item) => {
+            const node = rowNodes.find((n) => n.data?.invoiceLineId === item.invoiceLineId);
+            if (node && node.data.modified !== "Y") {
+              const newCreationYn = isCall === "Y" 
+                ? (checked && (item.creationYn === "N" || !item.creationYn) ? "Y" : (checked ? item.creationYn : "N"))
+                : item.creationYn;
+              return {
+                ...item,
+                chk: checked ? "Y" : "N",
+                creationYn: isCall === "Y" ? newCreationYn : item.creationYn,
+              };
+            }
+            return item;
+          });
+          setSearchData(updatedData);
         }
 
         setIsChecked(checked);
         setIsIndeterminate(false);
       },
       [params.api]
+      
     );
 
     // 초기 상태 설정 및 변경 감지
@@ -172,10 +269,38 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
           headerClass: "ag-header-cell-center",
         },
         {
-          ...createCheckboxColumn<AdvpayCtDtaCreatDataWithStatus>(
-            "chk",
+          field: "rowStatus",
+          headerName: "상태",
+          width: 80,
+          minWidth: 80,
+          maxWidth: 80,
+          pinned: "left",
+          suppressHeaderMenuButton: true,
+          suppressMenu: true,
+          sortable: false,
+          filter: false,
+          resizable: false,
+          editable: false,
+          cellRenderer: (params: { value: "C" | "U" | "D" | undefined }) => {
+            if (!params.value) return null;
+            const statusMap = {
+              C: { text: "추가", color: "blue" },
+              U: { text: "수정", color: "orange" },
+              D: { text: "삭제", color: "red" },
+            };
+            const statusInfo = statusMap[params.value];
+            if (!statusInfo) return null;
+            return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
+          },
+          cellStyle: { textAlign: "center" } as CellStyle,
+        },        
+        {
+          ...createCheckboxColumn<AdvpayCtDtaCreatDataWithStatus & Record<string, unknown>>(
             "",
-            50
+            "chk",
+            {
+              width: 50,
+            }
           ),
           checkboxSelection: false, // 기본 체크박스 비활성화하고 커스텀 렌더러 사용
           headerComponent: CheckboxHeaderRenderer,
@@ -193,9 +318,32 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
           valueSetter: (params) => {
             if (params.data) {
               if (params.data.modified === "Y") {
+                message.warning("이관된 자료는 삭제 할 수 없습니다.");
                 return false;
               }
-              params.data.chk = params.newValue ? "Y" : "N";
+              
+              const newChkValue = params.newValue ? "Y" : "N";
+              params.data.chk = newChkValue;
+              
+              // isCall이 "Y"일 때 CREATION_YN 설정
+              if (isCall === "Y") {
+                params.data.creationYn = newChkValue;
+              }
+              
+              // 그리드 데이터 업데이트를 위해 searchData도 업데이트
+              const currentData = useAdvpayCtDtaCreatStore.getState().searchData;
+              const updatedData = currentData.map((item) => {
+                if (item.invoiceLineId === params.data?.invoiceLineId) {
+                  return {
+                    ...item,
+                    chk: newChkValue,
+                    creationYn: isCall === "Y" ? newChkValue : item.creationYn,
+                  };
+                }
+                return item;
+              });
+              setSearchData(updatedData);
+              
               return true;
             }
             return false;
@@ -467,72 +615,57 @@ const DetailGrid: React.FC<DetailGridProps> = ({ rowData: propRowData }) => {
   );
 
   return (
-    <div className="data-grid-panel">
-        <style>{`
-        .ag-checkbox-cell-center {
-          padding: 0 !important;
-          text-align: center !important;
-        }
-        .ag-checkbox-cell-center > div {
-          display: flex !important;
-          justify-content: center !important;
-          align-items: center !important;
-          height: 100% !important;
-        }
-        .ag-checkbox-cell-center .ag-checkbox {
-          margin: 0 !important;
-        }
-      `}</style>
-      <FormAgGrid<AdvpayCtDtaCreatDataWithStatus & { id?: string }>
-        rowData={rowData}
-        columnDefs={columnDefs}
-        headerHeight={32}
-        height={600}
-        excelFileName="선급비용자료생성"
-        idField="id"
-        showToolbar={true}
-        styleOptions={{
-          fontSize: "12px",
-          headerFontSize: "12px",
-          rowHeight: "32px",
-          headerHeight: "32px",
-          cellPadding: "6px",
-          headerPadding: "8px",
-          selectedRowBackgroundColor: "#e6f7ff",
-          hoverRowBackgroundColor: "#bae7ff",
-        }}
-        gridOptions={useMemo(
-          () => ({
-            defaultColDef: {
-              flex: undefined, // flex 제거하여 width가 적용되도록 함
-            },
-            animateRows: true,
-            pagination: false,
-            rowHeight: 32,
-            suppressRowClickSelection: true,
-            onGridReady: handleGridReady,
-          }),
-          [handleGridReady]
-        )}
-        onGridReady={handleGridReady}
-        toolbarButtons={{
-          showCopy: false,
-          showAdd: false,
-          enableExcelDownload: true,
-          showDelete: true,
-          showSave: true
-        }}
-        customButtons={[
-          <FormButton
-            key="newSearch"
-            size="small"
-            className="data-grid-panel__button"
-          >
-            신규자료검색
-          </FormButton>,
-        ]}
-      />
-    </div>
+    
+    <FormAgGridLayoutStyles className={className}>
+        <div className="data-grid-panel">
+          <FormAgGrid<AdvpayCtDtaCreatDataWithStatus & { id?: string }>
+            rowData={rowData}
+            columnDefs={columnDefs}
+            headerHeight={32}
+            // height={600}
+            excelFileName="선급비용자료생성"
+            idField="id"
+            showToolbar={true}
+            styleOptions={{
+              fontSize: "12px",
+              headerFontSize: "12px",
+              rowHeight: "32px",
+              headerHeight: "32px",
+              cellPadding: "6px",
+              headerPadding: "8px",
+              selectedRowBackgroundColor: "#e6f7ff",
+              hoverRowBackgroundColor: "#bae7ff",
+            }}
+            gridOptions={useMemo(
+              () => ({
+                defaultColDef: {
+                  flex: undefined, // flex 제거하여 width가 적용되도록 함
+                },
+                animateRows: true,
+                pagination: false,
+                rowHeight: 32,
+                rowSelection: "single", // 단일 행 선택 모드 활성화
+                suppressRowClickSelection: true, // 체크박스 선택을 위해 true 유지
+                onGridReady: handleGridReady,
+                onRowClicked: handleRowClicked,
+              }),
+              [handleGridReady, handleRowClicked]
+            )}
+            onGridReady={handleGridReady}
+            onExcelUpload={handleExcelUpload}
+            toolbarButtons={{
+              showCopy: false,
+              showAdd: false,
+              enableExcelDownload: true,
+              enableExcelUpload: true,
+              showExcelDownload: true,
+              showExcelUpload: true,
+              showDelete: false,
+              //showSave: true
+            }}
+            />
+        </div>
+      </FormAgGridLayoutStyles>
   );
 };
 

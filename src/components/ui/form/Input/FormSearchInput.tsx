@@ -15,7 +15,7 @@ import type { ColProps } from "antd/es/col";
 import type { FormItemLayout } from "antd/es/form/Form";
 import { InputSearchStyles } from "@/components/ui/form/Input/FormSearchInput.styles";
 import { addonAfterStyle } from "./AddonAfter.styles";
-import FormInput from "./FormInput";
+import { InputStyles } from "./FormInput.styles";
 
 const FULL_WIDTH_STYLE: React.CSSProperties = { width: "100%" };
 
@@ -78,35 +78,38 @@ const FormSearchInput: React.FC<FormSearchInputProps> = ({
     <InputSearchStyles {...formInputProps} onSearch={handleSearch} />
   );
 
-  // readOnly 박스가 있으면 두 개를 나란히 배치
-  const inputContent = showReadOnlyBoxName ? (
+  // 검색 입력 필드의 내용 (addonAfter 포함)
+  const searchInputContent = propAddonAfter ? (
     <Space.Compact style={FULL_WIDTH_STYLE}>
       {searchElement}
-      <FormInput type="text" readOnly name={showReadOnlyBoxName} />
+      <span style={addonAfterStyle}>{propAddonAfter}</span>
     </Space.Compact>
   ) : (
     searchElement
   );
 
   return (
-    <Form.Item
-      name={name}
-      label={label}
-      rules={rules}
-      layout={layout as FormItemLayout}
-      colon={false}
-      {...(useModalMessage ? { validateStatus: "", help: "" } : {})}
-      style={{ marginBottom: 0 }}
-    >
-      {propAddonAfter ? (
-        <Space.Compact style={FULL_WIDTH_STYLE}>
-          {inputContent}
-          <span style={addonAfterStyle}>{propAddonAfter}</span>
-        </Space.Compact>
-      ) : (
-        inputContent
+    <Space.Compact style={FULL_WIDTH_STYLE}>
+      <Form.Item
+        name={name}
+        label={label}
+        rules={rules}
+        layout={layout as FormItemLayout}
+        colon={false}
+        {...(useModalMessage ? { validateStatus: "", help: "" } : {})}
+        style={{ marginBottom: 0, width: props.width }}
+      >
+        {searchInputContent}
+      </Form.Item>
+      {showReadOnlyBoxName && (
+        <Form.Item
+          name={showReadOnlyBoxName}
+          style={{ marginBottom: 0, paddingLeft: 5 }}
+        >
+          <InputStyles readOnly />
+        </Form.Item>
       )}
-    </Form.Item>
+    </Space.Compact>
   );
 };
 

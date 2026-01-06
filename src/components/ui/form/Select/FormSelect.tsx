@@ -4,6 +4,7 @@ import React, {
   useMemo,
   useCallback,
   useRef,
+  memo,
 } from "react";
 import { Form, Select, Typography } from "antd";
 import type { Rule } from "antd/es/form";
@@ -11,14 +12,20 @@ import type { FormItemLayout } from "antd/es/form/Form";
 import type { SelectProps } from "antd/es/select";
 import {
   getCodeDetailApi,
+  clearCodeCache,
   type CodeDetailParams,
   type CodeDetail,
-} from "@apis/comCode";
+} from "@apis/com/code";
 import MessageModal from "@/components/ui/feedback/Message/MessageModal";
 import { canShowModal, resetModalFlag } from "@/utils/formModalUtils";
 import { SelectStyles } from "@/components/ui/form/Select/FormSelet.Styles";
 const { Option } = Select;
 const { Text } = Typography;
+
+// 모듈 레벨 캐시 (컴포넌트가 언마운트되어도 데이터 유지)
+const optionsCache = new Map<string, SelectOption[]>();
+
+const getCacheKey = (params: CodeDetailParams) => JSON.stringify(params);
 
 interface SelectOption {
   value?: string | number;
@@ -45,9 +52,10 @@ interface FormSelectProps
   allOptionLabel?: string;
   filterComCodeParams?: CodeDetailParams;
   filterFieldName?: string;
+  clearCacheBeforeFetch?: boolean; // API 호출 전 캐시 무효화 여부 (기본값: false)
 }
 
-const FormSelect: React.FC<FormSelectProps> = ({
+const FormSelectComponent: React.FC<FormSelectProps> = ({
   name,
   label,
   rules,
@@ -65,21 +73,59 @@ const FormSelect: React.FC<FormSelectProps> = ({
   allOptionLabel,
   filterComCodeParams,
   filterFieldName,
+  clearCacheBeforeFetch = false,
   ...rest
 }) => {
   // 메인(우측) select의 현재 옵션
-  const [options, setOptions] = useState<SelectOption[]>(propOptions || []);
-  // 메인 select 로딩 상태
-  const [loading, setLoading] = useState(false);
+  // 캐시가 있으면 캐시된 값으로 초기화
+  const [options, setOptions] = useState<SelectOption[]>(() => {
+    if (propOptions) return propOptions;
+    if (comCodeParams) {
+      const key = getCacheKey(comCodeParams);
+      const cached = optionsCache.get(key);
+      if (cached) return cached;
+    }
+    return [];
+  });
+  // 메인 select 로딩 상태 (캐시가 있으면 로딩 안 함)
+  const [loading, setLoading] = useState(() => {
+    if (comCodeParams) {
+      const key = getCacheKey(comCodeParams);
+      return !optionsCache.has(key);
+    }
+    return false;
+  });
+
   // 필터(왼쪽) select의 현재 옵션
-  const [filterOptions, setFilterOptions] = useState<SelectOption[]>([]);
+  const [filterOptions, setFilterOptions] = useState<SelectOption[]>(() => {
+    if (filterComCodeParams) {
+      const key = getCacheKey(filterComCodeParams);
+      return optionsCache.get(key) || [];
+    }
+    return [];
+  });
   // 필터 select 로딩 상태
-  const [filterLoading, setFilterLoading] = useState(false);
+  const [filterLoading, setFilterLoading] = useState(() => {
+    if (filterComCodeParams) {
+      const key = getCacheKey(filterComCodeParams);
+      return !optionsCache.has(key);
+    }
+    return false;
+  });
   const selectRef = React.useRef<React.ComponentRef<typeof Select>>(null);
   const prevFilterValueRef = React.useRef<string | number | undefined>(
     undefined
   );
-  const [allOptions, setAllOptions] = useState<SelectOption[]>([]);
+  const [allOptions, setAllOptions] = useState<SelectOption[]>(() => {
+    if (propOptions) return propOptions;
+    // filterComCodeParams가 있고 filteredComCodeParams(서버필터링)가 없는 경우
+    // 즉, 클라이언트 필터링 모드일 때 filterComCodeParams로 데이터를 미리 가져왔을 수 있음
+    if (filterComCodeParams) {
+      const key = getCacheKey(filterComCodeParams);
+      return optionsCache.get(key) || [];
+    }
+    return [];
+  });
   const form = Form.useFormInstance();
 
   // propOptions로 로컬 options 설정
@@ -124,10 +170,14 @@ const FormSelect: React.FC<FormSelectProps> = ({
 
   // 필터 필드 값 감지
   // filterComCodeParams가 있을 때는 왼쪽 select (name)의 값을 감지해야 함
-  const filterSelectValue = Form.useWatch(
-    filterComCodeParams ? name : "",
-    form
-  );
+  const filterWatchField = filterComCodeParams ? name : "";
+  const watchedFilterValue = Form.useWatch(filterWatchField, form);
+  const filterSelectValue =
+    watchedFilterValue !== undefined
+      ? watchedFilterValue
+      : filterWatchField
+        ? form.getFieldValue(filterWatchField)
+        : undefined;
 
   // CodeDetail을 SelectOption으로 변환
   const transformCodeDetailToOption = useCallback(
@@ -156,7 +206,23 @@ const FormSelect: React.FC<FormSelectProps> = ({
       cancelledRef: { current: boolean }
     ) => {
       setLoadingState(true);
+
+      // 캐시 확인
+      if (!clearCacheBeforeFetch) {
+        const cached = optionsCache.get(getCacheKey(params));
+        if (cached) {
+          setOptionsState(cached);
+          setLoadingState(false);
+          return;
+        }
+      }
+
       try {
+        // 캐시 무효화 옵션이 활성화된 경우 캐시를 먼저 무효화
+        if (clearCacheBeforeFetch) {
+          clearCodeCache(params);
+        }
+
         const response = await getCodeDetailApi(params);
         if (cancelledRef.current) return;
 
@@ -165,33 +231,21 @@ const FormSelect: React.FC<FormSelectProps> = ({
             const transformedOptions: SelectOption[] = response.data
               .filter((item) => item[valueKey] && item[labelKey])
               .map(transformCodeDetailToOption);
+
+            // 캐시에 저장
+            optionsCache.set(getCacheKey(params), transformedOptions);
+
             if (!cancelledRef.current) {
-              // 개발 모드에서 특정 파라미터와 일치하면 디버그할 수 있는 분기
-              if (import.meta.env.DEV) {
-                const isFilterOptions =
-                  filterComCodeParams &&
-                  JSON.stringify(filterComCodeParams) ===
-                    JSON.stringify(params);
-                if (isFilterOptions) {
-                  // (DEV) 필요한 경우 콘솔 출력 추가 가능
-                }
-              }
               setOptionsState(transformedOptions);
             }
           } else {
             const item = response.data as CodeDetail;
             if (item[valueKey] && item[labelKey]) {
               const transformedOption = transformCodeDetailToOption(item);
+              // 단일 항목도 배열로 캐시 저장
+              optionsCache.set(getCacheKey(params), [transformedOption]);
+
               if (!cancelledRef.current) {
-                if (import.meta.env.DEV) {
-                  const isFilterOptions =
-                    filterComCodeParams &&
-                    JSON.stringify(filterComCodeParams) ===
-                      JSON.stringify(params);
-                  if (isFilterOptions) {
-                    // (DEV) single option loaded
-                  }
-                }
                 setOptionsState([transformedOption]);
               }
             }
@@ -215,7 +269,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
         }
       }
     },
-    [transformCodeDetailToOption, valueKey, labelKey, filterComCodeParams]
+    [transformCodeDetailToOption, valueKey, labelKey, clearCacheBeforeFetch]
   );
 
   // 필터 값으로 메인 옵션 필터링
@@ -239,42 +293,42 @@ const FormSelect: React.FC<FormSelectProps> = ({
     };
   }, [comCodeParams, filterComCodeParams, filterSelectValue]);
 
-  // 필터 필드 데이터 로그
-  useEffect(() => {
-    if (filterComCodeParams && import.meta.env.DEV) {
-      // dev: filter field data available (logging removed)
-    }
-  }, [
-    filterComCodeParams,
-    actualFilterFieldName,
-    filterSelectValue,
-    filterOptions,
-    filteredComCodeParams,
-    options,
-  ]);
-
   // 필터 옵션 로드
   useEffect(() => {
     if (!filterComCodeParams) {
-      setFilterOptions([]);
+      setFilterOptions((prev) => {
+        if (prev.length === 0) return prev;
+        return [];
+      });
       return;
     }
 
     const cancelledRef = { current: false };
 
-    if (import.meta.env.DEV) {
-      // dev: starting to load filter (left) options
-    }
-
     if (comCodeParams) {
       fetchCodeOptions(
         comCodeParams,
         setFilterLoading,
-        setFilterOptions,
+        (options) => {
+          setFilterOptions((prev) => {
+            // 이전 값과 같으면 업데이트하지 않음
+            if (prev.length === options.length) {
+              const isEqual = prev.every((p, idx) => {
+                const o = options[idx];
+                return p.value === o.value && p.label === o.label;
+              });
+              if (isEqual) return prev;
+            }
+            return options;
+          });
+        },
         cancelledRef
       );
     } else {
-      setFilterOptions([]);
+      setFilterOptions((prev) => {
+        if (prev.length === 0) return prev;
+        return [];
+      });
       setFilterLoading(false);
     }
 
@@ -291,22 +345,39 @@ const FormSelect: React.FC<FormSelectProps> = ({
     const cancelledRef = { current: false };
 
     if (propOptions) {
-      setAllOptions(propOptions);
+      setAllOptions((prev) => {
+        // 이전 값과 같으면 업데이트하지 않음
+        if (prev.length === propOptions.length) {
+          const isEqual = prev.every((p, idx) => {
+            const o = propOptions[idx];
+            return p.value === o.value && p.label === o.label;
+          });
+          if (isEqual) return prev;
+        }
+        return propOptions;
+      });
       return () => {
         cancelledRef.current = true;
       };
     }
 
     if (filterComCodeParams) {
-      if (import.meta.env.DEV) {
-        // dev: starting to load all (main) options
-      }
       fetchCodeOptions(
         filterComCodeParams,
         setLoading,
         (opts) => {
           if (cancelledRef.current) return;
-          setAllOptions(opts);
+          setAllOptions((prev) => {
+            // 이전 값과 같으면 업데이트하지 않음
+            if (prev.length === opts.length) {
+              const isEqual = prev.every((p, idx) => {
+                const o = opts[idx];
+                return p.value === o.value && p.label === o.label;
+              });
+              if (isEqual) return prev;
+            }
+            return opts;
+          });
           setLoading(false);
         },
         cancelledRef
@@ -319,19 +390,39 @@ const FormSelect: React.FC<FormSelectProps> = ({
   }, [filterComCodeParams, propOptions, fetchCodeOptions]);
 
   // 2) 필터 값 또는 allOptions 변경 시 클라이언트에서 필터링하여 `options`를 갱신
+  const prevFilterSelectValueRef = useRef<string | number | undefined>(
+    filterSelectValue
+  );
+  const prevAllOptionsRef = useRef<SelectOption[]>(allOptions);
   useEffect(() => {
     if (!filterComCodeParams) return;
 
+    // 필터 값과 allOptions가 모두 변경되지 않았으면 스킵
+    const filterValueChanged =
+      prevFilterSelectValueRef.current !== filterSelectValue;
+    const allOptionsChanged = prevAllOptionsRef.current !== allOptions;
+
+    if (!filterValueChanged && !allOptionsChanged) return;
+
+    prevFilterSelectValueRef.current = filterSelectValue;
+    prevAllOptionsRef.current = allOptions;
+
     // undefined나 null인 경우만 초기화
     if (filterSelectValue === undefined || filterSelectValue === null) {
-      setOptions([]);
+      setOptions((prev) => {
+        if (prev.length === 0) return prev;
+        return [];
+      });
       setLoading(false);
       return;
     }
 
     // 빈 문자열("")인 경우: "-선택-"만 표시 (필터링된 옵션이 없으므로)
     if (filterSelectValue === "") {
-      setOptions([]);
+      setOptions((prev) => {
+        if (prev.length === 0) return prev;
+        return [];
+      });
       setLoading(false);
       return;
     }
@@ -344,7 +435,18 @@ const FormSelect: React.FC<FormSelectProps> = ({
         option.code !== undefined ? String(option.code) : String(option.value);
       return compareValue.startsWith(filterStr);
     });
-    setOptions(filtered);
+
+    setOptions((prev) => {
+      // 길이와 내용이 같으면 업데이트하지 않음
+      if (prev.length === filtered.length) {
+        const isEqual = prev.every((p, idx) => {
+          const f = filtered[idx];
+          return p.value === f.value && p.label === f.label;
+        });
+        if (isEqual) return prev;
+      }
+      return filtered;
+    });
   }, [filterSelectValue, allOptions, filterComCodeParams]);
 
   // 기존 동작 유지: filterComCodeParams가 없고 filteredComCodeParams가 있을 때 서버에서 로드
@@ -355,7 +457,19 @@ const FormSelect: React.FC<FormSelectProps> = ({
       fetchCodeOptions(
         filteredComCodeParams,
         setLoading,
-        setOptions,
+        (options) => {
+          setOptions((prev) => {
+            // 이전 값과 같으면 업데이트하지 않음
+            if (prev.length === options.length) {
+              const isEqual = prev.every((p, idx) => {
+                const o = options[idx];
+                return p.value === o.value && p.label === o.label;
+              });
+              if (isEqual) return prev;
+            }
+            return options;
+          });
+        },
         cancelledRef
       );
 
@@ -419,45 +533,107 @@ const FormSelect: React.FC<FormSelectProps> = ({
     }
   }, [filterComCodeParams, options, name, form, allOptionLabel]);
 
-  // 옵션 필터링
-  const filteredOptions = useMemo(() => {
-    let result = options;
+  // 옵션 리스트 계산 (메인/필터 공통 로직)
+  const computeDisplayOptions = useCallback(
+    (
+      currentOpts: SelectOption[],
+      val: string | number | undefined,
+      isLoading: boolean,
+      isFilter: boolean
+    ) => {
+      let result = currentOpts;
 
-    if (filterValues?.length) {
-      result = result.filter(
-        (option) =>
-          option.value !== undefined && !filterValues.includes(option.value)
-      );
-    }
+      // 메인 옵션이고 filterValues가 있는 경우 필터링
+      if (!isFilter && filterValues?.length) {
+        result = result.filter(
+          (option) =>
+            option.value !== undefined && !filterValues.includes(option.value)
+        );
+      }
 
-    // allOptionLabel이 있으면 최상단에 "-선택-"("") 옵션 추가
-    if (allOptionLabel) {
-      return [
-        {
-          value: "",
-          label: allOptionLabel,
-        },
-        ...result,
-      ];
-    }
+      // 현재 값이 옵션에 없으면 임시 옵션 추가
+      const hasValueInOptions =
+        val === undefined ||
+        val === null ||
+        val === "" ||
+        result.some((opt) => opt.value === val);
 
-    return result;
-  }, [options, filterValues, allOptionLabel]);
+      if (
+        !hasValueInOptions &&
+        val !== undefined &&
+        val !== null &&
+        val !== ""
+      ) {
+        const isDataEmpty =
+          currentOpts.length === 0 &&
+          (isFilter
+            ? !!comCodeParams // 필터: comCodeParams로 로드
+            : !!comCodeParams || !!filterComCodeParams || !!filteredComCodeParams); // 메인: 여러 소스로 로드
 
-  // 필터(왼쪽) select에 대해 allOptionLabel이 주어지면 맨 앞에 추가
-  const filterRenderedOptions = useMemo(() => {
-    if (!filterComCodeParams) return filterOptions;
-    if (allOptionLabel) {
-      return [
-        {
-          value: "",
-          label: allOptionLabel,
-        },
-        ...filterOptions,
-      ];
-    }
-    return filterOptions;
-  }, [filterComCodeParams, filterOptions, allOptionLabel]);
+        // 로딩 중이거나 데이터를 받아와야 하는데 아직 옵션이 없는 경우(초기 상태)에는 빈 문자열을 보여줌
+        const tempLabel =
+          isLoading || isDataEmpty ? " " : emptyText;
+
+        result = [
+          {
+            value: val,
+            label: tempLabel,
+          },
+          ...result,
+        ];
+      }
+
+      if (allOptionLabel) {
+        return [
+          {
+            value: "",
+            label: allOptionLabel,
+          },
+          ...result,
+        ];
+      }
+
+      return result;
+    },
+    [
+      filterValues,
+      allOptionLabel,
+      emptyText,
+      comCodeParams,
+      filterComCodeParams,
+      filteredComCodeParams,
+    ]
+  );
+
+  // 현재 선택된 값 가져오기
+  const watchedValue = Form.useWatch(name, form);
+  const currentValue =
+    watchedValue !== undefined ? watchedValue : form.getFieldValue(name);
+
+  // 메인 옵션 계산
+  const filteredOptions = useMemo(
+    () => computeDisplayOptions(options, currentValue, loading, false),
+    [computeDisplayOptions, options, currentValue, loading]
+  );
+
+  // 필터(왼쪽) select의 현재 값 가져오기
+  const watchedFilterCurrentValue = Form.useWatch(name, form);
+  const filterCurrentValue =
+    watchedFilterCurrentValue !== undefined
+      ? watchedFilterCurrentValue
+      : form.getFieldValue(name);
+
+  // 필터 옵션 계산
+  const filterRenderedOptions = useMemo(
+    () =>
+      computeDisplayOptions(filterOptions, filterCurrentValue, filterLoading, true),
+    [
+      computeDisplayOptions,
+      filterOptions,
+      filterCurrentValue,
+      filterLoading,
+    ]
+  );
 
   // 기본 필터링 함수
   const defaultFilterOption = useMemo(() => {
@@ -591,11 +767,17 @@ const FormSelect: React.FC<FormSelectProps> = ({
             const selectedOption = filteredOptions.find(
               (opt) => opt.value === value
             );
-            const displayValue = selectedOption
-              ? selectedOption.label
-              : value !== undefined && value !== null
-              ? String(value)
-              : emptyText;
+            // 옵션이 로드 중이거나 선택된 옵션을 찾을 수 없으면 emptyText 표시
+            const displayValue =
+              loading ||
+                (!selectedOption &&
+                  value !== undefined &&
+                  value !== null &&
+                  value !== "")
+                ? emptyText
+                : selectedOption
+                  ? selectedOption.label
+                  : emptyText;
             return <Text>{displayValue}</Text>;
           }}
         </Form.Item>
@@ -664,5 +846,141 @@ const FormSelect: React.FC<FormSelectProps> = ({
     </Form.Item>
   );
 };
+
+// props 비교 함수: 얕은 비교로 불필요한 리렌더링 방지
+const arePropsEqual = (
+  prevProps: FormSelectProps,
+  nextProps: FormSelectProps
+) => {
+  // 기본 props 비교
+  if (
+    prevProps.name !== nextProps.name ||
+    prevProps.label !== nextProps.label ||
+    prevProps.placeholder !== nextProps.placeholder ||
+    prevProps.layout !== nextProps.layout ||
+    prevProps.valueKey !== nextProps.valueKey ||
+    prevProps.labelKey !== nextProps.labelKey ||
+    prevProps.showCodeInLabel !== nextProps.showCodeInLabel ||
+    prevProps.useModalMessage !== nextProps.useModalMessage ||
+    prevProps.mode !== nextProps.mode ||
+    prevProps.emptyText !== nextProps.emptyText ||
+    prevProps.allOptionLabel !== nextProps.allOptionLabel ||
+    prevProps.filterFieldName !== nextProps.filterFieldName ||
+    prevProps.clearCacheBeforeFetch !== nextProps.clearCacheBeforeFetch
+  ) {
+    return false;
+  }
+
+  // 배열/객체 props 비교
+  if (prevProps.options !== nextProps.options) {
+    if (!prevProps.options || !nextProps.options) return false;
+    if (prevProps.options.length !== nextProps.options.length) return false;
+    const isEqual = prevProps.options.every((p, idx) => {
+      const n = nextProps.options![idx];
+      return p.value === n.value && p.label === n.label;
+    });
+    if (!isEqual) return false;
+  }
+
+  if (prevProps.filterValues !== nextProps.filterValues) {
+    if (!prevProps.filterValues || !nextProps.filterValues) return false;
+    if (prevProps.filterValues.length !== nextProps.filterValues.length)
+      return false;
+    const isEqual = prevProps.filterValues.every(
+      (v, idx) => v === nextProps.filterValues![idx]
+    );
+    if (!isEqual) return false;
+  }
+
+  if (prevProps.rules !== nextProps.rules) {
+    if (!prevProps.rules || !nextProps.rules) return false;
+    if (prevProps.rules.length !== nextProps.rules.length) return false;
+  }
+
+  // comCodeParams 비교
+  if (prevProps.comCodeParams !== nextProps.comCodeParams) {
+    if (!prevProps.comCodeParams || !nextProps.comCodeParams) return false;
+    if (
+      JSON.stringify(prevProps.comCodeParams) !==
+      JSON.stringify(nextProps.comCodeParams)
+    ) {
+      return false;
+    }
+  }
+
+  // filterComCodeParams 비교
+  if (prevProps.filterComCodeParams !== nextProps.filterComCodeParams) {
+    if (!prevProps.filterComCodeParams || !nextProps.filterComCodeParams)
+      return false;
+    if (
+      JSON.stringify(prevProps.filterComCodeParams) !==
+      JSON.stringify(nextProps.filterComCodeParams)
+    ) {
+      return false;
+    }
+  }
+
+  // rest props 비교 (SelectProps)
+  const prevRestKeys = Object.keys(prevProps).filter(
+    (key) =>
+      ![
+        "name",
+        "label",
+        "rules",
+        "placeholder",
+        "options",
+        "comCodeParams",
+        "layout",
+        "valueKey",
+        "labelKey",
+        "showCodeInLabel",
+        "useModalMessage",
+        "mode",
+        "emptyText",
+        "filterValues",
+        "allOptionLabel",
+        "filterComCodeParams",
+        "filterFieldName",
+        "clearCacheBeforeFetch",
+      ].includes(key)
+  );
+  const nextRestKeys = Object.keys(nextProps).filter(
+    (key) =>
+      ![
+        "name",
+        "label",
+        "rules",
+        "placeholder",
+        "options",
+        "comCodeParams",
+        "layout",
+        "valueKey",
+        "labelKey",
+        "showCodeInLabel",
+        "useModalMessage",
+        "mode",
+        "emptyText",
+        "filterValues",
+        "allOptionLabel",
+        "filterComCodeParams",
+        "filterFieldName",
+        "clearCacheBeforeFetch",
+      ].includes(key)
+  );
+
+  if (prevRestKeys.length !== nextRestKeys.length) return false;
+
+  for (const key of prevRestKeys) {
+    const prevValue = (prevProps as unknown as Record<string, unknown>)[key];
+    const nextValue = (nextProps as unknown as Record<string, unknown>)[key];
+    if (prevValue !== nextValue) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+const FormSelect = memo(FormSelectComponent, arePropsEqual);
 
 export default FormSelect;

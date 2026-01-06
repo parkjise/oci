@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useRef } from "react";
+import { Form } from "antd";
 import {
   DataForm,
   FormButton,
@@ -8,6 +9,9 @@ import {
   FormSelect,
   FormTextArea,
 } from "@components/ui/form";
+import type { PendingFile } from "@components/ui/feedback";
+import { uploadFilesBatchApi, deleteFileApi } from "@apis/system/file/fileApi";
+import { showSuccess, showError } from "@components/ui/feedback";
 
 // 상수 정의
 const SLIP_TYPE_OPTIONS = [
@@ -146,8 +150,175 @@ const DetailView: React.FC<DetailViewProps> = ({
   const [mode, setMode] = useState<"view" | "edit">(initialMode);
   const [expanded, setExpanded] = useState(false);
 
+  // Form 인스턴스 생성
+  const [form] = Form.useForm();
+
+  // 샘플 파일 그룹 키 (실제로는 API에서 받아오거나 상태로 관리)
+  // 예제를 위해 undefined로 시작 (내부에서 자동 생성됨)
+  const [eatKey, setEatKey] = useState<number | undefined>(554062);
+
+  // 수동 모드에서 선택된 파일 목록 (업무 저장과 통합용)
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+
+  // DataForm에서 파일 저장 완료 처리 함수를 받기 위한 ref
+  const attachmentSaveCompleteRef = useRef<(() => Promise<void>) | undefined>(
+    undefined
+  );
+
   const handleExpandChange = useCallback((newExpanded: boolean) => {
     setExpanded(newExpanded);
+  }, []);
+
+  // ============================================================================
+  // 첨부파일 관련 로직 (DataForm 내부에서 처리됨)
+  // ============================================================================
+
+  // 첨부파일 저장 핸들러 (업무 저장과 통합용)
+  const handleAttachmentSave = useCallback(
+    async (files: PendingFile[], targetEatKey: number) => {
+      if (!targetEatKey) {
+        showError("파일 그룹 키가 없습니다.");
+        return { success: false, error: "eatKey not found" };
+      }
+
+      try {
+        // 업로드 대기 파일과 삭제 대기 파일 분리
+        const uploadFiles = files.filter(
+          (f) => f.action === "upload" && f.file
+        );
+        const deleteFiles = files.filter(
+          (f) => f.action === "delete" && f.eatKey && f.eatIdx
+        );
+
+        // 1. 파일 업로드 처리 (배치 업로드)
+        let uploadSuccessCount = 0;
+        let uploadFailCount = 0;
+
+        if (uploadFiles.length > 0) {
+          const filesToUpload = uploadFiles.map(
+            (pendingFile) => pendingFile.file!
+          );
+
+          try {
+            // 여러 파일을 하나의 요청으로 묶어서 업로드
+            const response = await uploadFilesBatchApi(filesToUpload, {
+              eatKey: targetEatKey,
+            });
+
+            if (response.success && response.data) {
+              uploadSuccessCount = response.data.length;
+              // 업로드된 파일 수와 요청한 파일 수가 다를 수 있음
+              if (uploadSuccessCount < filesToUpload.length) {
+                uploadFailCount = filesToUpload.length - uploadSuccessCount;
+                console.warn(
+                  `일부 파일 업로드 실패: ${uploadSuccessCount}/${filesToUpload.length}개 성공`
+                );
+              }
+            } else {
+              uploadFailCount = filesToUpload.length;
+              console.error("파일 배치 업로드 실패:", response);
+            }
+          } catch (error) {
+            uploadFailCount = filesToUpload.length;
+            console.error("파일 배치 업로드 중 오류:", error);
+          }
+        }
+
+        // 2. 파일 삭제 처리
+        let deleteSuccessCount = 0;
+        let deleteFailCount = 0;
+
+        if (deleteFiles.length > 0) {
+          const deleteResults = await Promise.allSettled(
+            deleteFiles.map((pendingFile) =>
+              deleteFileApi(pendingFile.eatKey!, pendingFile.eatIdx!)
+            )
+          );
+
+          deleteSuccessCount = deleteResults.filter(
+            (r) => r.status === "fulfilled"
+          ).length;
+          deleteFailCount = deleteResults.filter(
+            (r) => r.status === "rejected"
+          ).length;
+
+          // 실패한 파일 로깅
+          deleteResults.forEach((result, index) => {
+            if (result.status === "rejected") {
+              console.error(
+                `파일 삭제 실패: ${deleteFiles[index].name}`,
+                result.reason
+              );
+            }
+          });
+        }
+
+        // 3. 결과 처리
+        const totalSuccess = uploadSuccessCount + deleteSuccessCount;
+        const totalFail = uploadFailCount + deleteFailCount;
+
+        if (totalSuccess > 0) {
+          const messages = [];
+          if (uploadSuccessCount > 0) {
+            messages.push(`${uploadSuccessCount}개의 파일이 업로드되었습니다.`);
+          }
+          if (deleteSuccessCount > 0) {
+            messages.push(`${deleteSuccessCount}개의 파일이 삭제되었습니다.`);
+          }
+          showSuccess(messages.join(" "));
+          return { success: true };
+        }
+
+        if (totalFail > 0) {
+          const messages = [];
+          if (uploadFailCount > 0) {
+            messages.push(`${uploadFailCount}개의 파일 업로드에 실패했습니다.`);
+          }
+          if (deleteFailCount > 0) {
+            messages.push(`${deleteFailCount}개의 파일 삭제에 실패했습니다.`);
+          }
+          showError(messages.join(" "));
+          return { success: false, error: messages.join(" ") };
+        }
+
+        if (uploadFiles.length === 0 && deleteFiles.length === 0) {
+          showError("처리할 파일이 없습니다.");
+          return { success: false, error: "No files to process" };
+        }
+
+        return { success: true };
+      } catch (error) {
+        console.error("파일 처리 실패:", error);
+        showError("파일 처리에 실패했습니다.");
+        return { success: false, error };
+      }
+    },
+    []
+  );
+
+  // 파일 선택 시 콜백 (수동 모드) - AttachmentDrawer 내부에서 이미 onPendingFilesChange를 통해 상태가 업데이트되므로 여기서는 알림용으로만 사용
+  const handleFilesSelected = useCallback((files: PendingFile[]) => {
+    // AttachmentDrawer 내부에서 이미 setPendingFiles를 통해 상태가 업데이트되므로 추가 작업 불필요
+    // 필요시 여기에 추가 로직 구현 가능 (예: 로깅, 추가 검증 등)
+    console.log("파일 선택됨:", files);
+  }, []);
+
+  // 첨부파일 저장 에러 핸들러
+  const handleAttachmentSaveError = useCallback(
+    (files: PendingFile[], error: unknown) => {
+      console.error("파일 저장 실패:", files, error);
+      showError("파일 저장 중 오류가 발생했습니다.");
+    },
+    []
+  );
+
+  // Drawer가 닫힐 때 생성된 키 받기
+  const handleAttachmentClose = useCallback((newEatKey?: number) => {
+    if (newEatKey) {
+      setEatKey(newEatKey);
+      console.log("생성된 eatKey:", newEatKey);
+      // TODO: 생성된 eatKey를 서버에 저장하거나 상태 업데이트
+    }
   }, []);
 
   /** 테이블 데이터 */
@@ -240,18 +411,79 @@ const DetailView: React.FC<DetailViewProps> = ({
   const handleCreate = useCallback(() => {}, []);
   const handleCopy = useCallback(() => {}, []);
   const handleDelete = useCallback(() => {}, []);
-  const handleSave = useCallback(() => {}, []);
+
+  // 저장 버튼 핸들러: Form submit 트리거
+  const handleSave = useCallback(() => {
+    form.submit(); // Form submit → validation → onFinish 호출
+  }, [form]);
+
+  /** 검색 핸들러 */
+  const handleSearch = useCallback((value: string) => {
+    console.log("Search:", value);
+    // TODO: 실제 검색 로직 구현
+  }, []);
 
   /** 왼쪽 액션 버튼 이벤트 핸들러 */
   const handleLeftAction = useCallback((actionType: string) => {
-    // TODO: 실제 구현 필요 (검색, 첨부파일 관리 등)
+    // attachment는 DataForm 내부에서 처리됨
     console.log("Left action:", actionType);
   }, []);
 
   // TODO: 실제 구현 필요
   const handleValuesChange = useCallback(() => {}, []);
-  const handleFinish = useCallback(() => {}, []);
-  const handleFinishFailed = useCallback(() => {}, []);
+
+  // 업무 화면의 저장 버튼 클릭 시 (메인 데이터 + 파일 업로드 통합)
+  const handleFinish = useCallback(
+    async (values: Record<string, unknown>) => {
+      try {
+        // 1. 먼저 메인 데이터 저장 (TODO: 실제 API 호출)
+        // const saveResponse = await saveMainDataApi(values);
+        // const finalEatKey = saveResponse.eatKey || eatKey;
+
+        // 예제: eatKey가 없으면 생성된 키 사용
+        const finalEatKey = eatKey;
+        console.log("finalEatKey:", finalEatKey);
+        if (!finalEatKey) {
+          showError("파일 그룹 키가 없습니다. 첨부파일을 먼저 열어주세요.");
+          return;
+        }
+
+        // 2. 선택된 파일들이 있으면 업로드
+        if (pendingFiles.length > 0) {
+          const uploadResult = await handleAttachmentSave(
+            pendingFiles,
+            finalEatKey
+          );
+          if (uploadResult.success) {
+            setPendingFiles([]); // 업로드 성공 후 초기화
+            // 파일 목록 새로고침 및 onSaveComplete 호출
+            if (attachmentSaveCompleteRef.current) {
+              await attachmentSaveCompleteRef.current();
+            }
+          } else {
+            // 업로드 실패 시 롤백 처리 가능
+            showError("파일 업로드에 실패했습니다. 후처리");
+            return;
+          }
+        }
+
+        // 3. 메인 데이터 저장 (TODO: 실제 API 호출)
+        // await saveMainDataApi(values);
+        console.log("저장할 데이터:", values);
+
+        showSuccess("저장되었습니다.");
+        // TODO: 저장 후 필요한 후처리 (페이지 이동, 데이터 새로고침 등)
+      } catch (error) {
+        console.error("저장 실패:", error);
+        showError("저장에 실패했습니다.");
+      }
+    },
+    [eatKey, pendingFiles, handleAttachmentSave, attachmentSaveCompleteRef]
+  );
+
+  const handleFinishFailed = useCallback(() => {
+    console.log("첨부파일 오류 후처리");
+  }, []);
 
   /** 커스텀 액션 핸들러 */
   const handleCustomAction = useCallback((action: string) => {
@@ -310,7 +542,7 @@ const DetailView: React.FC<DetailViewProps> = ({
       // 확장 상태 변경 핸들러
       onExpandChange: handleExpandChange,
       // 최대 표시 행 수
-      maxVisibleRows: 2,
+      maxVisibleRows: 3,
     }),
     [
       customButtons,
@@ -325,22 +557,44 @@ const DetailView: React.FC<DetailViewProps> = ({
   );
 
   return (
-    <DataForm
-      className={className}
-      leftActions={leftActions}
-      actionButtonGroup={actionButtonGroup}
-      tableRows={tableRows}
-      tableData={SAMPLE_TABLE_DATA}
-      department="경영관리본부"
-      user="관리자"
-      status="완료"
-      statusClass="done"
-      mode={mode}
-      onLeftAction={handleLeftAction}
-      onValuesChange={handleValuesChange}
-      onFinish={handleFinish}
-      onFinishFailed={handleFinishFailed}
-    />
+    <>
+      <DataForm
+        className={className}
+        form={form}
+        leftActions={leftActions}
+        actionButtonGroup={actionButtonGroup}
+        tableRows={tableRows}
+        tableData={SAMPLE_TABLE_DATA}
+        department="경영관리본부"
+        user="관리자"
+        status="완료"
+        statusClass="done"
+        mode={mode}
+        attachmentKey="attachments"
+        attachmentEatKey={eatKey}
+        attachmentEatPath="attachments"
+        attachmentOnClose={handleAttachmentClose}
+        attachmentAutoUpload={false}
+        attachmentManualMode={{
+          onSaveError: handleAttachmentSaveError,
+          onFilesSelected: handleFilesSelected,
+          pendingFiles: pendingFiles,
+          onPendingFilesChange: setPendingFiles,
+          onSaveComplete: () => {
+            // 저장 완료 후 파일 목록 새로고침 (DataForm에서 자동으로 호출됨)
+            console.log("파일 저장 완료 - 목록 새로고침됨");
+          },
+        }}
+        onSaveCompleteRefSetter={(ref) => {
+          attachmentSaveCompleteRef.current = ref;
+        }}
+        onSearch={handleSearch}
+        onLeftAction={handleLeftAction}
+        onValuesChange={handleValuesChange}
+        onFinish={handleFinish}
+        onFinishFailed={handleFinishFailed}
+      />
+    </>
   );
 };
 

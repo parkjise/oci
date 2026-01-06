@@ -6,7 +6,7 @@ import type { InputProps, InputRef } from "antd";
 import type { SearchProps } from "antd/es/input/Search";
 import type { FormItemLayout } from "antd/es/form/Form";
 import { runes } from "runes2";
-import { InputStyles } from "./FormInput.styles";
+import { InputStyles, PasswordStyles } from "./FormInput.styles";
 import { addonAfterStyle } from "./AddonAfter.styles";
 import MessageModal from "@/components/ui/feedback/Message/MessageModal";
 import { canShowModal, resetModalFlag } from "@/utils/formModalUtils";
@@ -60,6 +60,7 @@ const FormInput: React.FC<FormInputProps> = ({
   const isResidentNumber = type === "residentNumber";
   const isCorporateNumber = type === "corporateNumber";
   const isEmail = type === "email";
+  const isPassword = type === "password";
 
   const validationType: InputType | undefined = isResidentNumber
     ? "residentNumber"
@@ -311,11 +312,7 @@ const FormInput: React.FC<FormInputProps> = ({
         useModalMessage={useModalMessage}
         addonAfter={propAddonAfter}
         showReadOnlyBoxName={rest.showReadOnlyBoxName}
-        style={
-          rest.showReadOnlyBoxName !== undefined
-            ? { width: width, paddingRight: 10 }
-            : undefined
-        }
+        width={width}
         onPopupOpen={rest.onPopupOpen}
         {...rest}
       />
@@ -338,6 +335,8 @@ const FormInput: React.FC<FormInputProps> = ({
     type:
       isBusinessNumber || isPhoneNumber || isResidentNumber || isCorporateNumber
         ? "text"
+        : isPassword
+        ? undefined // Input.Password는 type prop 불필요
         : type,
     maxLength: isBusinessNumber
       ? 12
@@ -369,7 +368,12 @@ const FormInput: React.FC<FormInputProps> = ({
     }),
   };
 
-  const inputElement = <InputStyles {...inputProps} ref={inputRef} />;
+  // type="password"일 때 Input.Password 사용 (보기/숨기기 아이콘 표시)
+  const inputElement = isPassword ? (
+    <PasswordStyles {...inputProps} ref={inputRef} />
+  ) : (
+    <InputStyles {...inputProps} ref={inputRef} />
+  );
 
   return (
     <Form.Item

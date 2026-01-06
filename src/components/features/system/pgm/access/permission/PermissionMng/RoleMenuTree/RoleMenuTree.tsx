@@ -5,11 +5,9 @@
 // - 2025.11.25 : ckkim (최초작성)
 
 import React, { useMemo } from "react";
-import { Button } from "antd";
 import type { DataNode } from "antd/es/tree";
 import type { RoleMenuDto } from "@apis/system/permission/permissionApi";
 import { FormTree } from "@components/ui/form";
-import { useTranslation } from "react-i18next";
 import { RoleMenuTreeStyles } from "./RoleMenuTree.styles";
 
 // ============================================================================
@@ -25,9 +23,8 @@ interface RoleMenuTreeProps {
 // ============================================================================
 const RoleMenuTree: React.FC<RoleMenuTreeProps> = ({
   roleMenuList,
-  onSetMenu,
+  onSetMenu: _onSetMenu,
 }) => {
-  const { t } = useTranslation();
 
   // 트리 데이터 변환 (LEVEL 기준으로 트리 구성)
   const treeData = useMemo<DataNode[]>(() => {
@@ -73,9 +70,6 @@ const RoleMenuTree: React.FC<RoleMenuTreeProps> = ({
 
   return (
     <RoleMenuTreeStyles>
-      <div style={{ marginBottom: "10px", display: "flex", gap: "5px" }}>
-        <Button onClick={onSetMenu}>{t("메뉴설정")}</Button>
-      </div>
       <FormTree
         name="roleMenuTree"
         treeData={treeData}

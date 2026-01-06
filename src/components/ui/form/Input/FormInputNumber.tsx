@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useRef } from "react";
 import { Form, Space, Typography } from "antd";
 import type { Rule } from "antd/es/form";
 import type { InputNumberProps } from "antd/es/input-number";
@@ -31,13 +31,19 @@ export type FormInputNumberProps = Omit<
 
 const FULL_WIDTH_STYLE: React.CSSProperties = { width: "100%" };
 
-// 기본 천 단위 구분자 포맷터
+/**
+ * 기본 천 단위 구분자 포맷터
+ */
 const defaultFormatter = (value: number | string | undefined): string => {
   if (value === undefined || value === null || value === "") return "";
+  if (typeof value === "object") return "";
   return formatNumberWithCommas(value);
 };
 
-// 기본 천 단위 구분자 파서 (InputNumber의 parser는 숫자 또는 null을 반환해야 함)
+/**
+ * 기본 천 단위 구분자 파서
+ * InputNumber의 parser는 숫자 또는 null을 반환해야 함
+ */
 const defaultParser = (value: string | undefined): number | null => {
   if (!value || value === "") return null;
   const parsed = removeCommasFromNumber(value);
@@ -61,10 +67,21 @@ const FormInputNumber: React.FC<FormInputNumberProps> = ({
   ...rest
 }) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const inputNumberRef = React.useRef<any>(null);
+  const inputNumberRef = useRef<any>(null);
 
-  // 모든 hooks를 early return 이전에 호출
-  const processedRules = React.useMemo(() => {
+  // InputNumber props 구성 (useMemo를 early return 전에 호출)
+  const inputNumberProps: Omit<InputNumberProps, "addonAfter"> = useMemo(
+    () => ({
+      ...rest,
+      ...(max && max > 0 ? { max } : {}),
+      formatter: formatter || defaultFormatter,
+      parser: (parser || defaultParser) as InputNumberProps["parser"],
+    }),
+    [rest, max, formatter, parser]
+  );
+
+  // Validation 규칙 처리
+  const processedRules = useMemo(() => {
     if (!rules || !useModalMessage) return rules;
 
     return rules.map((rule) => {
@@ -86,9 +103,19 @@ const FormInputNumber: React.FC<FormInputNumberProps> = ({
                   content: errorMessage,
                   onOk: () => {
                     resetModalFlag();
-                    // 모달 닫힌 후 해당 InputNumber로 포커스 이동
                     setTimeout(() => {
-                      inputNumberRef.current?.focus();
+                      // styled component의 ref는 내부 InputNumber 인스턴스를 포함
+                      if (inputNumberRef.current) {
+                        const inputElement =
+                          inputNumberRef.current.input ||
+                          inputNumberRef.current;
+                        if (
+                          inputElement &&
+                          typeof inputElement.focus === "function"
+                        ) {
+                          inputElement.focus();
+                        }
+                      }
                     }, 500);
                   },
                 });
@@ -104,7 +131,7 @@ const FormInputNumber: React.FC<FormInputNumberProps> = ({
     });
   }, [rules, label, useModalMessage]);
 
-  // View 모드일 때 (모든 hooks 호출 후)
+  // View 모드 렌더링
   if (mode === "view") {
     return (
       <Form.Item
@@ -133,6 +160,17 @@ const FormInputNumber: React.FC<FormInputNumberProps> = ({
     );
   }
 
+  // InputNumber 엘리먼트 생성
+  const inputNumberElement = (
+    <InputNumberStyles
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ref={inputNumberRef as any}
+      {...inputNumberProps}
+      style={FULL_WIDTH_STYLE}
+      onChange={rest.onChange}
+    />
+  );
+
   return (
     <Form.Item
       name={name}
@@ -141,50 +179,16 @@ const FormInputNumber: React.FC<FormInputNumberProps> = ({
       layout={layout as FormItemLayout}
       colon={false}
       style={{ marginBottom: 0 }}
-      getValueFromEvent={(value) => {
-        return value ?? undefined;
-      }}
       {...(useModalMessage ? { validateStatus: "", help: "" } : { help: "" })}
     >
-      <Form.Item
-        style={{ marginBottom: 0 }}
-        shouldUpdate={(prevValues, currentValues) =>
-          prevValues[name] !== currentValues[name]
-        }
-      >
-        {({ getFieldValue, setFieldValue }) => {
-          const fieldValue = getFieldValue(name);
-
-          const inputNumberProps: Omit<InputNumberProps, "addonAfter"> = {
-            ...rest,
-            ...(max && max > 0 ? { max } : {}),
-            formatter: formatter || defaultFormatter,
-            parser: (parser || defaultParser) as InputNumberProps["parser"],
-            value: fieldValue ?? null,
-            onChange: (value) => {
-              setFieldValue(name, value ?? undefined);
-              rest.onChange?.(value);
-            },
-          };
-
-          const inputNumberElement = (
-            <InputNumberStyles
-              ref={inputNumberRef}
-              {...inputNumberProps}
-              style={FULL_WIDTH_STYLE}
-            />
-          );
-
-          return propAddonAfter ? (
-            <Space.Compact style={FULL_WIDTH_STYLE}>
-              {inputNumberElement}
-              <span style={addonAfterStyle}>{propAddonAfter}</span>
-            </Space.Compact>
-          ) : (
-            inputNumberElement
-          );
-        }}
-      </Form.Item>
+      {propAddonAfter ? (
+        <Space.Compact style={FULL_WIDTH_STYLE}>
+          {inputNumberElement}
+          <span style={addonAfterStyle}>{propAddonAfter}</span>
+        </Space.Compact>
+      ) : (
+        inputNumberElement
+      )}
     </Form.Item>
   );
 };

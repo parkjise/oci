@@ -3,24 +3,47 @@
 // ============================================================================
 // 변경이력:
 // - 2025.11.25 : ckkim (최초작성)
+// - 2024.12.26 : Antigravity (Store 패턴 적용 및 리팩토링)
 
-import { useState, useCallback, useImperativeHandle, forwardRef, useEffect, useRef } from "react";
-import type { ColDef, GridReadyEvent, GridApi, CellValueChangedEvent, ICellRendererParams, SelectionChangedEvent, RowClickedEvent } from "ag-grid-enterprise";
+import { useState, useCallback, forwardRef, useEffect, useRef } from "react";
+import type { ColDef, GridReadyEvent, GridApi, SelectionChangedEvent, ICellRendererParams } from "ag-grid-enterprise";
 import AgGrid from "@components/ui/form/AgGrid/FormAgGrid";
 import { CompanyGridStyles, GridContainer } from "./CompanyGrid.styles";
 import type { CompanyDto } from "@apis/system/org/companyApi";
 import { useTranslation } from "react-i18next";
+import { useCompanyMngStore } from "@store/system/org/company/companyMngStore";
+import styled from "styled-components";
+
+// ============================================================================
+// Internal Styled Components for Status
+// ============================================================================
+const StatusIconContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+`;
+
+const StatusIcon = styled.div<{ $backgroundColor: string; $iconColor: string }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: ${props => props.$backgroundColor};
+  color: ${props => props.$iconColor};
+  font-size: 14px;
+`;
 
 // ============================================================================
 // Status Cell Renderer
 // ============================================================================
-const StatusCellRenderer: React.FC<ICellRendererParams<CompanyDto & { id?: string; chk?: boolean }>> = ({ value }) => {
+const StatusCellRenderer: React.FC<ICellRendererParams<CompanyDto>> = ({ value }) => {
   const status = value || "";
-
-  let icon = null;
+  let iconClass = "";
   let backgroundColor = "";
   let iconColor = "";
-  let iconClass = "";
   let tooltip = "";
 
   switch (status) {
@@ -43,42 +66,15 @@ const StatusCellRenderer: React.FC<ICellRendererParams<CompanyDto & { id?: strin
       tooltip = "삭제";
       break;
     default:
-      return (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-          <span></span>
-        </div>
-      );
+      return null;
   }
 
-  icon = (
-    <div
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "24px",
-        height: "24px",
-        borderRadius: "50%",
-        backgroundColor: backgroundColor,
-        transition: "all 0.2s ease",
-      }}
-      title={tooltip}
-    >
-      <i
-        className={iconClass}
-        style={{
-          color: iconColor,
-          fontSize: "14px",
-          lineHeight: "1",
-        }}
-      />
-    </div>
-  );
-
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-      {icon}
-    </div>
+    <StatusIconContainer>
+      <StatusIcon $backgroundColor={backgroundColor} $iconColor={iconColor} title={tooltip}>
+        <i className={iconClass} />
+      </StatusIcon>
+    </StatusIconContainer>
   );
 };
 
@@ -87,243 +83,120 @@ const StatusCellRenderer: React.FC<ICellRendererParams<CompanyDto & { id?: strin
 // ============================================================================
 interface CompanyGridProps {
   className?: string;
-  rowData: (CompanyDto & { id?: string; chk?: boolean })[];
-  loading?: boolean;
-  onModify?: (modified: boolean) => void;
-  onAddRow?: (gridApi: any) => void;
-  onCopyRow?: (gridApi: any) => void;
-  onDeleteRow?: (gridApi: any) => void;
-  onSave?: () => void;
-  isModified?: boolean;
-  totalCount?: number;
-  onRowSelection?: (selectedRows: CompanyDto[]) => void;
-}
-
-export interface CompanyGridRef {
-  getGridData: () => (CompanyDto & { id?: string; chk?: boolean })[];
-  getSelectedRows: () => (CompanyDto & { id?: string; chk?: boolean })[];
-  getGridApi: () => GridApi | null;
 }
 
 // ============================================================================
 // Component
 // ============================================================================
-const CompanyGrid = forwardRef<CompanyGridRef, CompanyGridProps>(({
+const CompanyGrid = forwardRef<any, CompanyGridProps>(({
   className,
-  rowData,
-  onModify,
-  onAddRow,
-  onCopyRow,
-  onDeleteRow,
-  onSave,
-  onRowSelection,
-}, ref) => {
+}, _ref) => {
   const { t } = useTranslation();
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
-  const isInitialLoadRef = useRef<boolean>(true);
-  const prevSelectedOfficeIdRef = useRef<string | null>(null);
+  const isRestoringSelectionRef = useRef(false);
+  const prevSelectedIdRef = useRef<string | null>(null);
 
-  useImperativeHandle(ref, () => ({
-    getGridData: () => {
-      if (!gridApi) return rowData || [];
-
-      const allRows: (CompanyDto & { id?: string; chk?: boolean })[] = [];
-      gridApi.forEachNode((node) => {
-        if (node.data) {
-          allRows.push(node.data);
-        }
-      });
-      return allRows;
-    },
-    getSelectedRows: () => {
-      if (!gridApi) return [];
-      return gridApi.getSelectedRows() as (CompanyDto & { id?: string; chk?: boolean })[];
-    },
-    getGridApi: () => {
-      return gridApi;
-    },
-  }), [gridApi, rowData]);
+  const {
+    companyList,
+    selectedCompany,
+    setSelectedCompany,
+    setSelectedRows,
+    loading,
+    insert,
+    copy,
+    remove,
+    save,
+  } = useCompanyMngStore();
 
   const handleGridReady = useCallback((event: GridReadyEvent) => {
     setGridApi(event.api);
   }, []);
 
-  const hasModifiedRow = useCallback((gridApi: GridApi, excludeOfficeId?: string | null): boolean => {
-    if (!gridApi) return false;
+  // 선택 변경 핸들러
+  const handleSelectionChanged = useCallback((event: SelectionChangedEvent) => {
+    if (isRestoringSelectionRef.current) return;
+
+    const selectedRows = event.api.getSelectedRows();
+    const rows = selectedRows as CompanyDto[];
     
-    const allRows = gridApi.getRenderedNodes()
-      .map(node => node.data as CompanyDto)
-      .filter(row => row && (!excludeOfficeId || row.officeId !== excludeOfficeId));
-    
-    return allRows.some(
-      (row) => row.rowStatus === "U" || row.rowStatus === "C" || row.rowStatus === "D"
-    );
-  }, []);
-
-  const handleRowClicked = useCallback(
-    (event: RowClickedEvent) => {
-      if (!gridApi || !event.data) return;
-      
-      const clickedRow = event.data as CompanyDto;
-      const currentSelectedRows = gridApi.getSelectedRows() as CompanyDto[];
-      const currentSelectedOfficeId = currentSelectedRows.length > 0 ? currentSelectedRows[0].officeId : null;
-      
-      if (currentSelectedOfficeId === clickedRow.officeId) {
-        prevSelectedOfficeIdRef.current = clickedRow.officeId || null;
-        return;
-      }
-      
-      const hasModified = hasModifiedRow(gridApi, currentSelectedOfficeId || undefined);
-      
-      if (hasModified) {
-        event.node.setSelected(false);
-        if (currentSelectedOfficeId) {
-          gridApi.forEachNode((node) => {
-            if (node.data?.officeId === currentSelectedOfficeId) {
-              node.setSelected(true);
-            } else {
-              node.setSelected(false);
-            }
-          });
-        } else {
-          gridApi.deselectAll();
-        }
-        return;
-      }
-      
-      prevSelectedOfficeIdRef.current = clickedRow.officeId || null;
-    },
-    [gridApi, hasModifiedRow]
-  );
-
-  const handleSelectionChanged = useCallback(
-    (event: SelectionChangedEvent) => {
-      const selectedRows = event.api.getSelectedRows() as CompanyDto[];
-      
-      const allRows = event.api.getRenderedNodes()
-        .map(node => node.data as CompanyDto)
-        .filter(row => row);
-      
-      const hasModified = allRows.some(
-        (row) => row.rowStatus === "U" || row.rowStatus === "C" || row.rowStatus === "D"
-      );
-      
-      if (hasModified && selectedRows.length > 0) {
-        const newSelectedCompany = selectedRows[0];
-        
-        if (prevSelectedOfficeIdRef.current) {
-          const prevSelectedRow = allRows.find(
-            (row) => row.officeId === prevSelectedOfficeIdRef.current
-          );
-          
-          if (prevSelectedRow) {
-            const isPrevRowModified = prevSelectedRow.rowStatus === "U" || 
-                                      prevSelectedRow.rowStatus === "C" || 
-                                      prevSelectedRow.rowStatus === "D";
-            
-            if (isPrevRowModified && newSelectedCompany.officeId !== prevSelectedOfficeIdRef.current) {
-              event.api.deselectAll();
-              event.api.forEachNode((node) => {
-                if (node.data?.officeId === prevSelectedOfficeIdRef.current) {
-                  node.setSelected(true);
-                } else {
-                  node.setSelected(false);
-                }
-              });
-              return;
-            }
-          }
-        }
-        
-        const hasOtherModifiedRow = allRows.some(
-          (row) => row.officeId !== newSelectedCompany.officeId && 
-                   (row.rowStatus === "U" || row.rowStatus === "C" || row.rowStatus === "D")
-        );
-        
-        if (hasOtherModifiedRow && prevSelectedOfficeIdRef.current && 
-            newSelectedCompany.officeId !== prevSelectedOfficeIdRef.current) {
-          event.api.deselectAll();
-          event.api.forEachNode((node) => {
-            if (node.data?.officeId === prevSelectedOfficeIdRef.current) {
-              node.setSelected(true);
-            } else {
-              node.setSelected(false);
-            }
-          });
-          return;
-        }
-        
-        prevSelectedOfficeIdRef.current = newSelectedCompany.officeId || null;
-      } else if (selectedRows.length > 0) {
-        prevSelectedOfficeIdRef.current = selectedRows[0].officeId || null;
-      } else {
-        prevSelectedOfficeIdRef.current = null;
-      }
-      
-      if (onRowSelection) {
-        onRowSelection(selectedRows);
-      }
-    },
-    [onRowSelection]
-  );
-
-  const handleCellValueChanged = useCallback((event: CellValueChangedEvent) => {
-    if (!gridApi || !event.data) return;
-
-    const rowData = event.data as CompanyDto & { id?: string; chk?: boolean };
-    if (!rowData.rowStatus || rowData.rowStatus === undefined) {
-      rowData.rowStatus = "U";
-      gridApi.applyTransaction({ update: [rowData] });
-      gridApi.refreshCells({
-        rowNodes: [event.node!],
-        columns: ["rowStatus"],
-        force: true
-      });
+    setSelectedRows(rows);
+    if (rows.length > 0) {
+      setSelectedCompany(rows[0]);
+    } else {
+      setSelectedCompany(null);
     }
+  }, [setSelectedRows, setSelectedCompany]);
 
-    if (onModify) {
-      onModify(true);
-    }
-  }, [gridApi, onModify]);
-
+  // selectedCompany 변경 시 그리드 선택 동기화
   useEffect(() => {
-    if (gridApi && rowData && rowData.length > 0 && isInitialLoadRef.current) {
-      const timeoutId = setTimeout(() => {
-        if (!isInitialLoadRef.current) {
-          return;
-        }
-        const firstRow = gridApi.getDisplayedRowAtIndex(0);
-        const selectedRows = gridApi.getSelectedRows();
-        if (firstRow && firstRow.data && selectedRows.length === 0) {
-          gridApi.setNodesSelected({ nodes: [firstRow], newValue: true });
-          if (onRowSelection) {
-            const newSelectedRows = gridApi.getSelectedRows() as CompanyDto[];
-            if (newSelectedRows.length > 0) {
-              onRowSelection(newSelectedRows);
-            }
-          }
-          isInitialLoadRef.current = false;
-        }
-      }, 300);
+    if (!gridApi || !selectedCompany) return;
+
+    const currentId = selectedCompany.officeId || (selectedCompany as any).id;
+    if (currentId === prevSelectedIdRef.current) return;
+
+    let targetNode: any = null;
+    gridApi.forEachNode((node) => {
+      const nodeId = node.data?.officeId || node.data?.id;
+      if (nodeId === currentId) {
+        targetNode = node;
+      }
+    });
+
+    if (targetNode) {
+      isRestoringSelectionRef.current = true;
+      gridApi.deselectAll();
+      targetNode.setSelected(true);
       
-      return () => clearTimeout(timeoutId);
+      // 저장 후 등 스크롤 이동이 필요할 때 보장
+      setTimeout(() => {
+        gridApi.ensureNodeVisible(targetNode, "middle");
+      }, 100);
+
+      prevSelectedIdRef.current = currentId;
+      setTimeout(() => {
+        isRestoringSelectionRef.current = false;
+      }, 50);
     }
-  }, [gridApi, rowData, onRowSelection]);
+  }, [gridApi, selectedCompany]);
+
+  // 데이터 변경 시 리프레시
+  useEffect(() => {
+    if (gridApi) {
+      gridApi.refreshCells({ force: true });
+      
+      // 상태가 하나도 없는 경우 (저장 후) 잔상 제거를 위해 redraw
+      const hasAnyStatus = companyList.some(c => !!c.rowStatus);
+      if (!hasAnyStatus) {
+        setTimeout(() => gridApi.redrawRows(), 50);
+      }
+    }
+  }, [gridApi, companyList]);
+
+  // companyList 변경 시 첫 번째 행 선택 (데이터가 로드되었을 때만)
+  useEffect(() => {
+    if (gridApi && companyList.length > 0) {
+      const selectedNodes = gridApi.getSelectedNodes();
+      if (selectedNodes.length === 0 && !selectedCompany) {
+        gridApi.getDisplayedRowAtIndex(0)?.setSelected(true);
+      }
+    }
+  }, [gridApi, companyList, selectedCompany]);
 
   const columnDefs: ColDef<CompanyDto & { id?: string; chk?: boolean }>[] = [
     {
-      width: 50,
+      width: 30,
+      minWidth: 30,
+      maxWidth: 30,
       headerCheckboxSelection: true,
       headerCheckboxSelectionFilteredOnly: true,
       checkboxSelection: true,
       resizable: false,
       suppressHeaderMenuButton: true,
+      suppressMovable: true,
       pinned: "left",
       headerName: "",
       field: "chk",
-      valueGetter: (params) => {
-        return params.data?.chk || false;
-      },
+      valueGetter: (params) => params.data?.chk || false,
       valueSetter: (params) => {
         if (params.data) {
           params.data.chk = params.newValue;
@@ -336,35 +209,33 @@ const CompanyGrid = forwardRef<CompanyGridRef, CompanyGridProps>(({
     {
       field: "rowStatus",
       headerName: t("상태"),
-      width: 80,
+      width: 60,
+      minWidth: 60,
+      maxWidth: 60,
       editable: false,
       resizable: false,
       sortable: false,
       filter: false,
       pinned: "left",
       cellRenderer: StatusCellRenderer,
-      valueGetter: (params) => {
-        return params.data?.rowStatus || "";
-      },
     },
     {
       headerName: t("No."),
-      width: 80,
+      width: 60,
+      minWidth: 60,
+      maxWidth: 60,
       editable: false,
       resizable: false,
       sortable: false,
       filter: false,
       pinned: "left",
-      valueGetter: (params) => {
-        const rowIndex = params.node?.rowIndex ?? 0;
-        return rowIndex + 1;
-      },
+      valueGetter: (params) => (params.node?.rowIndex ?? 0) + 1,
     },
     {
       field: "officeId",
       headerName: t("회사코드"),
       width: 100,
-      editable: true,
+      editable: false,
       pinned: "left",
     },
     {
@@ -394,7 +265,7 @@ const CompanyGrid = forwardRef<CompanyGridRef, CompanyGridProps>(({
     {
       field: "addr",
       headerName: t("주소"),
-      width: 500,
+      width: 400,
       editable: false,
     },
   ];
@@ -405,42 +276,33 @@ const CompanyGrid = forwardRef<CompanyGridRef, CompanyGridProps>(({
         <AgGrid<CompanyDto & { id?: string; chk?: boolean }>
           height="100%"
           columnDefs={columnDefs}
-          rowData={rowData || []}
+          rowData={companyList || []}
+          loading={loading}
           pagination={false}
-          showToolbar={true}
-          onAddRow={onAddRow}
-          onCopyRow={onCopyRow}
-          onDeleteRow={onDeleteRow}
-          onSave={onSave}
+          showToolbar={false}
+          onAddRow={insert}
+          onCopyRow={copy}
+          onDeleteRow={remove}
+          onSave={save}
           toolbarButtons={{
-            showAdd: true,
-            showCopy: true,
-            showDelete: true,
-            showExcelDownload: true,
-            showExcelUpload: false,
-            showRefresh: false,
-            showSave: true,
+            showAdd: false,
+            showCopy: false,
+            showDelete: false,
+            showExcelDownload: false,
+            showSave: false,
           }}
           onGridReady={handleGridReady}
-          onCellValueChanged={handleCellValueChanged}
           onSelectionChanged={handleSelectionChanged}
-          onRowClicked={handleRowClicked}
           rowSelection="single"
+          suppressRowClickSelection={true}
+          getRowId={(params) => params.data.officeId || params.data.id}
           defaultColDef={{
             resizable: true,
             sortable: true,
             filter: true,
-            flex: undefined,
-            minWidth: 100,
-            suppressSizeToFit: true,
           }}
-          suppressRowClickSelection={false}
-          domLayout="normal"
-          animateRows={true}
-          rowHeight={30}
-          headerHeight={32}
-          ensureDomOrder={true}
-          enableRangeSelection={false}
+          rowHeight={32}
+          headerHeight={34}
         />
       </GridContainer>
     </CompanyGridStyles>
@@ -450,4 +312,3 @@ const CompanyGrid = forwardRef<CompanyGridRef, CompanyGridProps>(({
 CompanyGrid.displayName = "CompanyGrid";
 
 export default CompanyGrid;
-

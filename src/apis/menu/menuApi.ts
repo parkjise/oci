@@ -2,8 +2,8 @@
 // 메뉴 관련 API
 // ============================================================================
 import { get } from "../common/api";
-import type { ApiResponse } from "@/types/axios.types";
-import type { MenuButton } from "@/types/menuButton.type";
+import type { ApiResponse } from "@/types/com/api/axios.types";
+import type { MenuButton } from "@/types/com/menu/menuButton.type";
 
 /**
  * 메뉴 버튼 목록 조회 API

@@ -1,8 +1,6 @@
 import React from "react";
 import type { ReactNode } from "react";
 import { Article } from "@/components/ui/layout/Styles/PageLayout.styles";
-import { DataGridStyles } from "@/pages/sample/sample3/DataGrid.styles";
-import { FormButton } from "@components/ui/form";
 export interface SearchGridLayoutProps {
   /** 필터 패널 영역에 렌더링할 컴포넌트 */
   filterPanel?: ReactNode;
@@ -42,21 +40,6 @@ const TwoGridSaveLayout: React.FC<SearchGridLayoutProps> = ({
         <section
           className={`page-card page-card--grid ${gridClassName}`.trim()}
         >
-          <DataGridStyles className="data-grid-panel">
-            <div className="data-grid-panel__toolbar">
-              <div className="data-grid-panel-left"></div>
-              <div className="data-grid-panel-right">
-                <FormButton
-                  size="small"
-                  type="primary"
-                  className="data-grid-panel__button data-grid-panel__button--save navy"
-                >
-                  저장
-                </FormButton>
-              </div>
-            </div>
-            {/* 그리드 */}
-          </DataGridStyles>
           {/*상세 Grid */}
           {grid}
         </section>

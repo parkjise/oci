@@ -3,6 +3,7 @@ import "ag-grid-enterprise";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import { AgGridReact, type AgGridReactProps } from "ag-grid-react";
+import { useTranslation } from "react-i18next";
 import { LicenseManager } from "ag-grid-enterprise";
 import {
   type ColDef,
@@ -18,6 +19,7 @@ import {
   type CellEditingStoppedEvent,
   ModuleRegistry,
   AllCommunityModule,
+  type ValueFormatterParams,
 } from "ag-grid-community";
 import { AllEnterpriseModule } from "ag-grid-enterprise";
 
@@ -179,8 +181,7 @@ const FormAgGrid = <TData extends { id?: number | string }>(
     onGridReady,
     ...rest
   } = props;
-
-  // styleOptions와 headerTextAlign 병합
+  const { t } = useTranslation();
   const mergedStyleOptions: AgGridStyleOptions = {
     ...styleOptions,
     headerTextAlign: headerTextAlign || styleOptions?.headerTextAlign,
@@ -195,24 +196,25 @@ const FormAgGrid = <TData extends { id?: number | string }>(
     rowIndex: number;
     colId: string;
   } | null>(null);
+  const initialRowDataRef = useRef<TData[]>([]);
+  const gridApiRef = useRef<GridApi<TData> | null>(null);
+  const hasInitialDataRef = useRef(false);
+
+  useEffect(() => {
+    if (rowData.length > 0 && !hasInitialDataRef.current) {
+      initialRowDataRef.current = JSON.parse(JSON.stringify(rowData));
+      hasInitialDataRef.current = true;
+    }
+  }, [rowData]);
 
   useEffect(() => {
     clickedRowIdRef.current = clickedRowId;
-    if (gridApi) {
-      const timeoutId = setTimeout(() => {
-        if (gridApi) {
-          gridApi.redrawRows();
-          gridApi.refreshCells({ force: true });
-        }
-      }, 0);
+  }, [clickedRowId]);
 
-      return () => clearTimeout(timeoutId);
-    }
-  }, [clickedRowId, gridApi]);
+  useEffect(() => {
+    gridApiRef.current = gridApi;
+  }, [gridApi]);
 
-  /**
-   * 툴바 버튼 옵션 기본값 설정
-   */
   const buttonOptions = {
     showAdd: toolbarButtons?.showAdd ?? true,
     showCopy: toolbarButtons?.showCopy ?? true,
@@ -243,11 +245,10 @@ const FormAgGrid = <TData extends { id?: number | string }>(
     paginationPageSize: 20,
     paginationPageSizeSelector: [10, 20, 50, 100],
     animateRows: true,
+    headerHeight: 31,
+    rowHeight: 31,
   };
 
-  /**
-   * ID 비교 헬퍼 함수
-   */
   const isSameId = (
     id1: number | string | null | undefined,
     id2: number | string | null | undefined
@@ -258,17 +259,11 @@ const FormAgGrid = <TData extends { id?: number | string }>(
     return String(id1) === String(id2) || Number(id1) === Number(id2);
   };
 
-  /**
-   * 클릭된 행인지 확인하는 헬퍼 함수
-   */
   const isClickedRow = (rowId: number | string | null | undefined): boolean => {
     const currentClickedRowId = clickedRowIdRef.current;
     return isSameId(rowId, currentClickedRowId);
   };
 
-  /**
-   * editable 함수를 처리하는 헬퍼 함수
-   */
   const processEditable = (
     col: ExtendedColDef<TData>,
     disableFilter: boolean
@@ -292,41 +287,37 @@ const FormAgGrid = <TData extends { id?: number | string }>(
     return disableFilter ? { ...col, filter: false } : col;
   };
 
-  // 컬럼 정의 처리 (편집 가능성 및 정렬 적용)
-  const processedColumnDefs = columnDefs.map((col) => {
-    const processed = processEditable(col, props.enableFilter === false);
-    const extendedCol = processed as ExtendedColDef<TData>;
+  const applyColumnAlignment = (
+    col: ExtendedColDef<TData>
+  ): ExtendedColDef<TData> => {
+    const result = { ...col };
 
-    // 헤더별 정렬 적용 (컬럼별 headerAlign 우선)
-    const headerAlign = extendedCol.headerAlign || "center";
-    let headerClass = processed.headerClass;
+    // 헤더 정렬 적용
+    const headerAlign = col.headerAlign || "center";
     if (headerAlign !== "center") {
       const newClass = `ag-header-cell-${headerAlign}`;
-      headerClass = processed.headerClass
-        ? `${processed.headerClass} ${newClass}`
+      result.headerClass = col.headerClass
+        ? `${col.headerClass} ${newClass}`
         : newClass;
     }
 
-    // 바디 값 정렬 적용 (컬럼별 bodyAlign 우선)
-    const bodyAlign = extendedCol.bodyAlign || "center";
-    let cellStyle = processed.cellStyle;
-
-    // AG Grid에서 텍스트 정렬은 cellStyle의 textAlign 속성으로 적용
-    // bodyAlign이 지정된 경우 항상 textAlign 적용
+    // 바디 값 정렬 적용
+    const bodyAlign = col.bodyAlign || "center";
     if (bodyAlign) {
-      const newStyle = {
+      const textAlignStyle = {
         textAlign: bodyAlign as "left" | "center" | "right",
       };
-      cellStyle = processed.cellStyle
-        ? { ...processed.cellStyle, ...newStyle }
-        : newStyle;
+      result.cellStyle = col.cellStyle
+        ? { ...col.cellStyle, ...textAlignStyle }
+        : textAlignStyle;
     }
 
-    return {
-      ...processed,
-      ...(headerClass !== processed.headerClass && { headerClass }),
-      ...(cellStyle !== processed.cellStyle && { cellStyle }),
-    };
+    return result;
+  };
+
+  const processedColumnDefs = columnDefs.map((col) => {
+    const processed = processEditable(col, props.enableFilter === false);
+    return applyColumnAlignment(processed as ExtendedColDef<TData>);
   });
 
   const handleGridReady = (params: GridReadyEvent<TData>) => {
@@ -335,7 +326,6 @@ const FormAgGrid = <TData extends { id?: number | string }>(
   };
 
   const handleCellEditingStopped = (params: CellEditingStoppedEvent<TData>) => {
-    // 편집이 의도치 않게 종료된 경우 다시 시작
     const restoreInfo = shouldRestoreEditingRef.current;
     if (
       restoreInfo &&
@@ -370,7 +360,6 @@ const FormAgGrid = <TData extends { id?: number | string }>(
     const clickedRowIndex = params.node.rowIndex;
     const editingCells = gridApi.getEditingCells();
 
-    // 편집 중인 셀을 클릭한 경우, 편집 모드 유지를 위해 복원 정보 저장
     const isEditingClickedCell = editingCells.some(
       (cell) =>
         cell.rowIndex === clickedRowIndex &&
@@ -391,13 +380,11 @@ const FormAgGrid = <TData extends { id?: number | string }>(
       clickedColumnId === "ag-Grid-AutoColumn" ||
       params.column?.getColDef().checkboxSelection === true;
 
-    // 편집 중인 행을 클릭한 경우, 행 선택 변경을 하지 않아 편집 모드 유지
     const isEditingRow = editingCells.some(
       (cell) => cell.rowIndex === clickedRowIndex
     );
 
     if (isEditingRow) {
-      // clickedRowId만 업데이트
       if (clickedId !== undefined && clickedId !== null) {
         const newClickedId = isSameId(clickedId, clickedRowId)
           ? null
@@ -419,7 +406,6 @@ const FormAgGrid = <TData extends { id?: number | string }>(
       setClickedRowId(null);
     }
 
-    // 행 선택 업데이트
     if (
       !gridOptions?.suppressRowClickSelection &&
       !isCheckboxColumn &&
@@ -431,8 +417,6 @@ const FormAgGrid = <TData extends { id?: number | string }>(
             nodes: [params.node],
             newValue: true,
           });
-          gridApi.redrawRows();
-          gridApi.refreshCells({ force: true });
         }
       });
     }
@@ -460,44 +444,9 @@ const FormAgGrid = <TData extends { id?: number | string }>(
       setClickedRowId(null);
     }
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (!gridApi) return;
-
-        if (selectedNodes.length > 0) {
-          gridApi.redrawRows({ rowNodes: selectedNodes });
-          gridApi.refreshCells({
-            rowNodes: selectedNodes,
-            force: true,
-          });
-        }
-
-        const nodesToRefresh: IRowNode<TData>[] = [];
-        gridApi.forEachNode((node) => {
-          if (!node.isSelected()) {
-            nodesToRefresh.push(node);
-          }
-        });
-
-        if (nodesToRefresh.length > 0) {
-          gridApi.redrawRows({ rowNodes: nodesToRefresh });
-          gridApi.refreshCells({
-            rowNodes: nodesToRefresh,
-            force: true,
-          });
-        }
-
-        gridApi.redrawRows();
-        gridApi.refreshCells({ force: true });
-      });
-    });
-
     gridOptions?.onSelectionChanged?.(params);
   };
 
-  /**
-   * 새 ID 생성 (기존 데이터의 최대 ID + 1)
-   */
   const generateNewId = (): number => {
     if (rowData.length === 0) return 1;
     const maxId = Math.max(
@@ -509,38 +458,32 @@ const FormAgGrid = <TData extends { id?: number | string }>(
     return maxId + 1;
   };
 
-  /**
-   * 첫 번째 행으로 포커스 이동
-   */
   const focusFirstRow = () => {
     if (!gridApi) return;
-    setTimeout(() => {
-      gridApi.paginationGoToPage(0);
-      const firstNode = gridApi.getDisplayedRowAtIndex(0);
-      if (firstNode) {
-        firstNode.setSelected(true);
-        gridApi.ensureNodeVisible(firstNode, "top");
-      }
-    }, 100);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        gridApi.paginationGoToPage(0);
+        const firstNode = gridApi.getDisplayedRowAtIndex(0);
+        if (firstNode) {
+          firstNode.setSelected(true);
+          gridApi.ensureNodeVisible(firstNode, "top");
+        }
+      });
+    });
   };
 
-  /**
-   * 행 추가 핸들러
-   */
   const handleAddRow = () => {
     if (onAddRow) {
       onAddRow(gridApi);
     } else if (createNewRow && setRowData) {
       const newId = generateNewId();
       const newRow = createNewRow(newId);
+      gridApi?.deselectAll();
       setRowData([newRow, ...rowData]);
       focusFirstRow();
     }
   };
 
-  /**
-   * 행 복사 핸들러 (선택된 행을 맨 위에 복사)
-   */
   const handleCopyRow = () => {
     if (onCopyRow) {
       onCopyRow(gridApi);
@@ -574,16 +517,12 @@ const FormAgGrid = <TData extends { id?: number | string }>(
         })()
       : ({ ...rowToCopy, [idField]: newId } as TData);
 
+    gridApi?.deselectAll();
     setRowData([copiedRow, ...rowData]);
     showSuccess("행이 복사되었습니다.");
     focusFirstRow();
   };
 
-  /**
-   * 행 삭제 핸들러
-   * - 신규 추가된 행(rowStatus: "C")은 실제 삭제
-   * - 기존 행은 rowStatus를 "D"로 변경
-   */
   const handleDeleteRow = () => {
     if (onDeleteRow) {
       onDeleteRow(gridApi);
@@ -597,28 +536,31 @@ const FormAgGrid = <TData extends { id?: number | string }>(
 
       const selectedIds = new Set(selectedRows.map((row) => row[idField]));
 
+      // 신규 추가된 행은 완전히 제거, 기존 행은 삭제 상태로 변경
       const newData = rowData
         .map((row) => {
           if (!selectedIds.has(row[idField])) return row;
 
           const rowWithStatus = row as TData & { rowStatus?: "C" | "U" | "D" };
-          // 신규 추가된 행은 완전히 제거
-          if (rowWithStatus.rowStatus === "C") return null;
-          // 기존 행은 삭제 상태로 변경
+          // 신규 추가된 행은 완전히 제거 (null 반환 후 필터링)
+          if (rowWithStatus.rowStatus === "C") {
+            return null;
+          }
+          // 기존 행은 삭제 상태로 변경 (행 제거하지 않음)
           return { ...row, rowStatus: "D" as const } as TData;
         })
         .filter((row): row is TData => row !== null);
 
-      setRowData(newData);
+      // deselectAll을 먼저 호출하여 선택 상태를 먼저 업데이트
       gridApi?.deselectAll();
-      gridApi?.refreshCells();
+
+      // 데이터 업데이트 (한 번에 상태 업데이트)
+      setRowData(newData);
+
       showSuccess("선택된 행이 삭제되었습니다.");
     }
   };
 
-  /**
-   * 엑셀 다운로드 핸들러
-   */
   const handleExcelDownload = () => {
     if (onExcelDownload) {
       onExcelDownload(gridApi);
@@ -644,9 +586,21 @@ const FormAgGrid = <TData extends { id?: number | string }>(
           const obj: Record<string, unknown> = {};
           columnDefs.forEach((col) => {
             if (col.field && !excludeFieldSet.has(col.field)) {
-              obj[col.headerName || col.field] = (
-                row as Record<string, unknown>
-              )[col.field];
+              const originalValue = (row as Record<string, unknown>)[col.field];
+              let finalValue = originalValue;
+
+              // useValueFormatterForExport가 true이고 valueFormatter가 함수인 경우
+              if (
+                col.useValueFormatterForExport === true &&
+                typeof col.valueFormatter === "function"
+              ) {
+                // AG-Grid의 valueFormatter 파라미터 형식을 흉내내서 호출합니다.
+                finalValue = col.valueFormatter({
+                  value: originalValue,
+                  data: row,
+                } as ValueFormatterParams<typeof row>);
+              }
+              obj[col.headerName || col.field] = finalValue;
             }
           });
           return obj;
@@ -680,9 +634,6 @@ const FormAgGrid = <TData extends { id?: number | string }>(
     }
   };
 
-  /**
-   * 엑셀 업로드 핸들러
-   */
   const handleExcelUpload = async (file: File) => {
     if (onExcelUpload) {
       onExcelUpload(file, gridApi);
@@ -728,28 +679,88 @@ const FormAgGrid = <TData extends { id?: number | string }>(
     return false;
   };
 
-  /**
-   * 그리드 리프레시 핸들러
-   * 모든 변경사항을 원래 상태로 복원
-   */
-  const handleRefresh = () => {
-    if (onRefresh) {
-      onRefresh(gridApi);
-    } else if (originalRowData && setRowData) {
-      setRowData([...originalRowData]);
-      gridApi?.deselectAll();
-      gridApi?.refreshCells();
-      showSuccess("모든 변경사항이 취소되었습니다.");
+  const restoreGridDataWithTransaction = (restoreData: TData[]) => {
+    if (!gridApi) return;
+
+    const currentRowNodes: IRowNode<TData>[] = [];
+    gridApi.forEachNode((node) => {
+      currentRowNodes.push(node);
+    });
+
+    gridApi.applyTransaction({
+      remove: currentRowNodes
+        .map((node) => node.data)
+        .filter(Boolean) as TData[],
+      add: restoreData,
+      addIndex: 0,
+    });
+    gridApi.deselectAll();
+    gridApi.refreshCells();
+  };
+
+  const restoreGridData = (restoreData: TData[]) => {
+    if (!gridApi) return;
+
+    if (setRowData) {
+      setRowData(restoreData);
+      gridApi.deselectAll();
+      gridApi.refreshCells();
     } else {
-      gridApi?.refreshCells();
-      gridApi?.deselectAll();
-      showSuccess("그리드가 새로고침되었습니다.");
+      restoreGridDataWithTransaction(restoreData);
     }
   };
 
-  /**
-   * 커스텀 버튼 렌더링 함수
-   */
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh(gridApi);
+      return;
+    }
+
+    if (!gridApi) return;
+
+    const restoreData = (data: TData[]) => {
+      return data
+        .map((row) => {
+          const rowWithStatus = row as TData & { rowStatus?: "C" | "U" | "D" };
+          if (rowWithStatus.rowStatus === "C") {
+            return null;
+          }
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { rowStatus, ...rest } = rowWithStatus;
+          return rest as TData;
+        })
+        .filter((row): row is TData => row !== null);
+    };
+
+    if (originalRowData && setRowData) {
+      const restoredData = restoreData([...originalRowData]);
+      setRowData(restoredData);
+      gridApi.deselectAll();
+      gridApi.refreshCells();
+      showSuccess("모든 변경사항이 취소되었습니다.");
+      return;
+    }
+
+    if (originalRowData) {
+      const restoredData = restoreData([...originalRowData]);
+      restoreGridDataWithTransaction(restoredData);
+      showSuccess("모든 변경사항이 취소되었습니다.");
+      return;
+    }
+
+    if (initialRowDataRef.current.length > 0) {
+      const initialData = JSON.parse(JSON.stringify(initialRowDataRef.current));
+      const restoredData = restoreData(initialData);
+      restoreGridData(restoredData);
+      showSuccess("모든 변경사항이 취소되었습니다.");
+      return;
+    }
+
+    const currentData = JSON.parse(JSON.stringify(rowData));
+    restoreGridData(currentData);
+    showSuccess("그리드가 새로고침되었습니다.");
+  };
+
   const renderCustomButtons = () => {
     if (!customButtons || customButtons.length === 0) {
       return null;
@@ -821,12 +832,14 @@ const FormAgGrid = <TData extends { id?: number | string }>(
       <>
         {renderButtons(visibleButtons)}
         <Dropdown menu={{ items: menuItems }} trigger={["click"]}>
-          <FormButton
-            type="text"
-            size="small"
-            icon={<i className="ri-more-2-line" style={{ fontSize: 16 }} />}
-            className="data-grid-panel__button data-grid-panel__button--more ghost"
-          />
+          <Tooltip title={t("더보기", "더보기")}>
+            <FormButton
+              type="text"
+              size="small"
+              icon={<i className="ri-more-2-line" style={{ fontSize: 16 }} />}
+              className="data-grid-panel__button data-grid-panel__button--more ghost"
+            />
+          </Tooltip>
         </Dropdown>
       </>
     );
@@ -847,26 +860,22 @@ const FormAgGrid = <TData extends { id?: number | string }>(
             <div className="data-grid-panel__toolbar">
               <div className="data-grid-panel-left">
                 <div className="data-grid-panel__count">
-                  전체{" "}
+                  {t("전체", "전체")}{" "}
                   <span className="data-grid-panel__count-number">
                     {rowData.length}
                   </span>{" "}
-                  건
+                  {t("건", "건")}
                 </div>
                 {renderCustomButtons()}
               </div>
               <div className="data-grid-panel-right">
                 {buttonOptions.showAdd && (
-                  <Tooltip title="행 추가">
+                  <Tooltip title={t("행 추가", "행 추가")}>
                     <FormButton
                       icon={
-                        <i
-                          className="ri-file-add-line"
-                          style={{ fontSize: 20 }}
-                        />
+                        <i className="ri-file-add-line data-grid-panel__icon" />
                       }
                       onClick={handleAddRow}
-                      size="small"
                       objId="BTN_ADD_ROW"
                       disabled={!buttonOptions.enableAdd}
                       className="data-grid-panel__button  data-grid-panel__button--add-row ghost"
@@ -874,16 +883,12 @@ const FormAgGrid = <TData extends { id?: number | string }>(
                   </Tooltip>
                 )}
                 {buttonOptions.showCopy && (
-                  <Tooltip title="행 복사">
+                  <Tooltip title={t("행 복사", "행 복사")}>
                     <FormButton
                       icon={
-                        <i
-                          className="ri-file-copy-line"
-                          style={{ fontSize: 20 }}
-                        />
+                        <i className="ri-file-copy-line  data-grid-panel__icon" />
                       }
                       onClick={handleCopyRow}
-                      size="small"
                       objId="BTN_COPY_ROW"
                       disabled={!buttonOptions.enableCopy}
                       className="data-grid-panel__button data-grid-panel__button--copy-row ghost"
@@ -891,16 +896,12 @@ const FormAgGrid = <TData extends { id?: number | string }>(
                   </Tooltip>
                 )}
                 {buttonOptions.showDelete && (
-                  <Tooltip title="행 삭제">
+                  <Tooltip title={t("행 삭제", "행 삭제")}>
                     <FormButton
                       icon={
-                        <i
-                          className="ri-delete-bin-line"
-                          style={{ fontSize: 20 }}
-                        />
+                        <i className="ri-delete-bin-line  data-grid-panel__icon" />
                       }
                       onClick={handleDeleteRow}
-                      size="small"
                       objId="BTN_DELETE_ROW"
                       disabled={!buttonOptions.enableDelete}
                       className="data-grid-panel__button data-grid-panel__button--delete-row ghost"
@@ -910,16 +911,12 @@ const FormAgGrid = <TData extends { id?: number | string }>(
                 {buttonOptions.showExcelDownload && (
                   <>
                     <div className="data-grid-panel__divider"></div>
-                    <Tooltip title="엑셀 다운로드">
+                    <Tooltip title={t("엑셀 다운로드", "엑셀 다운로드")}>
                       <FormButton
                         icon={
-                          <i
-                            className="ri-download-line"
-                            style={{ fontSize: 20 }}
-                          />
+                          <i className="ri-download-line  data-grid-panel__icon" />
                         }
                         onClick={handleExcelDownload}
-                        size="small"
                         objId="BTN_EXCEL_DOWNLOAD"
                         disabled={!buttonOptions.enableExcelDownload}
                         className="data-grid-panel__button  data-grid-panel__button--excel-download ghost"
@@ -928,7 +925,7 @@ const FormAgGrid = <TData extends { id?: number | string }>(
                   </>
                 )}
                 {buttonOptions.showExcelUpload && (
-                  <Tooltip title="엑셀 업로드">
+                  <Tooltip title={t("엑셀 업로드", "엑셀 업로드")}>
                     <Upload
                       accept=".xlsx,.xls"
                       showUploadList={false}
@@ -937,12 +934,8 @@ const FormAgGrid = <TData extends { id?: number | string }>(
                     >
                       <FormButton
                         icon={
-                          <i
-                            className="ri-upload-line"
-                            style={{ fontSize: 20 }}
-                          />
+                          <i className="ri-upload-line  data-grid-panel__icon" />
                         }
-                        size="small"
                         objId="BTN_EXCEL_UPLOAD"
                         disabled={!buttonOptions.enableExcelUpload}
                         className="data-grid-panel__button  data-grid-panel__button--excel-upload ghost"
@@ -951,17 +944,12 @@ const FormAgGrid = <TData extends { id?: number | string }>(
                   </Tooltip>
                 )}
                 {buttonOptions.showRefresh && (
-                  <Tooltip title="그리드 새로고침">
+                  <Tooltip title={t("초기화", "초기화")}>
                     <FormButton
                       icon={
-                        <i
-                          className="ri-refresh-line"
-                          style={{ fontSize: 20 }}
-                        />
+                        <i className="ri-refresh-line  data-grid-panel__icon" />
                       }
                       onClick={handleRefresh}
-                      size="small"
-                      objId="BTN_REFRESH"
                       disabled={!buttonOptions.enableRefresh}
                       className="data-grid-panel__button  data-grid-panel__button--refresh-grid ghost"
                     />
@@ -970,16 +958,14 @@ const FormAgGrid = <TData extends { id?: number | string }>(
                 {buttonOptions.showSave && (
                   <>
                     <div className="data-grid-panel__divider"></div>
-                    <Tooltip title="저장">
-                      <FormButton
-                        onClick={() => onSave?.(gridApi)}
-                        size="small"
-                        objId="BTN_SAVE"
-                        className="navy"
-                      >
-                        저장
-                      </FormButton>
-                    </Tooltip>
+                    <FormButton
+                      onClick={() => onSave?.(gridApi)}
+                      size="small"
+                      objId="BTN_SAVE"
+                      className="navy"
+                    >
+                      {t("저장", "저장")}
+                    </FormButton>
                   </>
                 )}
               </div>
@@ -989,18 +975,25 @@ const FormAgGrid = <TData extends { id?: number | string }>(
         <AgGridReact<TData>
           theme="legacy"
           rowData={rowData}
+          getRowId={(params) => String(params.data[idField])}
           columnDefs={processedColumnDefs}
           onGridReady={handleGridReady}
           {...defaultGridOptions}
           {...gridOptions}
           rowClassRules={{
-            // 선택된 행에 클래스 추가
-            "ag-row-selected": (params) => !!params.node.isSelected(),
-            // 클릭된 행에 클래스 추가 (선택 여부와 관계없이)
+            "ag-row-selected": (params) => {
+              const data = params.data as
+                | (TData & { rowStatus?: "C" | "U" | "D" })
+                | undefined;
+              return !!params.node.isSelected() && data?.rowStatus !== "D";
+            },
             "ag-row-clicked": (params) => {
-              const data = params.data as TData | undefined;
+              const data = params.data as
+                | (TData & { rowStatus?: "C" | "U" | "D" })
+                | undefined;
+              if (data?.rowStatus === "D") return false;
               const rowId = data?.id;
-              const currentClickedRowId = clickedRowIdRef.current; // ref에서 최신 값 가져오기
+              const currentClickedRowId = clickedRowIdRef.current;
               return (
                 rowId !== undefined &&
                 rowId !== null &&
@@ -1010,6 +1003,12 @@ const FormAgGrid = <TData extends { id?: number | string }>(
                   String(rowId) === String(currentClickedRowId) ||
                   Number(rowId) === Number(currentClickedRowId))
               );
+            },
+            "ag-row-deleted": (params) => {
+              const data = params.data as
+                | (TData & { rowStatus?: "C" | "U" | "D" })
+                | undefined;
+              return data?.rowStatus === "D";
             },
             ...(gridOptions?.rowClassRules || {}),
           }}
@@ -1033,20 +1032,16 @@ const FormAgGrid = <TData extends { id?: number | string }>(
             const rowWithStatus = data as TData & {
               rowStatus?: "C" | "U" | "D";
             };
+            const isDeleted = rowWithStatus?.rowStatus === "D";
 
-            // 삭제된 행 스타일 (최우선)
-            if (rowWithStatus?.rowStatus === "D") {
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              const { backgroundColor, ...restCustomStyle } = customStyle || {};
+            if (isDeleted) {
               return {
-                backgroundColor: "#fff1f0",
-                opacity: 0.7,
+                backgroundColor: "#f0f0f0",
+                color: "#999999",
                 textDecoration: "line-through",
-                ...restCustomStyle,
               } as RowStyle;
             }
 
-            // 클릭된 행 스타일 확인
             const isClickedRow =
               rowId !== undefined &&
               rowId !== null &&
@@ -1056,8 +1051,7 @@ const FormAgGrid = <TData extends { id?: number | string }>(
                 String(rowId) === String(currentClickedRowId) ||
                 Number(rowId) === Number(currentClickedRowId));
 
-            // 클릭된 행 스타일 (선택 여부와 관계없이 적용)
-            if (isClickedRow) {
+            if (isClickedRow && !isDeleted) {
               // eslint-disable-next-line @typescript-eslint/no-unused-vars
               const { backgroundColor, color, ...restCustomStyle } =
                 customStyle || {};
@@ -1068,8 +1062,7 @@ const FormAgGrid = <TData extends { id?: number | string }>(
               } as RowStyle;
             }
 
-            // 선택된 행 스타일 (삭제되지 않은 행만, 클릭되지 않은 경우)
-            if (params.node.isSelected()) {
+            if (params.node.isSelected() && !isDeleted) {
               // eslint-disable-next-line @typescript-eslint/no-unused-vars
               const { backgroundColor, ...restCustomStyle } = customStyle || {};
               return {
@@ -1078,7 +1071,6 @@ const FormAgGrid = <TData extends { id?: number | string }>(
               } as RowStyle;
             }
 
-            // 선택 해제된 행: customStyle에서 backgroundColor를 제거하여 기본 스타일로 복원
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { backgroundColor, color, ...restCustomStyle } =
               customStyle || {};

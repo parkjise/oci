@@ -5,7 +5,7 @@
 // - 2025.11.25 : ckkim (최초작성)
 
 import { get, post, del } from "@apis/common/api";
-import type { ApiResponse } from "@/types/axios.types";
+import type { ApiResponse } from "@/types/com/api/axios.types";
 
 // ============================================================================
 // Types

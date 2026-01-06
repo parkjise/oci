@@ -142,14 +142,6 @@ const DetailView: React.FC<DetailViewProps> = ({ className }) => {
               <th>최종수정일시</th>
               <td>2025-10-20</td>
             </tr>
-            <tr>
-              <th>Reverse No.</th>
-              <td>10</td>
-              <th>대표적요</th>
-              <td>상차도</td>
-              <th>Closed</th>
-              <td colSpan={3}></td>
-            </tr>
           </tbody>
         </table>
       </div>

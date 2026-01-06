@@ -9,3 +9,8 @@ export const StyledLoginButton = styled(Button)`
   width: 100%;
 `;
 
+export const CapsLockWarning = styled.div`
+  color: orange;
+  margin-top: 5px;
+`;
+

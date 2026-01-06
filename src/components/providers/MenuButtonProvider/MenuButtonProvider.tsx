@@ -8,13 +8,15 @@ import React, {
 } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { getMenuButtonsApi } from "@apis/menu";
-import type { MenuButton } from "@/types/menuButton.type";
+import { getRoleMenuButtonsByPgmNoApi } from "@apis/system/pgm/access/permission/permissionApi";
+import type { MenuButton } from "@/types/com/menu/menuButton.type";
+import type { RoleMenuWinObjDto } from "@/types/com/auth/auth.types";
 import { getMenuCache } from "@/utils/menuCache";
-import type { MenuItem } from "@/types/api.types";
-import { useUiStore } from "@/store/uiStore";
+import type { MenuItem } from "@/types/com/api/api.types";
+import { useUiStore } from "@store/com/ui/uiStore";
 
 interface MenuButtonContextValue {
-  buttons: MenuButton[];
+  buttons: RoleMenuWinObjDto[];
   loading: boolean;
   hasPermission: (objId: string) => boolean;
   pgmNo?: string;
@@ -157,29 +159,44 @@ export const MenuButtonProvider: React.FC<MenuButtonProviderProps> = ({
     pgmNoFromMenuCache,
   ]);
 
-  const [buttons, setButtons] = useState<MenuButton[]>([]);
+  const [menuButtons, setMenuButtons] = useState<MenuButton[]>([]);
+  const [roleButtons, setRoleButtons] = useState<RoleMenuWinObjDto[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!pgmNo) {
-      setButtons([]);
+      setMenuButtons([]);
+      setRoleButtons([]);
       return;
     }
 
     const fetchButtons = async () => {
       setLoading(true);
       try {
-        const response = await getMenuButtonsApi(pgmNo);
-        if (response.success && response.data) {
-          setButtons(response.data);
+        // 두 API를 병렬로 호출
+        const [menuResponse, roleResponse] = await Promise.all([
+          getMenuButtonsApi(pgmNo),
+          getRoleMenuButtonsByPgmNoApi(pgmNo),
+        ]);
+
+        if (menuResponse.success && menuResponse.data) {
+          setMenuButtons(menuResponse.data);
         } else {
-          setButtons([]);
+          setMenuButtons([]);
+        }
+
+        if (roleResponse.success && roleResponse.data) {
+          console.log("roleResponse.data", roleResponse.data);
+          setRoleButtons(roleResponse.data);
+        } else {
+          setRoleButtons([]);
         }
       } catch (error) {
         if (import.meta.env.DEV) {
           console.error("[MenuButtonProvider] API 호출 실패:", error);
         }
-        setButtons([]);
+        setMenuButtons([]);
+        setRoleButtons([]);
       } finally {
         setLoading(false);
       }
@@ -188,14 +205,30 @@ export const MenuButtonProvider: React.FC<MenuButtonProviderProps> = ({
     fetchButtons();
   }, [pgmNo]);
 
+  // 메뉴 버튼과 권한 버튼을 결합한 최종 버튼 목록
+  const buttons = useMemo(() => {
+    return roleButtons;
+  }, [roleButtons]);
+
   const hasPermission = useCallback(
     (objId: string): boolean => {
       if (!objId) return true;
-      const button = buttons.find((btn) => btn.objId === objId);
-      if (!button) return true;
-      return button.visibleYn === "Y";
+
+      // 1. 메뉴에 버튼이 정의되어 있는지 확인 (visibleYn 체크)
+      const menuButton = menuButtons.find((btn) => btn.objId === objId);
+      if (!menuButton) return true; // 메뉴에 없으면 기본 허용
+      if (menuButton.visibleYn !== "Y") return false; // visibleYn이 "Y"가 아니면 권한 없음
+
+      // 2. 권한이 있는지 확인 (roleEnabled 체크)
+      const roleButton = roleButtons.find(
+        (btn) => btn.objectId === objId || btn.id === objId
+      );
+      if (!roleButton) return true; // 권한 정보가 없으면 기본 허용
+
+      // roleEnabled가 "Y"인 경우에만 권한 있음
+      return roleButton.roleEnabled === "Y";
     },
-    [buttons]
+    [menuButtons, roleButtons]
   );
 
   const value = useMemo(

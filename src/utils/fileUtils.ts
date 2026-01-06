@@ -89,3 +89,16 @@ export const isFileSizeExceeded = (
   const maxSizeInBytes = maxSizeInMB * 1024 * 1024;
   return file.size > maxSizeInBytes;
 };
+
+/**
+ * 파일 그룹 키(eatKey) 생성 시 사용할 기본 경로를 반환합니다.
+ * 현재 날짜를 "YYYY/MM/DD" 형식으로 반환합니다.
+ * @returns "YYYY/MM/DD" 형식의 날짜 문자열 (예: "2024/12/25")
+ */
+export const getDefaultFilePath = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}/${month}/${day}`;
+};

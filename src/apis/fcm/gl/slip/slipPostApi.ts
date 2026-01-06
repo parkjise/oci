@@ -7,7 +7,7 @@
  */
 
 import { post } from "@apis/common";
-import type { ApiResponse } from "@/types/axios.types";
+import type { ApiResponse } from "@/types/com/api/axios.types";
 import type {
   SlipPostSearchRequest,
   SlipPostSearchResponse,

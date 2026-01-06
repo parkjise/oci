@@ -1,10 +1,13 @@
 import React from "react";
+import type { ReactNode } from "react";
 import { Article } from "@/components/ui/layout/Styles/PageLayout.styles";
 import { Splitter } from "antd";
-import { FilterPanel, DetailGrid } from "@/components";
 import { SplitLayoutStyles } from "@/components/ui/layout/Styles/SplitLayout.styles";
 
 type SplitLayoutProps = {
+  leftPanel?: ReactNode;
+  rightTopPanel?: ReactNode;
+  rightBottomPanel?: ReactNode;
   className?: string;
   leftPanelSize?: number;
   leftPanelMin?: number;
@@ -12,16 +15,15 @@ type SplitLayoutProps = {
 };
 
 const SearchTripleStackLayout: React.FC<SplitLayoutProps> = ({
+  leftPanel,
+  rightTopPanel,
+  rightBottomPanel,
   leftPanelSize = "50%",
   leftPanelMin = 150,
   leftPanelMax = "80%",
 }) => {
   return (
     <Article className="page-layout page-layout--search-triple-stack">
-      <section className="page-card page-card--filter">
-        <FilterPanel className="page-layout__filter-panel" />
-      </section>
-
       <SplitLayoutStyles className="split-layout">
         {/* OUTER SPLITTER */}
         <Splitter className="split-layout__splitter">
@@ -34,17 +36,17 @@ const SearchTripleStackLayout: React.FC<SplitLayoutProps> = ({
             className="split-layout__panel split-layout__panel--left-grid"
           >
             <section className="page-card page-card--grid">
-              <DetailGrid className="page-layout__grid" />
+              {leftPanel}
             </section>
           </Splitter.Panel>
 
           {/* RIGHT 2-GRID VERTICAL */}
           <Splitter.Panel className="split-layout__panel split-layout__panel--right">
             <section className="page-card page-card--grid">
-              <DetailGrid className="page-layout__grid" />
+              {rightTopPanel}
             </section>
             <section className="page-card page-card--grid">
-              <DetailGrid className="page-layout__grid" />
+              {rightBottomPanel}
             </section>
           </Splitter.Panel>
         </Splitter>

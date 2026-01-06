@@ -3,44 +3,46 @@ import type { GridApi, ColDef, GridReadyEvent } from "ag-grid-community";
 import { FormAgGrid } from "@components/ui/form";
 import { RightGridStyles } from "./RightGrid.styles";
 import { message } from "antd";
-import type { FgcryEvlDetailResponse } from "@/types/fcm/gl/settlement/fgcryEvl.types";
+import type { FgcryEvlDetailListResponse } from "@/types/fcm/gl/settlement/fgcryEvl.types";
+import { useFgcryEvlStore } from "@/store/fcm/gl/settlement/FgcryEvlStore";
 
 // 초기 데이터 (빈 배열)
-const initialRightGridData: FgcryEvlDetailResponse[] = [];
+const initialRightGridData: FgcryEvlDetailListResponse[] = [];
 
 type RightGridProps = {
   className?: string;
-  rowData?: FgcryEvlDetailResponse[];
+  rowData?: FgcryEvlDetailListResponse[];
 };
 
 const RightGrid: React.FC<RightGridProps> = ({
   className,
   rowData: propRowData,
 }) => {
-  // DetailGrid와 동일한 구조: useRef 사용
+  // store에서 detailData 구독 추가
+  const { detailData, setDetailGridApi } = useFgcryEvlStore();
   const gridRef = useRef<GridApi | null>(null);
 
-  // SlipPost 패턴: rowData를 useMemo로 최적화하고 id 필드 명시적으로 추가
-  const rowData = useMemo<(Omit<FgcryEvlDetailResponse, 'id'> & { id: string; status: string; invNo: string })[]>(() => {
-    const rawRowData = propRowData || initialRightGridData;
+  // propRowData가 있으면 propRowData 사용, 없으면 store의 detailData 사용
+  // detailData를 dependency에 추가하여 store 업데이트 시 자동 반영
+  const rowData = useMemo<(FgcryEvlDetailListResponse & { id?: string })[]>(() => {
+    const rawRowData = propRowData || detailData || initialRightGridData;
     return rawRowData.map((item, index) => ({
       ...item,
-      id: item.slpHeaderId ? String(item.slpHeaderId) : (item.id ? String(item.id) : String(index)),
-      status: "",
-      invNo: item.invNo ?? "",
-    })) as (Omit<FgcryEvlDetailResponse, 'id'> & { id: string; status: string; invNo: string })[];
-  }, [propRowData]);
+      id: item.invoiceId ?? undefined,
+      _rowIndex: index, // fallback용 인덱스 저장
+    }));
+  }, [propRowData, detailData]); // detailData를 dependency에 추가
 
-  // 그리드 준비 핸들러 (DetailGrid와 동일)
+  // 그리드 준비 핸들러
   const handleGridReady = useCallback(
     (params: GridReadyEvent) => {
       gridRef.current = params.api;
-      // TODO: store가 생기면 setGridApi(params.api) 추가
+      setDetailGridApi(params.api); // store에 detailGridApi 저장
     },
-    []
+    [setDetailGridApi]
   );
 
-  // 저장 버튼 핸들러 (DetailGrid와 동일한 구조)
+  // 저장 버튼 핸들러
   const handleSave = useCallback(async () => {
     if (!gridRef.current) {
       message.error("그리드가 초기화되지 않았습니다.");
@@ -49,7 +51,7 @@ const RightGrid: React.FC<RightGridProps> = ({
 
     // 선택된 행 가져오기
     const selectedRows =
-      gridRef.current.getSelectedRows() as FgcryEvlDetailResponse[];
+      gridRef.current.getSelectedRows() as FgcryEvlDetailListResponse[];
 
     if (selectedRows.length === 0) {
       message.warning("선택된 항목이 없습니다.");
@@ -61,145 +63,140 @@ const RightGrid: React.FC<RightGridProps> = ({
     message.success(`${selectedRows.length}건의 항목이 저장되었습니다.`);
   }, []);
 
-  // 컬럼 정의 (Grid.tsx에서 가져옴)
-  const columnDefs: ColDef<FgcryEvlDetailResponse & { status?: string; invNo?: string }>[] = [
-    {
-      headerName: "No.",
-      width: 80,
-      pinned: "left",
-      checkboxSelection: true,
-      headerCheckboxSelection: true,
-      valueGetter: (params) => (params.node?.rowIndex ?? 0) + 1,
-    },
-    {
-      field: "status",
-      headerName: "상태",
-      width: 80,
-      pinned: "left",
-      filter: "agTextColumnFilter",
-    },
-    {
-      field: "invNo",
-      headerName: "Invoice No.",
-      width: 200,
-      filter: "agTextColumnFilter",
-      valueGetter: (params) => params.data?.invNo ?? "",
-    },
-    {
-      field: "currency",
-      headerName: "통화",
-      width: 100,
-      filter: "agSetColumnFilter",
-      editable: true,
-    },
-    {
-      field: "accCde",
-      headerName: "계정코드",
-      width: 150,
-      filter: "agTextColumnFilter",
-      editable: true,
-    },
-    {
-      field: "accName",
-      headerName: "계정명",
-      width: 250,
-      filter: "agSetColumnFilter",
-      editable: true,
-    },
-    {
-      field: "accMgmtNbr1",
-      headerName: "관리번호1",
-      width: 120,
-      filter: "agTextColumnFilter",
-      editable: true,
-    },
-    {
-      field: "accMgmtNbr1Name",
-      headerName: "관리번호1명",
-      width: 150,
-      filter: "agTextColumnFilter",
-      editable: true,
-    },
-    {
-      field: "accMgmtNbr2",
-      headerName: "관리번호2",
-      width: 120,
-      filter: "agTextColumnFilter",
-      editable: true,
-    },
-    {
-      field: "exchangeRate",
-      headerName: "환율",
-      width: 120,
-      filter: "agNumberColumnFilter",
-      editable: true,
-    },
-    {
-      field: "occurAmtFr",
-      headerName: "외화금액",
-      width: 120,
-      filter: "agNumberColumnFilter",
-      editable: true,
-    },
-    {
-      field: "occurAmt",
-      headerName: "원화금액",
-      width: 120,
-      filter: "agNumberColumnFilter",
-      editable: true,
-    },
-    {
-      field: "evaluExRate",
-      headerName: "평가환율",
-      width: 120,
-      filter: "agNumberColumnFilter",
-      editable: true,
-    },
-    {
-      field: "exchangeAmt",
-      headerName: "환산금액",
-      width: 120,
-      filter: "agNumberColumnFilter",
-      editable: true,
-    },
-    {
-      field: "gainLossAmt",
-      headerName: "환산평가손익",
-      width: 150,
-      filter: "agNumberColumnFilter",
-      editable: true,
-    },
-    {
-      field: "dvs",
-      headerName: "사업부",
-      width: 120,
-      filter: "agTextColumnFilter",
-      editable: true,
-    },
-    {
-      field: "slpHeaderId",
-      headerName: "전표헤더ID",
-      width: 150,
-      filter: "agTextColumnFilter",
-      editable: true,
-    },
-    {
-      field: "slipNo",
-      headerName: "전표번호",
-      width: 120,
-      filter: "agTextColumnFilter",
-      editable: true,
-    },
-  ];
+  // 컬럼 정의 - 타입을 FormAgGrid와 일치시킴
+  const columnDefs: ColDef<FgcryEvlDetailListResponse & { id?: string }>[] = useMemo(
+    () => [
+      {
+        headerName: "No.",
+        width: 80,
+        pinned: "left",
+        checkboxSelection: false,
+        headerCheckboxSelection: false,
+        valueGetter: (params) => (params.node?.rowIndex ?? 0) + 1,
+      },
+      {
+        field: "invoiceNumber",
+        headerName: "Invoice No.",
+        width: 200,
+        filter: "agTextColumnFilter",
+      },
+      {
+        field: "currency",
+        headerName: "통화",
+        width: 100,
+        filter: "agSetColumnFilter",
+        editable: true,
+      },
+      {
+        field: "accCde",
+        headerName: "계정코드",
+        width: 150,
+        filter: "agTextColumnFilter",
+        editable: true,
+      },
+      {
+        field: "accName",
+        headerName: "계정명",
+        width: 250,
+        filter: "agSetColumnFilter",
+        editable: true,
+      },
+      {
+        field: "accMgmtNbr1",
+        headerName: "관리번호1",
+        width: 120,
+        filter: "agTextColumnFilter",
+        editable: true,
+      },
+      {
+        field: "accMgmtNbr1Name",
+        headerName: "관리번호1명",
+        width: 150,
+        filter: "agTextColumnFilter",
+        editable: true,
+      },
+      {
+        field: "accMgmtNbr2",
+        headerName: "관리번호2",
+        width: 120,
+        filter: "agTextColumnFilter",
+        editable: true,
+      },
+      {
+        field: "exchangeRate",
+        headerName: "환율",
+        width: 120,
+        filter: "agNumberColumnFilter",
+        editable: true,
+      },
+      {
+        field: "occurAmtFr",
+        headerName: "외화금액",
+        width: 120,
+        filter: "agNumberColumnFilter",
+        editable: true,
+      },
+      {
+        field: "occurAmt",
+        headerName: "원화금액",
+        width: 120,
+        filter: "agNumberColumnFilter",
+        editable: true,
+      },
+      {
+        field: "evaluExRate",
+        headerName: "평가환율",
+        width: 120,
+        filter: "agNumberColumnFilter",
+        editable: true,
+      },
+      {
+        field: "exchangeAmt",
+        headerName: "환산금액",
+        width: 120,
+        filter: "agNumberColumnFilter",
+        editable: true,
+      },
+      {
+        field: "gainLossAmt",
+        headerName: "환산평가손익",
+        width: 150,
+        filter: "agNumberColumnFilter",
+        editable: true,
+      },
+      {
+        field: "dvs",
+        headerName: "사업부",
+        width: 120,
+        filter: "agTextColumnFilter",
+        editable: true,
+      },
+      {
+        field: "slpHeaderId",
+        headerName: "전표헤더ID",
+        width: 150,
+        filter: "agTextColumnFilter",
+        editable: true,
+      },
+      {
+        field: "slipNo",
+        headerName: "전표번호",
+        width: 120,
+        filter: "agTextColumnFilter",
+        editable: true,
+      },
+    ],
+    []
+  );
 
   return (
     <RightGridStyles className={className}>
       <div className="data-grid-panel">
         {/* 그리드 */}
-        <FormAgGrid<Omit<FgcryEvlDetailResponse, 'id'> & { id: string; status: string; invNo: string }>
+        <FormAgGrid<FgcryEvlDetailListResponse & { id?: string }>
           rowData={rowData}
           headerHeight={32}
-          columnDefs={columnDefs as any}
+          columnDefs={columnDefs}
           height={600}
           excelFileName="외화평가_상세"
           idField="id"
@@ -217,6 +214,19 @@ const RightGrid: React.FC<RightGridProps> = ({
           gridOptions={{
             defaultColDef: {
               flex: undefined, // flex 제거하여 width가 적용되도록 함
+            },
+            // getRowId 설정: row id 매칭 안정화
+            getRowId: (params) => {
+              if (params.data?.id) {
+                return String(params.data.id);
+              }
+              // id가 없는 경우 fallback:invoiceId, 인덱스 조합
+              const data = params.data as FgcryEvlDetailListResponse & {
+                _rowIndex?: number;
+              };
+              return `row-right-${data?.invoiceId ?? "unknown"}-${
+                data?._rowIndex ?? "unknown"
+              }`;
             },
             rowSelection: "multiple",
             animateRows: true,
@@ -255,7 +265,9 @@ const RightGrid: React.FC<RightGridProps> = ({
             showCopy: false,
             showAdd: false,
             enableExcelDownload: true,
-            showSave: true,
+            showSave: false,
+            showExcelUpload: false,
+            showExcelDownload: true
           }}
           onSave={handleSave}
         />

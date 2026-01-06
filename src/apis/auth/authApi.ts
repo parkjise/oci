@@ -3,13 +3,17 @@
 // ============================================================================
 import { post, get } from "../common/api";
 import { setAccessToken } from "@utils/tokenUtils";
-import type { ApiResponse } from "@/types/axios.types";
-import type { AuthUser } from "@/types/auth.types";
+import type { ApiResponse } from "@/types/com/api/axios.types";
+import type {
+  AuthUser,
+  ChangePasswordRequest,
+  UpdateEnvRequest,
+} from "@/types/com/auth/auth.types";
 import type {
   LoginRequest,
   LoginResponse,
   RefreshTokenResponse,
-} from "@/types/api.types";
+} from "@/types/com/api/api.types";
 
 /**
  * 로그인 API
@@ -60,7 +64,6 @@ export const logoutApi = async (): Promise<ApiResponse<void>> => {
   return post<void>("/auth/logout");
 };
 
-
 /**
  * 토큰 갱신 API
  * @returns 새로운 액세스 토큰
@@ -95,4 +98,34 @@ export const refreshTokenApi = async (): Promise<
  */
 export const getUserInfoApi = async (): Promise<ApiResponse<AuthUser>> => {
   return get<AuthUser>("/system/org/user/me");
+};
+
+/**
+ * 비밀번호 변경 API
+ * @param data - 비밀번호 변경 요청 데이터
+ * @returns 비밀번호 변경 응답
+ * @remarks
+ * - 인증 토큰이 필요합니다.
+ * - 현재 비밀번호와 새로운 비밀번호를 전송합니다.
+ * - 비밀번호 변경 성공 시 사용자 정보를 갱신할 수 있습니다.
+ */
+export const changePasswordApi = async (
+  data: ChangePasswordRequest
+): Promise<ApiResponse<void>> => {
+  return post<void>("/auth/change-password", data);
+};
+
+/**
+ * 사용자 환경 설정 업데이트 API
+ * @param data - 환경 설정 업데이트 요청 데이터
+ * @returns 업데이트된 사용자 정보
+ * @remarks
+ * - 인증 토큰이 필요합니다.
+ * - 테마, 언어, 메인 타입 등 사용자 환경 설정을 업데이트합니다.
+ * - 업데이트 성공 시 사용자 정보를 갱신할 수 있습니다.
+ */
+export const updateEnvApi = async (
+  data: UpdateEnvRequest
+): Promise<ApiResponse<AuthUser>> => {
+  return post<AuthUser>("/auth/update-env", data);
 };

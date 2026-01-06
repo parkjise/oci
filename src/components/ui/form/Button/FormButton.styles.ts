@@ -6,12 +6,23 @@ export const ButtonStyles = styled(Button)`
   color: ${({ theme }) => theme.colors.neutral[600]};
   &.ant-btn {
     font-family: "Pretendard";
+    border-color: ${({ theme }) => theme.colors.grey[200]};
     &:not(:disabled) {
       &:hover,
       &:active,
       &:focus {
         border-color: ${({ theme }) => theme.colors.neutral[800]};
         color: ${({ theme }) => theme.colors.neutral[800]};
+      }
+    }
+  }
+  &.ant-btn-primary {
+    color: ${({ theme }) => theme.colors.white};
+    &:not(:disabled) {
+      &:hover,
+      &:active,
+      &:focus {
+        color: ${({ theme }) => theme.colors.white};
       }
     }
   }

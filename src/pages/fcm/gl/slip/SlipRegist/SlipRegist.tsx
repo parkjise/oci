@@ -1,3 +1,12 @@
+/**
+ * 전표등록 페이지 (Slip Registration Page)
+ * 
+ * @description 회계 전표의 조회, 생성, 수정, 삭제 기능을 제공하는 메인 페이지 컴포넌트
+ * @author LeeSangChan
+ * @date 2025-12-19
+ * @last_modified 2025-12-19
+ */
+
 import React from "react";
 import { ListDetailLayout } from "@/components/ui/layout/ListDetailLayout";
 import {

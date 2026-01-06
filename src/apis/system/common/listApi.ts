@@ -4,8 +4,8 @@
 // 변경이력:
 // - 2025.11.25 : ckkim (최초작성)
 
-import { post } from "@apis/common/api";
-import type { ApiResponse } from "@/types/axios.types";
+import { get } from "@apis/common/api";
+import type { ApiResponse } from "@/types/com/api/axios.types";
 
 // ============================================================================
 // Types
@@ -41,7 +41,7 @@ export interface OrgRequest {
 export const getInOrgListApi = async (
   request: OrgRequest
 ): Promise<ApiResponse<ListResponse[]>> => {
-  return post<ListResponse[]>("/system/common/list/org/inbound", request);
+  return get<ListResponse[]>("/system/common/list/org/inbound", { params: request });
 };
 
 /**
@@ -51,6 +51,5 @@ export const getInOrgListApi = async (
 export const getAllOrgListApi = async (
   request: OrgRequest
 ): Promise<ApiResponse<ListResponse[]>> => {
-  return post<ListResponse[]>("/system/common/list/org/all", request);
+  return get<ListResponse[]>("/system/common/list/org/all", { params: request });
 };
-

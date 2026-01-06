@@ -2,8 +2,8 @@
 // 메인 화면 관련 API
 // ============================================================================
 import { get } from "../common/api";
-import type { ApiResponse } from "@/types/axios.types";
-import type { MainInitResponse } from "@/types/api.types";
+import type { ApiResponse } from "@/types/com/api/axios.types";
+import type { MainInitResponse } from "@/types/com/api/api.types";
 
 /**
  * 초기 데이터 조회 API

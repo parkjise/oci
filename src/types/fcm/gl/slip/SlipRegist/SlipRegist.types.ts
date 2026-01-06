@@ -301,6 +301,7 @@ export interface SlipRegistDetailResponse {
   programId?: string;
   terminalId?: string;
   pOrg?: string;
+  rowStatus?: string;
 }
 
 /**
@@ -481,6 +482,7 @@ export interface SlipRegistConfmRequest {
   bltDeptAckSlp?: string;
   bltDateAckSlp?: string;
   serAckSlp?: string;
+  edimStatus?: string;
 }
 
 /**
@@ -494,3 +496,23 @@ export interface SlipRegistConfmResponse {
   ackDate?: string;
   status?: string;
 }
+
+/**
+ * 전표 등록 관리항목명 조회 요청 타입
+ * 백엔드: SlipRegistManageItemNmRequest.java
+ */
+export interface SlipRegistManageItemNmRequest {
+  asRpsnOffice?: string;
+  accMgmtNbr1Type?: string;
+  accMgmtNbr2Type?: string;
+}
+
+/**
+ * 전표 등록 관리항목명 조회 응답 타입
+ * 백엔드: SlipRegistManageItemNmResponse.java
+ */
+export interface SlipRegistManageItemNmResponse {
+  accMgmtName1?: string;
+  accMgmtName2?: string;
+}
+

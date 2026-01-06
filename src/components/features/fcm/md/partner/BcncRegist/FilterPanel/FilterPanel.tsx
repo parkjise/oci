@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import { Form, message, type FormInstance } from "antd";
 import { FormInput, FormSelect, SearchForm } from "@components/ui/form";
-import { useAuthStore } from "@store/authStore";
-import { useBcncRegistStore } from "@store/bcncRegistStore";
-import type { BcncSrchRequest } from "@/types/fcm/md/partner/bcncRegist.types";
+import { confirm } from "@components/ui/feedback/Message";
+import { useAuthStore } from "@store/com/auth/authStore";
+import { useBcncRegistStore } from "@store/fcm/md/partner/BcncRegist/BcncRegistStore";
+import type { BcncSrchRequest } from "@/types/fcm/md/partner/BcncRegist/BcncRegist.types";
+import { useTranslation } from "react-i18next";
 
 type FilterPanelProps = {
   className?: string;
@@ -24,6 +26,7 @@ const FormWatcher: React.FC<{
 };
 
 const FilterPanel: React.FC<FilterPanelProps> = ({ className, onRefReady }) => {
+  const { t } = useTranslation();
   // Form 인스턴스: useRef로 관리 (리렌더링 방지)
   const formRef = useRef<FormInstance | null>(null);
   // Form.useWatch를 위해 최소한의 state 필요 (setFormInstance만 사용)
@@ -63,48 +66,68 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ className, onRefReady }) => {
   const handleSearch = useCallback(async () => {
     if (!formRef.current) return;
 
-    try {
-      const values = await formRef.current.validateFields();
+    const performSearch = async () => {
+      try {
+        const values = await formRef.current!.validateFields();
 
-      if (!user?.officeId) {
-        message.error("사무소 정보를 찾을 수 없습니다.");
-        return;
-      }
+        if (!user?.officeId) {
+          message.error("사무소 정보를 찾을 수 없습니다.");
+          return;
+        }
 
-      // 검색조건에서 거래처코드 또는 거래처명 추출
-      const searchCondition = values.searchCondition?.trim() || "";
-      let asCustname: string | undefined;
-      let asCustno: string | undefined;
+        // 검색조건에서 거래처코드 또는 거래처명 추출
+        const searchCondition = values.searchCondition?.trim() || "";
+        let asCustname: string | undefined;
+        let asCustno: string | undefined;
 
-      if (searchCondition) {
-        // 숫자로만 구성되어 있으면 거래처코드로 간주, 그 외는 거래처명으로 간주
-        if (/^\d+$/.test(searchCondition)) {
-          asCustno = searchCondition;
+        if (searchCondition) {
+          // 숫자로만 구성되어 있으면 거래처코드로 간주, 그 외는 거래처명으로 간주
+          if (/^\d+$/.test(searchCondition)) {
+            asCustno = searchCondition;
+          } else {
+            asCustname = searchCondition;
+          }
+        }
+
+        // API 요청 파라미터 구성
+        const searchRequest: BcncSrchRequest = {
+          asOfficeId: user.officeId,
+          asType: values.asType || undefined,
+          asCustname,
+          asCustno,
+        };
+
+        // 조회 전 상세 및 그리드 데이터 초기화
+        useBcncRegistStore.getState().setDetailData(null);
+        useBcncRegistStore.getState().setShipListData([]);
+
+        // Store의 search 함수를 통해 API 호출
+        await search(searchRequest);
+        // 조회 후 View 모드로 전환
+        useBcncRegistStore.getState().setDetailViewMode("view");
+      } catch (error) {
+        if (error && typeof error === "object" && "errorFields" in error) {
+          // Form validation error
+          message.error("입력값을 확인해주세요.");
         } else {
-          asCustname = searchCondition;
+          message.error("조회 중 오류가 발생했습니다.");
+          if (import.meta.env.DEV) {
+            console.error("조회 실패:", error);
+          }
         }
       }
+    };
 
-      // API 요청 파라미터 구성
-      const searchRequest: BcncSrchRequest = {
-        asOfficeId: user.officeId,
-        asType: values.asType || undefined,
-        asCustname,
-        asCustno,
-      };
+    const { detailViewMode } = useBcncRegistStore.getState();
 
-      // Store의 search 함수를 통해 API 호출
-      await search(searchRequest);
-    } catch (error) {
-      if (error && typeof error === "object" && "errorFields" in error) {
-        // Form validation error
-        message.error("입력값을 확인해주세요.");
-      } else {
-        message.error("조회 중 오류가 발생했습니다.");
-        if (import.meta.env.DEV) {
-          console.error("조회 실패:", error);
-        }
-      }
+    if (detailViewMode === "edit") {
+      confirm({
+        title: "확인",
+        content: "수정 중인 데이터가 있습니다. 조회하시겠습니까?",
+        onOk: performSearch,
+      });
+    } else {
+      performSearch();
     }
   }, [user, search]);
 
@@ -130,7 +153,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ className, onRefReady }) => {
       <FormWatcher onFormInstanceReady={setForm} />
       <FormSelect
         name="asType"
-        label="거래처구분"
+        label={t("거래처구분")}
         placeholder="전체"
         comCodeParams={{
           module: "MD",
@@ -142,11 +165,13 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ className, onRefReady }) => {
       />
       <FormInput
         name="searchCondition"
-        label="검색조건"
+        label={t("검색조건")}
         placeholder="거래처코드 또는 거래처명을 입력하세요"
+        onPressEnter={handleSearch}
       />
     </SearchForm>
   );
 };
 
-export default FilterPanel;
+// React.memo로 감싸서 불필요한 리렌더링 방지
+export default memo(FilterPanel);

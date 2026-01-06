@@ -32,6 +32,8 @@ i18n
     },
     interpolation: {
       escapeValue: false,
+      prefix: "{",
+      suffix: "}",
     },
     // 키가 없으면 키를 반환하도록 설정
     returnEmptyString: false,
@@ -45,7 +47,7 @@ i18n
     react: {
       useSuspense: true,
     },
-    debug: import.meta.env.DEV, // 개발 모드에서만 디버깅 활성화
+    debug: false, //import.meta.env.DEV, // 개발 모드에서만 디버깅 활성화
   });
 
 export default i18n;

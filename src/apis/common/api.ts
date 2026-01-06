@@ -7,7 +7,7 @@ import type {
   ApiResponse,
   ApiRequestConfig,
   PaginatedResponse,
-} from "@/types/axios.types";
+} from "@/types/com/api/axios.types";
 
 /**
  * GET 요청
@@ -87,49 +87,6 @@ export const getPaginated = async <T>(
     }
   );
   return response.data;
-};
-
-/**
- * 파일 업로드 (FormData)
- */
-export const upload = async <T>(
-  url: string,
-  formData: FormData,
-  config?: ApiRequestConfig
-): Promise<ApiResponse<T>> => {
-  const response = await axiosInstance.post<ApiResponse<T>>(url, formData, {
-    ...config,
-    headers: {
-      ...config?.headers,
-      "Content-Type": "multipart/form-data",
-    },
-  });
-  return response.data;
-};
-
-/**
- * 파일 다운로드
- */
-export const download = async (
-  url: string,
-  filename?: string,
-  config?: ApiRequestConfig
-): Promise<void> => {
-  const response = await axiosInstance.get(url, {
-    ...config,
-    responseType: "blob",
-  });
-
-  // Blob을 파일로 다운로드
-  const blob = new Blob([response.data]);
-  const downloadUrl = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = downloadUrl;
-  link.download = filename || "download";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(downloadUrl);
 };
 
 /**

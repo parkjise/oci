@@ -4,9 +4,11 @@
 // 변경이력:
 // - 2025.11.25 : ckkim (최초작성)
 
-import { get, post, upload as uploadFile, download as downloadFile } from "@apis/common/api";
+import { get, post, del } from "@apis/common/api";
+import { upload as uploadFile, download as downloadFile } from "@apis/com/file/fileApi";
 import axiosInstance from "@apis/common/axiosInstance";
-import type { ApiResponse } from "@/types/axios.types";
+import type { ApiResponse } from "@/types/com/api/axios.types";
+import { getDefaultFilePath } from "@/utils/fileUtils";
 
 // ============================================================================
 // Types
@@ -26,8 +28,8 @@ export interface FileItem {
   remoteFile?: string;
   remotePath?: string;
   fileSize?: number;
-  fileSeq?: number;  // EAT_KEY (백엔드에서 반환)
-  dataSeq?: number;  // EAT_KEY (백엔드에서 반환)
+  fileSeq?: number; // EAT_KEY (백엔드에서 반환)
+  dataSeq?: number; // EAT_KEY (백엔드에서 반환)
 }
 
 /**
@@ -64,20 +66,46 @@ export const getFileListApi = async (
 };
 
 /**
- * 파일 업로드
+ * 파일 업로드 (단일 파일)
  */
 export const uploadFileApi = async (
   file: File,
   request: FileUploadRequest
-): Promise<ApiResponse<FileItem>> => {
+): Promise<ApiResponse<FileItem[]>> => {
   const formData = new FormData();
-  formData.append("file", file);
+  // 단일 파일도 files 배열로 전송
+  formData.append("files", file);
   formData.append("eatKey", request.eatKey.toString());
   if (request.edmsCode) formData.append("edmsCode", request.edmsCode);
   if (request.deptcode) formData.append("deptcode", request.deptcode);
   // subDir 제거: 서버에서 자동으로 날짜/EAT_KEY 형식으로 경로 생성
 
-  return uploadFile<FileItem>("/system/files/upload", formData);
+  const response = await uploadFile<FileItem[]>("/system/files/upload", formData);
+  return response;
+};
+
+/**
+ * 여러 파일을 한 번에 업로드 (배치 업로드)
+ */
+export const uploadFilesBatchApi = async (
+  files: File[],
+  request: FileUploadRequest
+): Promise<ApiResponse<FileItem[]>> => {
+  if (files.length === 0) {
+    throw new Error("업로드할 파일이 없습니다.");
+  }
+
+  const formData = new FormData();
+  // 여러 파일을 files 필드에 배열로 추가
+  files.forEach((file) => {
+    formData.append("files", file);
+  });
+  formData.append("eatKey", request.eatKey.toString());
+  if (request.edmsCode) formData.append("edmsCode", request.edmsCode);
+  if (request.deptcode) formData.append("deptcode", request.deptcode);
+  // subDir 제거: 서버에서 자동으로 날짜/EAT_KEY 형식으로 경로 생성
+
+  return uploadFile<FileItem[]>("/system/files/upload", formData);
 };
 
 /**
@@ -97,7 +125,9 @@ export const downloadFileApi = async (
 export const createEatKeyApi = async (
   eatPath: string
 ): Promise<ApiResponse<number>> => {
-  return post<number>("/system/files/createEatKey", { eatPath });
+  return post<number>("/system/files/createEatKey", {
+    eatPath: eatPath || getDefaultFilePath(),
+  });
 };
 
 /**
@@ -114,9 +144,17 @@ export const deleteFileApi = async (
   eatKey: number,
   eatIdx: string
 ): Promise<ApiResponse<void>> => {
-  return axiosInstance.delete<ApiResponse<void>>(
-    `/system/files/${eatKey}/${eatIdx}`
-  ).then((response) => response.data);
+  return del<void>(`/system/files/${eatKey}/${eatIdx}`);
+};
+
+/**
+ * 전체 파일 다운로드 (ZIP)
+ */
+export const downloadAllFilesApi = async (
+  eatKey: number
+): Promise<void> => {
+  // 백엔드에서 Content-Disposition 헤더로 파일명을 설정하므로 filename 파라미터 불필요
+  return downloadFile(`/system/files/downloadAll/${eatKey}`);
 };
 
 /**
@@ -137,4 +175,3 @@ export const getImageBlobApi = async (
   );
   return response.data;
 };
-

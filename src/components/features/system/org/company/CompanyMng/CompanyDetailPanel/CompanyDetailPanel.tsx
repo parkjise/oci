@@ -1,711 +1,304 @@
-// ============================================================================
-// 법인 상세 정보 패널 컴포넌트
-// ============================================================================
-// 변경이력:
-// - 2025.11.25 : ckkim (최초작성)
-
-import React, { useEffect, useState, useCallback, useRef } from "react";
-import { Form, Upload, Button, message } from "antd";
-import { DownloadOutlined } from "@ant-design/icons";
-import type { UploadFile, UploadProps } from "antd";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
+import type { UploadFile } from "antd";
+import { Form } from "antd";
 import dayjs from "dayjs";
-import {
-  FormInput,
-  FormDatePicker,
-} from "@components/ui/form";
+import { DataForm } from "@components/ui/form";
+import { showWarning } from "@components/ui/feedback";
 import { useTranslation } from "react-i18next";
-import type { CompanyDto } from "@apis/system/org/companyApi";
-import { downloadFileApi, getFileListApi, getImageBlobApi } from "@apis/system/file/fileApi";
-import { CompanyDetailPanelStyles } from "./CompanyDetailPanel.styles";
+import { useCompanyMngStore } from "@store/system/org/company/companyMngStore";
+import { createField, createPhotoField } from "./CompanyDetailPanel.config";
+import { loadServerImageFiles } from "@components/ui/form";
+import { DetailPanelContainer } from "./CompanyDetailPanel.styles";
 
-// ============================================================================
-// Types
-// ============================================================================
-interface CompanyDetailPanelProps {
-  selectedCompany: CompanyDto | null;
-  form: any;
-  onValuesChange?: (changedValues: any, allValues: any) => void;
-  onFileUploadReady?: (file: File | null, eatKey: number | null) => void;
-  onFileDeleteReady?: (eatKey: number | null, eatIdx: string | null) => void;
-}
-
-// ============================================================================
-// Component
-// ============================================================================
-const CompanyDetailPanel: React.FC<CompanyDetailPanelProps> = ({
-  selectedCompany,
-  form,
-  onValuesChange,
-  onFileUploadReady,
-  onFileDeleteReady,
-}) => {
+const CompanyDetailPanel: React.FC = () => {
   const { t } = useTranslation();
+  const [form] = Form.useForm();
+  const [mode, setMode] = useState<"view" | "edit">("view");
+
+  const selectedCompany = useCompanyMngStore((state) => state.selectedCompany);
+  const companyList = useCompanyMngStore((state) => state.companyList);
+  const prevOfficeIdRef = useRef<string | null>(null);
+  const blobUrlsRef = useRef<string[]>([]);
+
+  // [Fix] DataForm.tsx의 날짜 파싱 로직(안전검사 부재)으로 인한 런타임 오류 방지 및 데이터 안정성 확보
+  const safeSelectedCompany = useMemo(() => {
+    if (!selectedCompany) return null;
+    const safe = { ...selectedCompany };
+    
+    // YYYY-MM-DD 형식의 문자열을 미리 dayjs 객체로 변환하여 
+    // DataForm의 취약한 파싱 로직(typeof .isValid === 'function' 체크 없음)을 우회합니다.
+    Object.keys(safe).forEach(key => {
+      const val = (safe as any)[key];
+      if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        try {
+          const d = dayjs(val);
+          if (d && typeof d.isValid === 'function' && d.isValid()) {
+            (safe as any)[key] = d;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    });
+    return safe;
+  }, [selectedCompany]);
+
+  const insert = useCompanyMngStore((state) => state.insert);
+  const remove = useCompanyMngStore((state) => state.remove);
+  const save = useCompanyMngStore((state) => state.save);
+  const syncGridFromDetailPanel = useCompanyMngStore(
+    (state) => state.syncGridFromDetailPanel
+  );
+  const setPendingFileInfo = useCompanyMngStore(
+    (state) => state.setPendingFileInfo
+  );
+  const setPendingDeleteInfo = useCompanyMngStore(
+    (state) => state.setPendingDeleteInfo
+  );
+
   const [fileList, setFileList] = useState<UploadFile[]>([]);
-  const [eatKey, setEatKey] = useState<number | null>(null);
-  const blobUrlRef = useRef<string[]>([]);
-  const [pendingDelete, setPendingDelete] = useState<{ eatKey: number; eatIdx: string } | null>(null);
 
-  // 파일 목록 조회
-  const fetchFileList = useCallback(async (key: number) => {
-    try {
-      blobUrlRef.current.forEach((url) => {
-        URL.revokeObjectURL(url);
-      });
-      blobUrlRef.current = [];
-      
-      const response = await getFileListApi(key);
-      if (response.success && response.data) {
-        const files: UploadFile[] = await Promise.all(
-          response.data.map(async (item) => {
-            const uid = item.uid || item.eatIdx || "";
-            const name = item.name || item.fileName || "";
-            
-            const fileEatKey = item.eatKey || key;
-            let imageUrl: string | undefined;
-            if (fileEatKey && uid && name && isImageFile(name)) {
-              try {
-                const blob = await getImageBlobApi(fileEatKey, uid);
-                imageUrl = URL.createObjectURL(blob);
-                blobUrlRef.current.push(imageUrl);
-              } catch (error) {
-                console.error("이미지 로드 실패:", error);
-              }
-            }
-            
-            return {
-              uid,
-              name,
-              status: (item.status as "done" | "uploading" | "error" | "removed") || "done",
-              url: imageUrl,
-              thumbUrl: imageUrl,
-            };
-          })
-        );
-        setFileList(files);
-      } else {
-        setFileList([]);
-      }
-    } catch (error) {
-      console.error("파일 목록 조회 실패:", error);
-      setFileList([]);
-    }
-  }, []);
-
-  // 이미지 파일 여부 확인
-  const isImageFile = (filename: string): boolean => {
-    if (!filename) return false;
-    const ext = filename.toLowerCase().substring(filename.lastIndexOf(".") + 1);
-    return ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg"].includes(ext);
-  };
-
-  // 파일 변경 핸들러
-  const handleFileChange: UploadProps["onChange"] = (info) => {
-    const { fileList: newFileList } = info;
-    
-    if (newFileList.length === 0 || newFileList.every(file => file.status === 'removed')) {
-      setFileList([]);
-      
-      if (onValuesChange && selectedCompany) {
-        const currentValues = form.getFieldsValue();
-        const allValues = {
-          ...currentValues,
-          officeId: selectedCompany.officeId,
-          officeImgId: undefined,
-        };
-        onValuesChange(
-          { officeImgId: undefined },
-          allValues
-        );
-      }
-      
-      if (onFileDeleteReady) {
-        onFileDeleteReady(null, null);
-      }
-      setPendingDelete(null);
-      return;
-    }
-    
-    const fileWithUrl = newFileList.find(file => 
-      file.url && 
-      (file.status === 'done' || file.status === 'uploading')
-    );
-    
-    if (fileWithUrl && fileWithUrl.url) {
-      setFileList([fileWithUrl]);
-      
-      if (onValuesChange && selectedCompany) {
-        const currentValues = form.getFieldsValue();
-        const allValues = {
-          ...currentValues,
-          officeId: selectedCompany.officeId,
-          officeImgId: eatKey ? eatKey.toString() : 'PENDING',
-        };
-        onValuesChange(
-          { officeImgId: eatKey ? eatKey.toString() : 'PENDING' },
-          allValues
-        );
-      }
-      return;
-    }
-    
-    const fileWithOrigin = newFileList.find(file => file.originFileObj);
-    if (fileWithOrigin) {
-      if (onValuesChange && selectedCompany) {
-        const currentValues = form.getFieldsValue();
-        const allValues = {
-          ...currentValues,
-          officeId: selectedCompany.officeId,
-          officeImgId: eatKey ? eatKey.toString() : 'PENDING',
-        };
-        onValuesChange(
-          { officeImgId: eatKey ? eatKey.toString() : 'PENDING' },
-          allValues
-        );
-      }
-    }
-  };
-
-  // 파일 업로드 핸들러
-  const handleUpload: UploadProps["customRequest"] = async (options) => {
-    const { file, onSuccess } = options;
-    try {
-      if (fileList.length > 0) {
-        fileList.forEach((prevFile) => {
-          if (prevFile.url && prevFile.url.startsWith("blob:")) {
-            try {
-              URL.revokeObjectURL(prevFile.url);
-              blobUrlRef.current = blobUrlRef.current.filter((url) => url !== prevFile.url);
-            } catch (e) {
-              // 이미 정리된 URL은 무시
-            }
-          }
-          if (prevFile.thumbUrl && prevFile.thumbUrl.startsWith("blob:")) {
-            try {
-              URL.revokeObjectURL(prevFile.thumbUrl);
-              blobUrlRef.current = blobUrlRef.current.filter((url) => url !== prevFile.thumbUrl);
-            } catch (e) {
-              // 이미 정리된 URL은 무시
-            }
-          }
-        });
-      }
-      
-      if (fileList.length > 0 && eatKey) {
-        const existingFile = fileList[0];
-        if (existingFile.uid && !existingFile.uid.startsWith("local_")) {
-          setPendingDelete({ eatKey, eatIdx: existingFile.uid });
-          if (onFileDeleteReady) {
-            onFileDeleteReady(eatKey, existingFile.uid);
-          }
-        }
-      } else {
-        if (pendingDelete) {
-          setPendingDelete(null);
-          if (onFileDeleteReady) {
-            onFileDeleteReady(null, null);
-          }
-        }
-      }
-      
-      const fileObj = file as File;
-      
-      const previewUrl = URL.createObjectURL(fileObj);
-      blobUrlRef.current.push(previewUrl);
-      
-      const currentEatKey = eatKey || null;
-      
-      const fileWithUrl = file as any;
-      fileWithUrl.url = previewUrl;
-      fileWithUrl.thumbUrl = previewUrl;
-      fileWithUrl.status = 'done';
-      
-      const fileUid = (file as any).uid || `local_${Date.now()}`;
-      const newFile: UploadFile = {
-        uid: fileUid,
-        name: fileObj.name,
-        status: "done",
-        url: previewUrl,
-        thumbUrl: previewUrl,
-        originFileObj: fileObj as any,
-      };
-      
-      setFileList([newFile]);
-      
-      if (onValuesChange && selectedCompany) {
-        const currentValues = form.getFieldsValue();
-        const allValues = {
-          ...currentValues,
-          officeId: selectedCompany.officeId,
-          officeImgId: currentEatKey ? currentEatKey.toString() : 'PENDING',
-        };
-        
-        onValuesChange(
-          { officeImgId: currentEatKey ? currentEatKey.toString() : 'PENDING' },
-          allValues
-        );
-      }
-      
-      if (onFileUploadReady) {
-        onFileUploadReady(fileObj, currentEatKey);
-      }
-      
-      if (onSuccess) {
-        onSuccess({} as any);
-      }
-    } catch (error) {
-      console.error("파일 처리 실패:", error);
-      if (options.onError) {
-        options.onError(error as Error);
-      }
-    }
-  };
-
-  // 파일 다운로드 핸들러
-  const handleDownload = useCallback(async () => {
-    if (!eatKey || fileList.length === 0) {
-      message.warning(t("MSG_SY_0065"));
-      return;
-    }
-
-    try {
-      const file = fileList[0];
-      if (file.uid) {
-        await downloadFileApi(eatKey, file.uid, file.name);
-        message.success(t("MSG_SY_0066"));
-      }
-    } catch (error) {
-      console.error("파일 다운로드 실패:", error);
-      message.error(t("MSG_SY_0067"));
-    }
-  }, [eatKey, fileList, t]);
-
-  const prevSelectedOfficeIdRef = useRef<string | null>(null);
-
-  // 선택된 법인 변경 시 폼 업데이트
+  // 데이터 로드 효과
   useEffect(() => {
     if (selectedCompany) {
-      const currentOfficeId = selectedCompany.officeId;
-      const prevOfficeId = prevSelectedOfficeIdRef.current;
-      
-      const isDifferentCompany = prevOfficeId !== currentOfficeId;
-      
-      if (isDifferentCompany) {
-        const getDateString = (dateValue: any): string | undefined => {
-          if (!dateValue) return undefined;
-          if (typeof dateValue === 'string') {
-            return dateValue.length >= 10 ? dateValue.substring(0, 10) : dateValue;
-          }
-          if (dateValue instanceof Date) {
-            return dayjs(dateValue).format('YYYY-MM-DD');
-          }
-          return undefined;
-        };
+      const currentId =
+        selectedCompany.officeId || (selectedCompany as any).id || "new";
 
-        const establishDateStr = getDateString(selectedCompany.establishDate);
+      if (prevOfficeIdRef.current !== currentId) {
+        setMode(selectedCompany.rowStatus === "C" ? "edit" : "view");
+        prevOfficeIdRef.current = currentId;
 
+        form.resetFields();
         form.setFieldsValue({
-          officeId: selectedCompany.officeId,
-          prefix: selectedCompany.prefix,
-          officeNme: selectedCompany.officeNme,
-          officeEngNme: selectedCompany.officeEngNme,
-          corpNo: selectedCompany.corpNo,
-          businessCategory: selectedCompany.businessCategory,
-          rpsnNme: selectedCompany.rpsnNme,
-          rpsnEngNme: selectedCompany.rpsnEngNme,
-          rpsnIdNbr: selectedCompany.rpsnIdNbr,
-          establishDate: establishDateStr ? dayjs(establishDateStr) : undefined,
-          addr: selectedCompany.addr,
-          addrEng: selectedCompany.addrEng,
-          uptae: selectedCompany.uptae,
-          jong: selectedCompany.jong,
-          telNo: selectedCompany.telNo,
-          faxNo: selectedCompany.faxNo,
+          ...selectedCompany,
+          establishDate: selectedCompany.establishDate ? dayjs(selectedCompany.establishDate) : undefined,
         });
 
-        setPendingDelete(null);
-        
-        if (selectedCompany.officeImgId && selectedCompany.officeImgId !== 'PENDING') {
-          const officeImgIdNum = typeof selectedCompany.officeImgId === 'string' 
-            ? parseInt(selectedCompany.officeImgId, 10) 
-            : selectedCompany.officeImgId;
-          if (!isNaN(officeImgIdNum) && officeImgIdNum > 0) {
-            setEatKey(officeImgIdNum);
-            fetchFileList(officeImgIdNum);
-          } else {
-            setEatKey(null);
-            setFileList([]);
-          }
+        blobUrlsRef.current.forEach(URL.revokeObjectURL);
+        blobUrlsRef.current = [];
+
+        if (
+          selectedCompany.officeImgId &&
+          selectedCompany.officeImgId !== "PENDING"
+        ) {
+          const imgKey = parseInt(selectedCompany.officeImgId as string, 10);
+          loadServerImageFiles({
+            imgKey,
+            defaultFileName: "stamp",
+            serverBlobUrlsRef: blobUrlsRef,
+            onLoadComplete: setFileList,
+          });
         } else {
-          setEatKey(null);
           setFileList([]);
         }
-        
-        prevSelectedOfficeIdRef.current = currentOfficeId || null;
       }
     } else {
       form.resetFields();
-      blobUrlRef.current.forEach((url) => {
-        try {
-          URL.revokeObjectURL(url);
-        } catch (e) {
-          // 이미 정리된 URL은 무시
-        }
-      });
-      blobUrlRef.current = [];
       setFileList([]);
-      setPendingDelete(null);
-      prevSelectedOfficeIdRef.current = null;
+      prevOfficeIdRef.current = null;
     }
-  }, [selectedCompany, form, fetchFileList]);
+  }, [
+    selectedCompany?.officeId,
+    (selectedCompany as any)?.id,
+    form,
+    selectedCompany,
+  ]);
 
-  // 컴포넌트 언마운트 시 Object URL 정리
   useEffect(() => {
     return () => {
-      blobUrlRef.current.forEach((url) => {
-        URL.revokeObjectURL(url);
-      });
-      blobUrlRef.current = [];
+      blobUrlsRef.current.forEach(URL.revokeObjectURL);
     };
   }, []);
 
+  const handleFileUpload = useCallback(
+    (options: any) => {
+      const { file, onSuccess } = options;
+      const fileObj = file as File;
+
+      const previewUrl = URL.createObjectURL(fileObj);
+      blobUrlsRef.current.push(previewUrl);
+
+      setPendingFileInfo({
+        file: fileObj,
+        eatKey:
+          selectedCompany?.officeImgId &&
+          selectedCompany.officeImgId !== "PENDING"
+            ? parseInt(selectedCompany.officeImgId as string, 10)
+            : null,
+        officeId: selectedCompany?.officeId || "",
+      });
+
+      setFileList([
+        {
+          uid: `local_${Date.now()}`,
+          name: fileObj.name,
+          status: "done",
+          url: previewUrl,
+          thumbUrl: previewUrl,
+        },
+      ]);
+
+      onSuccess?.("ok");
+      syncGridFromDetailPanel(form.getFieldsValue());
+    },
+    [selectedCompany, setPendingFileInfo, form, syncGridFromDetailPanel]
+  );
+
+  const handleFileRemove = useCallback(() => {
+    if (
+      selectedCompany?.officeImgId &&
+      selectedCompany.officeImgId !== "PENDING"
+    ) {
+      const imgKey = parseInt(selectedCompany.officeImgId as string, 10);
+      const targetFile = fileList[0];
+      if (
+        targetFile &&
+        targetFile.uid &&
+        !targetFile.uid.startsWith("local_")
+      ) {
+        setPendingDeleteInfo({
+          eatKey: imgKey,
+          eatIdx: targetFile.uid,
+          officeId: selectedCompany.officeId || "",
+        });
+      }
+    }
+
+    setFileList([]);
+    setPendingFileInfo(null);
+    blobUrlsRef.current.forEach(URL.revokeObjectURL);
+    blobUrlsRef.current = [];
+    syncGridFromDetailPanel(form.getFieldsValue());
+  }, [
+    selectedCompany,
+    fileList,
+    setPendingDeleteInfo,
+    setPendingFileInfo,
+    form,
+    syncGridFromDetailPanel,
+  ]);
+
+  const handleSave = useCallback(async () => {
+    try {
+      const values = await form.validateFields();
+      syncGridFromDetailPanel(values);
+      await save();
+      setMode("view");
+    } catch (errorInfo) {
+      showWarning(t("필수 항목을 입력해주세요."));
+    }
+  }, [form, save, syncGridFromDetailPanel, t]);
+
+  const tableRows = useMemo(() => {
+    const p = { mode };
+
+    const txt = (k: string, l: string, rest: any = {}) => {
+      const { required, dataColspan, ...otherProps } = rest;
+      return createField({
+        key: k,
+        label: t(l),
+        required,
+        dataColspan,
+        inputProps: { ...p, ...otherProps },
+        type: "text",
+      });
+    };
+
+    return [
+      {
+        fields: [
+          txt("officeId", "회사코드", {
+            required: true,
+            disabled: selectedCompany?.rowStatus !== "C",
+          }),
+          txt("prefix", "접두사"),
+        ],
+      },
+      {
+        fields: [
+          txt("officeNme", "회사명", { required: true }),
+          txt("officeEngNme", "회사명(영문)"),
+        ],
+      },
+      {
+        fields: [
+          txt("corpNo", "법인등록번호", { required: true }),
+          txt("businessCategory", "사업분야"),
+        ],
+      },
+      {
+        fields: [
+          txt("rpsnNme", "대표자", { required: true }),
+          txt("rpsnEngNme", "대표자(영문)"),
+        ],
+      },
+      {
+        fields: [
+          txt("rpsnIdNbr", "주민등록번호"),
+          createField({
+            key: "establishDate",
+            label: t("설립일"),
+            type: "date",
+            inputProps: p,
+          }),
+        ],
+      },
+      { fields: [txt("addr", "주소", { dataColspan: 3 })] },
+      { fields: [txt("addrEng", "주소(영문)", { dataColspan: 3 })] },
+      { fields: [txt("uptae", "업태"), txt("jong", "업종")] },
+      { fields: [txt("telNo", "전화번호"), txt("faxNo", "FAX번호")] },
+      {
+        fields: [
+          createPhotoField({
+            fileList,
+            onFileChange: (info: any) => {
+              if (info.file.status === "removed") handleFileRemove();
+            },
+            onUpload: handleFileUpload,
+            onRemove: handleFileRemove,
+            onDownload: () => {},
+            t,
+            mode,
+          }),
+        ],
+      },
+    ];
+  }, [mode, fileList, selectedCompany, t, handleFileUpload, handleFileRemove]);
+
   return (
-    <CompanyDetailPanelStyles>
-      <Form
+    <DetailPanelContainer>
+      <DataForm
+        key={
+          (selectedCompany?.rowStatus === "C"
+            ? "new"
+            : selectedCompany?.officeId) || "empty"
+        }
         form={form}
-        layout="horizontal"
-        labelCol={{ span: 8 }}
-        wrapperCol={{ span: 16 }}
-        onValuesChange={onValuesChange}
-      >
-        <div className="company-detail__table">
-          <table>
-            <tbody>
-              {/* 첫 번째 행: 회사코드, 접두사(회사코드), 직인 */}
-              <tr>
-                <th>
-                  {t("회사코드")}
-                  <span className="helptext asterisk">
-                    <i className="ri-asterisk"></i>
-                  </span>
-                </th>
-                <td>
-                  <FormInput
-                    name="officeId"
-                    label=""
-                    disabled={selectedCompany?.rowStatus !== "C"}
-                    rules={[{ required: true }]}
-                    style={{ marginBottom: 0, width: "80px" }}
-                  />
-                </td>
-                <th>
-                  {t("접두사(회사코드)")}
-                </th>
-                <td>
-                  <FormInput
-                    name="prefix"
-                    label=""
-                    disabled={selectedCompany?.rowStatus !== "C"}
-                    style={{ marginBottom: 0, width: "80px" }}
-                  />
-                </td>
-                <th rowSpan={9} className="signature-header">
-                  {t("직인")}
-                </th>
-                <td rowSpan={9} className="signature-cell">
-                  <div className="signature-section">
-                    <div className="upload-wrapper">
-                      <Upload
-                        listType="picture-card"
-                        fileList={fileList}
-                        customRequest={handleUpload}
-                        onChange={handleFileChange}
-                        maxCount={1}
-                        accept="image/*"
-                        onRemove={async (file) => {
-                          try {
-                            const urlsToRevoke: string[] = [];
-                            if (file.url && file.url.startsWith("blob:")) {
-                              urlsToRevoke.push(file.url);
-                            }
-                            if (file.thumbUrl && file.thumbUrl.startsWith("blob:")) {
-                              urlsToRevoke.push(file.thumbUrl);
-                            }
-                            urlsToRevoke.forEach((url) => {
-                              URL.revokeObjectURL(url);
-                              blobUrlRef.current = blobUrlRef.current.filter(
-                                (storedUrl) => storedUrl !== url
-                              );
-                            });
-                            
-                            if (file.uid && file.uid.startsWith("local_")) {
-                              setFileList([]);
-                              if (onFileUploadReady) {
-                                onFileUploadReady(null, null);
-                              }
-                              return true;
-                            }
-                            
-                            if (eatKey && file.uid) {
-                              setPendingDelete({ eatKey, eatIdx: file.uid });
-                              setFileList([]);
-                              
-                              if (onFileDeleteReady) {
-                                onFileDeleteReady(eatKey, file.uid);
-                              }
-                              
-                              if (onFileUploadReady) {
-                                onFileUploadReady(null, null);
-                              }
-                              
-                              if (onValuesChange && selectedCompany) {
-                                const currentValues = form.getFieldsValue();
-                                const allValues = {
-                                  ...currentValues,
-                                  officeId: selectedCompany.officeId,
-                                  officeImgId: undefined,
-                                };
-                                onValuesChange(
-                                  { officeImgId: undefined },
-                                  allValues
-                                );
-                              }
-                              
-                              return true;
-                            }
-                            
-                            setFileList([]);
-                            return true;
-                          } catch (error) {
-                            console.error("파일 제거 실패:", error);
-                            return false;
-                          }
-                        }}
-                      >
-                        {fileList.length < 1 && (
-                          <div>
-                            <div style={{ marginTop: 8 }}>{t("사진등록")}</div>
-                          </div>
-                        )}
-                      </Upload>
-                      {fileList.length > 0 && (
-                        <Button
-                          type="primary"
-                          icon={<DownloadOutlined />}
-                          onClick={handleDownload}
-                          size="small"
-                          style={{ marginTop: 8, width: "100%" }}
-                        >
-                          {t("사진다운")}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </td>
-              </tr>
-
-              {/* 두 번째 행: 회사명, 회사명(영문) */}
-              <tr>
-                <th>
-                  {t("회사명")}
-                  <span className="helptext asterisk">
-                    <i className="ri-asterisk"></i>
-                  </span>
-                </th>
-                <td>
-                  <FormInput
-                    name="officeNme"
-                    label=""
-                    rules={[{ required: true }]}
-                    style={{ marginBottom: 0, width: "300px" }}
-                  />
-                </td>
-                <th>
-                  {t("회사명(영문)")}
-                </th>
-                <td>
-                  <FormInput
-                    name="officeEngNme"
-                    label=""
-                    style={{ marginBottom: 0, width: "300px" }}
-                  />
-                </td>
-              </tr>
-
-              {/* 세 번째 행: 법인등록번호, 사업분야 */}
-              <tr>
-                <th>
-                  {t("법인등록번호")}
-                  <span className="helptext asterisk">
-                    <i className="ri-asterisk"></i>
-                  </span>
-                </th>
-                <td>
-                  <FormInput
-                    name="corpNo"
-                    label=""
-                    rules={[{ required: true }]}
-                    style={{ marginBottom: 0, width: "300px" }}
-                  />
-                </td>
-                <th>
-                  {t("사업분야")}
-                  <span className="helptext asterisk">
-                    <i className="ri-asterisk"></i>
-                  </span>
-                </th>
-                <td>
-                  <FormInput
-                    name="businessCategory"
-                    label=""
-                    rules={[{ required: true }]}
-                    style={{ marginBottom: 0, width: "300px" }}
-                  />
-                </td>
-              </tr>
-
-              {/* 네 번째 행: 대표자, 대표자(영문) */}
-              <tr>
-                <th>
-                  {t("대표자")}
-                  <span className="helptext asterisk">
-                    <i className="ri-asterisk"></i>
-                  </span>
-                </th>
-                <td>
-                  <FormInput
-                    name="rpsnNme"
-                    label=""
-                    rules={[{ required: true }]}
-                    style={{ marginBottom: 0, width: "300px" }}
-                  />
-                </td>
-                <th>
-                  {t("대표자(영문)")}
-                </th>
-                <td>
-                  <FormInput
-                    name="rpsnEngNme"
-                    label=""
-                    style={{ marginBottom: 0, width: "300px" }}
-                  />
-                </td>
-              </tr>
-
-              {/* 다섯 번째 행: 주민등록번호, 설립일 */}
-              <tr>
-                <th>
-                  {t("주민등록번호")}
-                </th>
-                <td>
-                  <FormInput
-                    name="rpsnIdNbr"
-                    label=""
-                    style={{ marginBottom: 0, width: "300px" }}
-                  />
-                </td>
-                <th>
-                  {t("설립일")}
-                </th>
-                <td>
-                  <FormDatePicker
-                    name="establishDate"
-                    label=""
-                    format="YYYY-MM-DD"
-                    style={{ marginBottom: 0, width: "300px" }}
-                  />
-                </td>
-              </tr>
-
-              {/* 여섯 번째 행: 주소 */}
-              <tr>
-                <th>
-                  {t("주소")}
-                </th>
-                <td colSpan={3}>
-                  <FormInput
-                    name="addr"
-                    label=""
-                    style={{ marginBottom: 0 }}
-                  />
-                </td>
-              </tr>
-
-              {/* 일곱 번째 행: 주소(영문) */}
-              <tr>
-                <th>
-                  {t("주소(영문)")}
-                </th>
-                <td colSpan={3}>
-                  <FormInput
-                    name="addrEng"
-                    label=""
-                    style={{ marginBottom: 0 }}
-                  />
-                </td>
-              </tr>
-
-              {/* 여덟 번째 행: 업태, 업종 */}
-              <tr>
-                <th>
-                  {t("업태")}
-                  <span className="helptext asterisk">
-                    <i className="ri-asterisk"></i>
-                  </span>
-                </th>
-                <td>
-                  <FormInput
-                    name="uptae"
-                    label=""
-                    rules={[{ required: true }]}
-                    style={{ marginBottom: 0, width: "300px" }}
-                  />
-                </td>
-                <th>
-                  {t("업종")}
-                  <span className="helptext asterisk">
-                    <i className="ri-asterisk"></i>
-                  </span>
-                </th>
-                <td>
-                  <FormInput
-                    name="jong"
-                    label=""
-                    rules={[{ required: true }]}
-                    style={{ marginBottom: 0, width: "300px" }}
-                  />
-                </td>
-              </tr>
-
-              {/* 아홉 번째 행: 전화번호, FAX번호 */}
-              <tr>
-                <th>
-                  {t("전화번호")}
-                </th>
-                <td>
-                  <FormInput
-                    name="telNo"
-                    label=""
-                    style={{ marginBottom: 0, width: "300px" }}
-                  />
-                </td>
-                <th>
-                  {t("FAX번호")}
-                </th>
-                <td>
-                  <FormInput
-                    name="faxNo"
-                    label=""
-                    style={{ marginBottom: 0, width: "300px" }}
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </Form>
-    </CompanyDetailPanelStyles>
+        className="page-layout__detail-view"
+        tableRows={tableRows}
+        tableData={safeSelectedCompany as any}
+        mode={mode}
+        actionButtonGroup={{
+          onButtonClick: {
+            create: () =>
+              !companyList.some((c) => c.rowStatus === "C")
+                ? insert()
+                : showWarning(t("이미 신규 행이 있습니다.")),
+            edit: () => selectedCompany && setMode("edit"),
+            save: handleSave,
+            delete: remove,
+          },
+          hideButtons: ["copy"],
+        }}
+      />
+    </DetailPanelContainer>
   );
 };
 
 export default CompanyDetailPanel;
-

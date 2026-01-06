@@ -3,6 +3,6 @@
 
 export * from "./auth";
 export * from "./main";
-export * from "./comCode";
+export * from "./com/code";
 export * from "./common";
 export * from "./menu";

@@ -1,15 +1,15 @@
 import React from "react";
 import type { ReactNode } from "react";
+import { Article } from "@/components/ui/layout/Styles/PageLayout.styles";
 import { Splitter } from "antd";
 import { SplitLayoutStyles } from "@/components/ui/layout/Styles/SplitLayout.styles";
-
 export interface TwoGridLayoutProps {
   /** 필터 패널 영역에 렌더링할 컴포넌트 */
   filterPanel?: ReactNode;
   /** 왼쪽 그리드 영역에 렌더링할 컴포넌트 */
-  leftPanel?: ReactNode;
+  primaryPanel?: ReactNode;
   /** 오른쪽 그리드 영역에 렌더링할 컴포넌트 */
-  rightPanel?: ReactNode;
+  secondaryPanel?: ReactNode;
   /** 추가 클래스명 */
   className?: string;
   /** 왼쪽 패널 기본 크기 (기본값: "50%") */
@@ -21,14 +21,14 @@ export interface TwoGridLayoutProps {
 }
 
 const TowGridLayout: React.FC<TwoGridLayoutProps> = ({
-  leftPanel,
-  rightPanel,
+  primaryPanel,
+  secondaryPanel,
   leftPanelSize = "50%",
   leftPanelMin = 150,
   leftPanelMax = "80%",
 }) => (
-  <>
-    <SplitLayoutStyles style={{ height: "calc(100% - 45px)" }}>
+  <Article className="page-layout page-layout--search-grid-save">
+    <SplitLayoutStyles>
       <Splitter>
         <Splitter.Panel
           defaultSize={leftPanelSize}
@@ -37,14 +37,14 @@ const TowGridLayout: React.FC<TwoGridLayoutProps> = ({
           style={{ overflow: "hidden" }}
           className="page-layout__grid-panel page-layout__grid-panel--left"
         >
-          <section className="page-card page-card--grid">{leftPanel}</section>
+          <section className="page-card page-card--grid">{primaryPanel}</section>
         </Splitter.Panel>
         <Splitter.Panel className="page-layout__grid-panel page-layout__grid-panel--right">
-          <section className="page-card page-card--grid">{rightPanel}</section>
+          <section className="page-card page-card--grid">{secondaryPanel}</section>
         </Splitter.Panel>
       </Splitter>
     </SplitLayoutStyles>
-  </>
+  </Article>
 );
 
 export default TowGridLayout;

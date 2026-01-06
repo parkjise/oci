@@ -68,5 +68,32 @@ export const FilterPanelStyles = styled.div`
       ${mixins.flex("flex-start", "flex-start", "row", "5px")}
       height: 100%;
     }
+    &__button {
+      height: 28px;
+      &--submit {
+        padding-inline: 15px;
+      }
+      &--reset,
+      &--toggle {
+        width: 28px;
+      }
+    }
+  }
+  .ant-space-compact {
+    &.filter-panel__field {
+      & + .ant-form-item {
+        flex: 1;
+      }
+    }
+    & .ant-form-item {
+      & + .ant-form-item {
+        flex: 1;
+      }
+    }
+    & .ant-form-item {
+      &:has(input[type="search"]) {
+        width: 100%;
+      }
+    }
   }
 `;

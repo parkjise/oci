@@ -105,8 +105,8 @@ const CodeTypeModal: React.FC<CodeTypeModalProps> = ({
         (row) =>
           row.type.toLowerCase().includes(lower) ||
           (row.name1 ?? "").toLowerCase().includes(lower) ||
-          (row.nameDesc ?? "").toLowerCase().includes(lower),
-      ),
+          (row.nameDesc ?? "").toLowerCase().includes(lower)
+      )
     );
   }, [rows, searchText]);
 
@@ -150,7 +150,14 @@ const CodeTypeModal: React.FC<CodeTypeModalProps> = ({
       width={700}
       centered
       destroyOnClose
-      bodyStyle={{ maxHeight: "60vh", overflow: "hidden", display: "flex", flexDirection: "column" }}
+      styles={{
+        body: {
+          maxHeight: "60vh",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+        },
+      }}
     >
       <div style={{ marginBottom: 8, display: "flex", gap: 8, flexShrink: 0 }}>
         <Input
@@ -185,5 +192,3 @@ const CodeTypeModal: React.FC<CodeTypeModalProps> = ({
 };
 
 export default CodeTypeModal;
-
-

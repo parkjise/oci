@@ -1,21 +1,134 @@
+/*
+ * 프로젝트 명  : ONERP
+ * 파일 명     : PermissionMng.Styles.ts
+ * 설명        : 권한 관리 화면 스타일 (Sample Authz.tsx와 100% 동일화)
+ * 변경이력    :
+ * - 2025.12.29 : ckkim (최초작성 - 디자인 정밀 보정)
+ */
 import styled from "styled-components";
 import * as mixins from "@/styles/mixins";
+import { Article } from "@/components/ui/layout/Styles/PageLayout.styles";
 
-export const Article = styled.article`
-  padding: 2rem;
-  height: calc(100vh - 140px);
-  ${mixins.flex("flex-start", "flex-start", "column", "10px")}
-
-  .ant-splitter {
-    gap: 5px;
-    width: 100%;
-    height: 100%;
+export const PermissionMngStyles = styled(Article)`
+  /* 권한관리 */
+  &.authz {
+    flex-direction: row;
+    .ant-btn {
+      height: 28px;
+    }
   }
-
-  .ant-splitter-panel {
-    min-width: 0;
-    min-height: 0;
-    overflow: auto;
+  .authz {
+    /* left */
+    &__column {
+      width: 100%;
+      &--list {
+        width: 600px;
+        height: 100%;
+        min-height: 0;
+        ${mixins.flex("flex-start", "flex-start", "column", "10px")}
+      }
+      &--detail {
+        ${mixins.flex("flex-start", "flex-start", "column", "10px")}
+        height: 100%;
+      }
+    }
+    &__header {
+      width: 100%;
+      flex: 0 0 auto;
+      &--list {
+        ${mixins.flex("center", "space-between", "row")}
+      }
+      &--detail {
+        ${mixins.flex("center", "space-between", "row")}
+      }
+    }
+    &__body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      ${mixins.scrollbar()}
+      scrollbar-gutter: auto;
+      box-sizing: border-box;
+      &--list {
+        width: 100%;
+        height: 100%;
+      }
+      &--detail {
+        width: 100%;
+        height: 100%;
+        ${mixins.flex("stretch", "flex-start", "row", "10px")}
+      }
+    }
+    &__tree {
+      height: 100%;
+      overflow-y: auto;
+    }
+    /* right */
+    &__meta {
+      ${mixins.flex("center", "flex-start", "row", "40px")}
+      &-item {
+        ${mixins.flex("center", "flex-start", "row", "20px")}
+        &--name {
+          ${mixins.flex("center", "flex-start", "row", "5px")}
+          .authz__meta-label {
+            padding-right: 10px;
+          }
+        }
+      }
+      &-label {
+        font-size: 12px;
+        color: ${({ theme }) => theme.colors.neutral[600]};
+      }
+      &-value {
+        font-size: 14px;
+        color: ${({ theme }) => theme.colors.neutral[800]};
+      }
+      & .divider {
+        width: 1px;
+        height: 15px;
+        background-color: ${({ theme }) => theme.colors.neutral[300]};
+      }
+    }
+    &__pane {
+      ${mixins.flex("stretch", "flex-start", "column", "10px")}
+      &--roles {
+        width: 600px;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+      }
+      &--menus {
+        flex: 1;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+      }
+    }
+    &__toolbar {
+      width: 100%;
+      flex: 0 0 auto;
+      ${mixins.flex("center", "space-between")}
+    }
+    &__actions {
+      ${mixins.flex("center", "flex-start", "row", "5px")}
+    }
+    &__content {
+      &--grid {
+        width: 100%;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+      &--menus {
+        width: 100%;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+        box-sizing: border-box;
+        ${mixins.scrollbar()}
+        scrollbar-gutter: auto;
+      }
+    }
   }
 `;
-

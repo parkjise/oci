@@ -132,3 +132,173 @@ export interface AdvpayCtDtaCreatSearchResponse {
   /** 계정코드옵션 */
   cstCdeOpt?: string;
 }
+
+/**
+ * 선급비용자료생성 헤더 데이터 타입
+ */
+export interface AdvpayCtDtaCreatHeaderData {
+  /** 사무소ID */
+  officeId?: string;
+  /** 사업장ID */
+  orgId?: string;
+  /** 작성부서 */
+  mkDeptPayCertf?: string;
+  /** 작성일자 */
+  mkDatePayCertf?: string;
+  /** 일련번호 */
+  serPayCertf?: string;
+  /** 라인번호 */
+  seqPayCertf?: string;
+  /** 인보이스ID */
+  invoiceId?: string;
+  /** 인보이스라인ID */
+  invoiceLineId?: string;
+  /** 발생금액 */
+  occurAmt?: number;
+  /** 외화금액 */
+  frgnCurrAmt?: number;
+  /** 발생일자 */
+  occurDate?: string;
+  /** 만기일자 */
+  maturDate?: string;
+  /** 생성여부 */
+  creationYn?: string;
+  /** 정산금액 */
+  applyAmount?: number;
+  /** 선급비용계정 */
+  fromAccount?: string;
+  /** 비용계정 */
+  toAccount?: string;
+  /** FROM귀속부서 */
+  fromDept?: string;
+  /** TO귀속부서 */
+  toDept?: string;
+  /** 거래처코드 */
+  supplier?: string;
+  /** 횟수 */
+  numberTimes?: string;
+  /** 공정코드 */
+  costCenter?: string;
+  /** 사업부 */
+  dvs?: string;
+  /** 화폐 */
+  currency?: string;
+  /** 차량번호 */
+  carNum?: string;
+  /** 비고 */
+  attribute1?: string;
+  /** 속성2 */
+  attribute2?: string;
+  /** 월할여부 */
+  attribute3?: string;
+  /** 속성4 */
+  attribute4?: string;
+  /** 속성5 */
+  attribute5?: string;
+  /** 속성6 */
+  attribute6?: string;
+  /** 속성7 */
+  attribute7?: string;
+  /** 속성8 */
+  attribute8?: string;
+  /** 속성9 */
+  attribute9?: string;
+  /** 속성10 */
+  attribute10?: string;
+  /** EAT_KEY */
+  eatKey?: number;
+  /** DOC_ID */
+  docId?: number;
+  /** 행상태 */
+  rowStatus?: string;
+}
+
+/**
+ * 선급비용자료생성 상세 데이터 타입
+ */
+export interface AdvpayCtDtaCreatDetailData {
+  /** 사무소ID */
+  officeId?: string;
+  /** 사업장ID */
+  orgId?: string;
+  /** 작성부서 */
+  mkDeptPayCertf?: string;
+  /** 작성일자 */
+  mkDatePayCertf?: string;
+  /** 일련번호 */
+  serPayCertf?: string;
+  /** 라인번호 */
+  seqPayCertf?: string;
+  /** 정산년월 */
+  applyYm?: string;
+  /** 발생금액 */
+  occurAmt?: number;
+  /** 외화금액 */
+  frgnCurrAmt?: number;
+  /** 월금액 */
+  monthAmt?: number;
+  /** 월외화금액 */
+  monthForeAmt?: number;
+  /** 발생일자 */
+  occurDate?: string;
+  /** 만기일자 */
+  maturDate?: string;
+  /** 생성여부 */
+  creationYn?: string;
+  /** 정산금액 */
+  applyAmount?: number;
+  /** 선급비용계정 */
+  fromAccount?: string;
+  /** 비용계정 */
+  toAccount?: string;
+  /** FROM귀속부서 */
+  fromDept?: string;
+  /** TO귀속부서 */
+  toDept?: string;
+  /** 거래처코드 */
+  supplier?: string;
+  /** 비고 */
+  attribute1?: string;
+  /** 속성2 */
+  attribute2?: string;
+  /** 월할여부 */
+  attribute3?: string;
+  /** 횟수 */
+  numberTimes?: string;
+  /** 공정코드 */
+  costCenter?: string;
+  /** 사업부 */
+  dvs?: string;
+  /** 인보이스ID */
+  invoiceId?: string;
+  /** 인보이스라인ID */
+  invoiceLineId?: string;
+  /** 화폐 */
+  currency?: string;
+  /** 행상태 */
+  rowStatus?: string;
+}
+
+/**
+ * 선급비용자료생성 인보이스라인 데이터 타입
+ */
+export interface AdvpayCtDtaCreatInvoiceLineData {
+  /** 선급비용여부 */
+  prepaidExp?: string;
+  /** 인보이스라인ID */
+  invoiceLineId?: string;
+  /** 행상태 */
+  rowStatus?: string;
+}
+
+/**
+ * 선급비용자료생성 저장 요청 타입
+ */
+export interface AdvpayCtDtaCreatSaveRequest {
+  /** 헤더 목록 */
+  headerList?: AdvpayCtDtaCreatHeaderData[];
+  /** 상세 목록 */
+  detailList?: AdvpayCtDtaCreatDetailData[];
+  /** 인보이스라인 목록 */
+  invoiceLineList?: AdvpayCtDtaCreatInvoiceLineData[];
+}

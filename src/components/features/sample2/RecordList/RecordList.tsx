@@ -140,6 +140,30 @@ const RecordList: React.FC<RecordListProps> = ({ className }) => {
             </div>
             <div className="record-list__item-company">에이비씨 머티리얼즈</div>
           </div>
+          {/*  */}
+          <div className="record-list__item">
+            <div className="record-list__item-header">
+              <div className="record-list__item-header-left">
+                <span className="record-list__item-id">7419137</span>
+              </div>
+              <div className="record-list__item-header-right">
+                <span className="record-list__item-date">2025.10.20</span>
+              </div>
+            </div>
+            <div className="record-list__item-company">에이비씨 머티리얼즈</div>
+          </div>
+          <div className="record-list__item">
+            <div className="record-list__item-header">
+              <div className="record-list__item-header-left">
+                <span className="record-list__item-id">7419137</span>
+              </div>
+              <div className="record-list__item-header-right">
+                <span className="record-list__item-date">2025.10.20</span>
+              </div>
+            </div>
+            <div className="record-list__item-company">에이비씨 머티리얼즈</div>
+          </div>
+          {/*  */}
         </div>
       </div>
     </RecordListStyles>

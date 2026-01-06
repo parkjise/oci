@@ -2,6 +2,12 @@ import { css } from "styled-components";
 import * as mixins from "@/styles/mixins";
 
 export const antdDropdownGlobal = css`
+  .ant-dropdown {
+    border-radius: 2px;
+    .ant-dropdown-menu {
+      border-radius: 2px;
+    }
+  }
   .header-dropdown {
     padding: 10px 20px 0 20px;
     background-color: ${({ theme }) => theme.colors.white};

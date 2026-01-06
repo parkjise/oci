@@ -12,5 +12,5 @@
  */
 
 // 계정코드관리 페이지 컴포넌트 export
-export { default as AcntRegist } from "./AcntRegist";
+export { default as AcntCodeRegist } from "./AcntCodeRegist";
 

@@ -12,7 +12,6 @@ import {
   Tag,
   Form,
   Button,
-  Tabs,
   Collapse,
 } from "antd";
 import { CodeOutlined, BulbOutlined } from "@ant-design/icons";
@@ -30,7 +29,6 @@ import {
   formatDateKorean,
   createCheckboxColumn,
   createTextColumn,
-  createSelectColumn,
   createDateColumn,
   createNumberColumn,
   createTextAreaColumn,
@@ -49,11 +47,22 @@ import {
   FormAgGrid,
   SearchForm,
   FormLabel,
+  ActionButtonGroup,
   type AgGridStyleOptions,
+  // 가이드 예제 코드에서 사용됨 (문자열 내부)
+  // PhotoUpload,
+  // DataForm,
+  // CardGridList,
 } from "@components/ui/form";
 import { MenuButtonProvider } from "@/components/providers";
-import { LoadingSpinner, AppPageModal } from "@components/ui/feedback";
+import {
+  LoadingSpinner,
+  AppPageModal,
+  AttachmentDrawer,
+} from "@components/ui/feedback";
+import type { PendingFile } from "@components/ui/feedback";
 import { usePageModal } from "@hooks/usePageModal";
+import { LayoutTabs } from "../layout/LayoutSample";
 import {
   confirm,
   info,
@@ -72,7 +81,7 @@ import type {
   DemoGridData,
   SummaryGridData,
   MultiEditGridData,
-} from "@/types/sample.types";
+} from "@/types/com/sample/sample.types";
 import {
   INITIAL_GRID_DATA,
   INITIAL_MULTI_EDIT_GRID_DATA,
@@ -89,7 +98,7 @@ const PageLayout = React.lazy(() => import("../sample2/PageLayout"));
 const Sample3 = React.lazy(() => import("../sample3/Sample3"));
 const Sample4 = React.lazy(() => import("../sample4/Sample4"));
 const Test2 = React.lazy(() => import("../test/Test2"));
-
+const Authz = React.lazy(() => import("../authz/Authz"));
 // ============================================================================
 // 컴포넌트
 // ============================================================================
@@ -146,6 +155,13 @@ const Sample1: React.FC = () => {
     }>
   >([]);
 
+  // AttachmentDrawer 관련 state
+  const [attachmentDrawerOpen, setAttachmentDrawerOpen] = React.useState(false);
+  const [attachmentEatKey] = React.useState<number | undefined>(123);
+  const [attachmentPendingFiles, setAttachmentPendingFiles] = React.useState<
+    PendingFile[]
+  >([]);
+
   // --------------------------------------------------------------------------
   // Ref
   // --------------------------------------------------------------------------
@@ -172,143 +188,182 @@ const Sample1: React.FC = () => {
   const treeData: DataNode[] = TREE_DATA;
 
   // --------------------------------------------------------------------------
-  // AG-Grid 컬럼 정의
+  // AG-Grid 컬럼 정의 (메모이제이션)
   // --------------------------------------------------------------------------
-  const gridColumnDefs: ColDef<DemoGridData>[] = [
-    { headerName: "ID", field: "id", width: 80 },
-    { headerName: "이름", field: "name", flex: 1 },
-    { headerName: "카테고리", field: "category", flex: 1 },
-    {
-      headerName: "금액",
-      field: "amount",
-      flex: 1,
-      valueFormatter: formatCurrency,
-    },
-  ];
-
-  const editableGridColumnDefs: ColDef<DemoGridData>[] = [
-    createCheckboxColumn<DemoGridData>("id", "ID", 80),
-    { headerName: "이름", field: "name", flex: 1 },
-    { headerName: "카테고리", field: "category", flex: 1 },
-    {
-      headerName: "금액",
-      field: "amount",
-      flex: 1,
-      valueFormatter: formatCurrency,
-    },
-  ];
-
-  const multiEditGridColumnDefs: ColDef<MultiEditGridData>[] = [
-    createCheckboxColumn<MultiEditGridData>("id", "ID", 80),
-    createTextColumn<MultiEditGridData>("name", "이름", undefined, 1),
-    createSelectColumn<MultiEditGridData>(
-      "category",
-      "카테고리",
-      ["개발", "디자인", "기획", "마케팅", "운영"],
-      150
-    ),
-    createSelectColumn<MultiEditGridData>(
-      "status",
-      "상태",
-      ["대기", "진행중", "완료", "취소"],
-      120
-    ),
-    createDateColumn<MultiEditGridData>(
-      "startDate",
-      "시작일",
-      150,
-      new Date(2020, 0, 1),
-      new Date(2030, 11, 31),
-      formatDateKorean
-    ),
-    createNumberColumn<MultiEditGridData>(
-      "amount",
-      "금액",
-      150,
-      0,
-      undefined,
-      formatCurrency
-    ),
-    {
-      ...createTextAreaColumn<MultiEditGridData>(
-        "description",
-        "설명",
-        undefined,
-        200
-      ),
-      flex: 1,
-      cellEditorParams: {
-        maxLength: 200,
-        rows: 3,
+  const gridColumnDefs: ColDef<DemoGridData>[] = React.useMemo(
+    () => [
+      { headerName: "ID", field: "id", width: 80 },
+      { headerName: "이름", field: "name", flex: 1 },
+      { headerName: "카테고리", field: "category", flex: 1 },
+      {
+        headerName: "금액",
+        field: "amount",
+        flex: 1,
+        valueFormatter: formatCurrency,
       },
-    },
-    createCheckboxColumnEditable<MultiEditGridData>("isActive", "활성화", 120),
-    createCheckboxColumnEditable<MultiEditGridData>(
-      "isApproved",
-      "승인됨",
-      120
-    ),
-    createCheckboxColumnEditable<MultiEditGridData>(
-      "isPublished",
-      "발행됨",
-      120
-    ),
-  ];
+    ],
+    []
+  );
 
-  const summaryGridColumnDefs: ColDef<SummaryGridData>[] = [
-    {
-      headerName: "카테고리",
-      field: "category",
-      rowGroup: true,
-      hide: true,
-      width: 150,
-    },
-    {
-      headerName: "세부카테고리",
-      field: "subCategory",
-      rowGroup: true,
-      hide: true,
-      width: 150,
-    },
-    {
-      headerName: "품목",
-      field: "item",
-      width: 150,
-      flex: 1,
-    },
-    {
-      headerName: "수량",
-      field: "quantity",
-      width: 100,
-      aggFunc: "sum",
-      valueFormatter: formatNumber,
-    },
-    {
-      headerName: "단가",
-      field: "unitPrice",
-      width: 120,
-      aggFunc: "avg",
-      valueFormatter: formatCurrency,
-    },
-    {
-      headerName: "합계",
-      field: "total",
-      width: 150,
-      aggFunc: "sum",
-      valueFormatter: formatCurrency,
-    },
-  ];
+  const editableGridColumnDefs: ColDef<
+    DemoGridData & Record<string, unknown>
+  >[] = React.useMemo(
+    () => [
+      createCheckboxColumn<DemoGridData & Record<string, unknown>>("ID", "id", {
+        width: 80,
+      }),
+      { headerName: "이름", field: "name", flex: 1 },
+      { headerName: "카테고리", field: "category", flex: 1 },
+      {
+        headerName: "금액",
+        field: "amount",
+        flex: 1,
+        valueFormatter: formatCurrency,
+      },
+    ],
+    []
+  );
+
+  const multiEditGridColumnDefs: ColDef<
+    MultiEditGridData & Record<string, unknown>
+  >[] = React.useMemo(
+    () =>
+      [
+        createCheckboxColumn<MultiEditGridData & Record<string, unknown>>(
+          "ID",
+          "id",
+          { width: 80 }
+        ),
+        createTextColumn<MultiEditGridData & Record<string, unknown>>(
+          "name",
+          "이름",
+          undefined,
+          1
+        ),
+        {
+          field: "category",
+          headerName: "카테고리",
+          width: 150,
+          editable: true,
+          cellEditor: "agSelectCellEditor",
+          cellEditorParams: {
+            values: ["개발", "디자인", "기획", "마케팅", "운영"],
+          },
+          filter: "agSetColumnFilter",
+        },
+        {
+          field: "status",
+          headerName: "상태",
+          width: 120,
+          editable: true,
+          cellEditor: "agSelectCellEditor",
+          cellEditorParams: {
+            values: ["대기", "진행중", "완료", "취소"],
+          },
+          filter: "agSetColumnFilter",
+        },
+        createDateColumn<MultiEditGridData & Record<string, unknown>>(
+          "startDate",
+          "시작일",
+          150,
+          new Date(2020, 0, 1),
+          new Date(2030, 11, 31),
+          formatDateKorean
+        ),
+        createNumberColumn<MultiEditGridData & Record<string, unknown>>(
+          "amount",
+          "금액",
+          150,
+          0,
+          undefined,
+          formatCurrency
+        ),
+        {
+          ...createTextAreaColumn<MultiEditGridData & Record<string, unknown>>(
+            "description",
+            "설명",
+            undefined,
+            200
+          ),
+          flex: 1,
+          cellEditorParams: {
+            maxLength: 200,
+            rows: 3,
+          },
+        },
+        createCheckboxColumnEditable<
+          MultiEditGridData & Record<string, unknown>
+        >("isActive", "활성화", 120),
+        createCheckboxColumnEditable<
+          MultiEditGridData & Record<string, unknown>
+        >("isApproved", "승인됨", 120),
+        createCheckboxColumnEditable<
+          MultiEditGridData & Record<string, unknown>
+        >("isPublished", "발행됨", 120),
+      ] as ColDef<MultiEditGridData & Record<string, unknown>>[],
+    []
+  );
+
+  const summaryGridColumnDefs: ColDef<SummaryGridData>[] = React.useMemo(
+    () => [
+      {
+        headerName: "카테고리",
+        field: "category",
+        rowGroup: true,
+        hide: true,
+        width: 150,
+      },
+      {
+        headerName: "세부카테고리",
+        field: "subCategory",
+        rowGroup: true,
+        hide: true,
+        width: 150,
+      },
+      {
+        headerName: "품목",
+        field: "item",
+        width: 150,
+        flex: 1,
+      },
+      {
+        headerName: "수량",
+        field: "quantity",
+        width: 100,
+        aggFunc: "sum",
+        valueFormatter: formatNumber,
+      },
+      {
+        headerName: "단가",
+        field: "unitPrice",
+        width: 120,
+        aggFunc: "avg",
+        valueFormatter: formatCurrency,
+      },
+      {
+        headerName: "합계",
+        field: "total",
+        width: 150,
+        aggFunc: "sum",
+        valueFormatter: formatCurrency,
+      },
+    ],
+    []
+  );
 
   // --------------------------------------------------------------------------
-  // 핸들러 함수
+  // 핸들러 함수 (메모이제이션)
   // --------------------------------------------------------------------------
-  const onFinish: FormProps<DemoFormType>["onFinish"] = (values) => {
-    if (import.meta.env.DEV) {
-      console.log("Form values:", values);
-    }
-  };
+  const onFinish: FormProps<DemoFormType>["onFinish"] = React.useCallback(
+    (values: DemoFormType) => {
+      if (import.meta.env.DEV) {
+        console.log("Form values:", values);
+      }
+    },
+    []
+  );
 
-  const handleLoadingDemo = () => {
+  const handleLoadingDemo = React.useCallback(() => {
     if (loadingTimerRef.current) {
       clearTimeout(loadingTimerRef.current);
     }
@@ -317,11 +372,14 @@ const Sample1: React.FC = () => {
       setLoading(false);
       loadingTimerRef.current = null;
     }, 2000);
-  };
+  }, []);
 
-  const onGridReady = createGridReadyHandlerRef<DemoGridData>(gridApiRef);
+  const onGridReady = React.useMemo(
+    () => createGridReadyHandlerRef<DemoGridData>(gridApiRef),
+    []
+  );
 
-  const handleAddRow = () => {
+  const handleAddRow = React.useCallback(() => {
     addNewRow(
       editableGridData,
       (newId) => ({
@@ -334,9 +392,9 @@ const Sample1: React.FC = () => {
       gridApiRef.current,
       "name"
     );
-  };
+  }, [editableGridData]);
 
-  const handleDeleteRows = () => {
+  const handleDeleteRows = React.useCallback(() => {
     deleteSelectedRows(
       gridApiRef.current,
       editableGridData,
@@ -348,7 +406,16 @@ const Sample1: React.FC = () => {
         }
       }
     );
-  };
+  }, [editableGridData]);
+
+  // AttachmentDrawer 핸들러 (메모이제이션)
+  const handleOpenAttachmentDrawer = React.useCallback(() => {
+    setAttachmentDrawerOpen(true);
+  }, []);
+
+  const handleCloseAttachmentDrawer = React.useCallback(() => {
+    setAttachmentDrawerOpen(false);
+  }, []);
 
   // --------------------------------------------------------------------------
   // Render - Sample1 Content
@@ -3572,6 +3639,257 @@ const Sample1: React.FC = () => {
               ),
             },
             {
+              key: "action-button-group",
+              label: (
+                <Space>
+                  <Tag color="blue">ActionButtonGroup</Tag>
+                  <Text type="secondary">액션 버튼 그룹 컴포넌트</Text>
+                </Space>
+              ),
+              children: (
+                <div id="action-button-group">
+                  <Row gutter={24}>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>
+                        <BulbOutlined /> 사용 방법
+                      </Title>
+                      <Paragraph>
+                        <Text strong>개요:</Text>
+                        <ul>
+                          <li>
+                            여러 액션 버튼을 그룹으로 렌더링하는 컴포넌트입니다
+                          </li>
+                          <li>
+                            기본적으로 create, edit, copy, delete, save 버튼이
+                            표시됩니다
+                          </li>
+                          <li>
+                            권한 체크 기능을 지원하며, MenuButtonProvider와 함께
+                            사용합니다
+                          </li>
+                          <li>
+                            커스텀 버튼을 추가할 수 있으며, 2개 초과 시
+                            드롭다운으로 표시됩니다
+                          </li>
+                        </ul>
+
+                        <Text
+                          strong
+                          style={{ display: "block", marginTop: "16px" }}
+                        >
+                          주요 Props:
+                        </Text>
+                        <ul>
+                          <li>
+                            <Text code>onButtonClick</Text>: 각 버튼 타입별
+                            onClick 핸들러
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                예:{" "}
+                                <Text code>
+                                  {`{ create: () => {...}, edit: () => {...} }`}
+                                </Text>
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>hideButtons</Text>: 숨길 버튼 타입 배열
+                            <ul style={{ marginTop: "4px" }}>
+                              <li>
+                                예:{" "}
+                                <Text code>
+                                  hideButtons={["copy", "delete"]}
+                                </Text>
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <Text code>enableExpand</Text>: 접기/펼치기 기능
+                            활성화 여부
+                          </li>
+                          <li>
+                            <Text code>customButtons</Text>: 커스텀 버튼들
+                            (ReactNode 배열)
+                          </li>
+                          <li>
+                            <Text code>showAllCustomButtons</Text>: 모든 커스텀
+                            버튼 표시 여부 (기본값: false)
+                          </li>
+                          <li>
+                            <Text code>maxVisibleCustomButtons</Text>:
+                            기본적으로 표시할 커스텀 버튼 개수 (기본값: 2)
+                          </li>
+                        </ul>
+
+                        <div
+                          style={{
+                            background: "#eff6ff",
+                            padding: "12px",
+                            borderRadius: "6px",
+                            marginTop: "16px",
+                          }}
+                        >
+                          <Text strong style={{ fontSize: "13px" }}>
+                            💡 권한 체크:
+                          </Text>
+                          <ul style={{ marginTop: "8px", marginBottom: 0 }}>
+                            <li>
+                              MenuButtonProvider로 감싸면 자동으로 권한 체크가
+                              수행됩니다
+                            </li>
+                            <li>
+                              각 버튼은 기본 objId가 설정되어 있습니다 (예:
+                              BTN_CREATE, BTN_EDIT)
+                            </li>
+                            <li>권한이 없으면 버튼이 자동으로 숨겨집니다</li>
+                          </ul>
+                        </div>
+                      </Paragraph>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>📋 실제 동작 예제</Title>
+                      <Text type="secondary" style={{ fontSize: "12px" }}>
+                        각 버튼을 클릭하여 동작을 확인해보세요!
+                      </Text>
+                      <Form form={form} layout="vertical">
+                        <Space direction="vertical" style={{ width: "100%" }}>
+                          <Title level={5}>1. 기본 사용</Title>
+                          <MenuButtonProvider>
+                            <ActionButtonGroup
+                              onButtonClick={{
+                                create: () => {
+                                  showSuccess("생성 버튼 클릭");
+                                },
+                                edit: () => {
+                                  showSuccess("수정 버튼 클릭");
+                                },
+                                copy: () => {
+                                  showSuccess("복사 버튼 클릭");
+                                },
+                                delete: () => {
+                                  confirm({
+                                    title: "삭제 확인",
+                                    content: "정말로 삭제하시겠습니까?",
+                                    onOk: () => {
+                                      showSuccess("삭제되었습니다.");
+                                    },
+                                  });
+                                },
+                                save: () => {
+                                  showSuccess("저장 버튼 클릭");
+                                },
+                              }}
+                            />
+                          </MenuButtonProvider>
+
+                          <Title level={5} style={{ marginTop: "16px" }}>
+                            2. 특정 버튼 숨기기
+                          </Title>
+                          <MenuButtonProvider>
+                            <ActionButtonGroup
+                              hideButtons={["copy", "delete"]}
+                              onButtonClick={{
+                                create: () => {
+                                  showSuccess("생성 버튼 클릭");
+                                },
+                                edit: () => {
+                                  showSuccess("수정 버튼 클릭");
+                                },
+                                save: () => {
+                                  showSuccess("저장 버튼 클릭");
+                                },
+                              }}
+                            />
+                          </MenuButtonProvider>
+
+                          <Title level={5} style={{ marginTop: "16px" }}>
+                            3. 커스텀 버튼 추가
+                          </Title>
+                          <MenuButtonProvider>
+                            <ActionButtonGroup
+                              onButtonClick={{
+                                create: () => {
+                                  showSuccess("생성 버튼 클릭");
+                                },
+                                save: () => {
+                                  showSuccess("저장 버튼 클릭");
+                                },
+                              }}
+                              customButtons={[
+                                <FormButton
+                                  key="custom1"
+                                  type="default"
+                                  onClick={() => {
+                                    showInfo("커스텀 버튼 1 클릭");
+                                  }}
+                                >
+                                  커스텀 1
+                                </FormButton>,
+                                <FormButton
+                                  key="custom2"
+                                  type="default"
+                                  onClick={() => {
+                                    showInfo("커스텀 버튼 2 클릭");
+                                  }}
+                                >
+                                  커스텀 2
+                                </FormButton>,
+                                <FormButton
+                                  key="custom3"
+                                  type="default"
+                                  onClick={() => {
+                                    showInfo("커스텀 버튼 3 클릭");
+                                  }}
+                                >
+                                  커스텀 3
+                                </FormButton>,
+                              ]}
+                            />
+                          </MenuButtonProvider>
+
+                          <Title level={5} style={{ marginTop: "16px" }}>
+                            4. 코드 예제
+                          </Title>
+                          <pre
+                            style={{
+                              background: "#f5f5f5",
+                              padding: "12px",
+                              borderRadius: "6px",
+                              fontSize: "11px",
+                              overflow: "auto",
+                            }}
+                          >
+                            {`import { ActionButtonGroup } from "@components/ui/form";
+import { MenuButtonProvider } from "@/components/providers";
+
+<MenuButtonProvider>
+  <ActionButtonGroup
+    onButtonClick={{
+      create: () => {
+        // 생성 로직
+      },
+      edit: () => {
+        // 수정 로직
+      },
+      delete: () => {
+        // 삭제 확인 후 삭제 로직
+      },
+    }}
+    hideButtons={["copy"]} // 복사 버튼 숨기기
+    customButtons={[
+      <Button key="custom">커스텀</Button>
+    ]}
+  />
+</MenuButtonProvider>`}
+                          </pre>
+                        </Space>
+                      </Form>
+                    </Col>
+                  </Row>
+                </div>
+              ),
+            },
+            {
               key: "button-permission",
               label: (
                 <Space>
@@ -4432,8 +4750,11 @@ import { FormButton } from "@components/ui/form";
                             </div>
                           )}
                         </Space>
-                        <FormAgGrid<MultiEditGridData>
-                          rowData={multiEditGridData}
+                        <FormAgGrid<MultiEditGridData & Record<string, unknown>>
+                          rowData={
+                            multiEditGridData as (MultiEditGridData &
+                              Record<string, unknown>)[]
+                          }
                           columnDefs={multiEditGridColumnDefs}
                           height={400}
                           gridOptions={{
@@ -4511,10 +4832,11 @@ import { FormButton } from "@components/ui/form";
                               });
 
                               // 데이터 업데이트
-                              const updatedData = multiEditGridData.map((row) =>
-                                row.id === rowId
-                                  ? { ...row, [field]: newValue }
-                                  : row
+                              const updatedData = multiEditGridData.map(
+                                (row) =>
+                                  row.id === rowId
+                                    ? { ...row, [field]: newValue }
+                                    : row
                               );
                               setMultiEditGridData(updatedData);
 
@@ -4924,8 +5246,11 @@ import { FormButton } from "@components/ui/form";
                             클릭하세요.
                           </Text>
                         </Space>
-                        <FormAgGrid<DemoGridData>
-                          rowData={editableGridData}
+                        <FormAgGrid<DemoGridData & Record<string, unknown>>
+                          rowData={
+                            editableGridData as (DemoGridData &
+                              Record<string, unknown>)[]
+                          }
                           columnDefs={editableGridColumnDefs}
                           height={300}
                           onGridReady={onGridReady}
@@ -4938,6 +5263,801 @@ import { FormButton } from "@components/ui/form";
                       </Col>
                     </Row>
                   </Card>
+                </div>
+              ),
+            },
+            {
+              key: "photo-upload",
+              label: (
+                <Space>
+                  <Tag color="blue">PhotoUpload</Tag>
+                  <Text type="secondary">사진 업로드 컴포넌트</Text>
+                </Space>
+              ),
+              children: (
+                <div id="photo-upload">
+                  <Row gutter={24}>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>
+                        <BulbOutlined /> 사용 방법
+                      </Title>
+                      <Paragraph>
+                        <Text strong>개요:</Text>
+                        <ul>
+                          <li>
+                            이미지 파일을 업로드하고 미리보기를 제공하는
+                            컴포넌트입니다
+                          </li>
+                          <li>업로드, 삭제, 다운로드 기능을 지원합니다</li>
+                          <li>
+                            view/edit 모드를 지원하여 조회 모드에서도 사용할 수
+                            있습니다
+                          </li>
+                        </ul>
+
+                        <Text
+                          strong
+                          style={{ display: "block", marginTop: "16px" }}
+                        >
+                          주요 Props:
+                        </Text>
+                        <ul>
+                          <li>
+                            <Text code>fileList</Text>: 업로드된 파일 목록
+                            (UploadFile[])
+                          </li>
+                          <li>
+                            <Text code>onFileChange</Text>: 파일 변경 핸들러
+                          </li>
+                          <li>
+                            <Text code>onUpload</Text>: 파일 업로드 핸들러
+                          </li>
+                          <li>
+                            <Text code>onRemove</Text>: 파일 삭제 핸들러
+                          </li>
+                          <li>
+                            <Text code>onDownload</Text>: 파일 다운로드 핸들러
+                          </li>
+                          <li>
+                            <Text code>mode</Text>: 표시 모드 (view/edit)
+                          </li>
+                          <li>
+                            <Text code>previewWidth</Text>: 이미지 미리보기 너비
+                            (기본값: 200px)
+                          </li>
+                          <li>
+                            <Text code>previewHeight</Text>: 이미지 미리보기
+                            높이 (기본값: 200px)
+                          </li>
+                          <li>
+                            <Text code>maxCount</Text>: 최대 파일 개수 (기본값:
+                            1)
+                          </li>
+                          <li>
+                            <Text code>maxSizeInMB</Text>: 최대 파일 크기 (MB
+                            단위)
+                          </li>
+                          <li>
+                            <Text code>accept</Text>: 허용할 이미지 타입
+                            (기본값: "image/*")
+                          </li>
+                        </ul>
+
+                        <div
+                          style={{
+                            background: "#eff6ff",
+                            padding: "12px",
+                            borderRadius: "6px",
+                            marginTop: "16px",
+                          }}
+                        >
+                          <Text strong style={{ fontSize: "13px" }}>
+                            💡 헬퍼 함수:
+                          </Text>
+                          <ul style={{ marginTop: "8px", marginBottom: 0 }}>
+                            <li>
+                              <Text code>createPhotoField</Text>: PhotoUpload
+                              필드 생성 헬퍼
+                            </li>
+                            <li>
+                              <Text code>createFileUploadHandler</Text>: 파일
+                              업로드 핸들러 생성
+                            </li>
+                            <li>
+                              <Text code>createFileRemoveHandler</Text>: 파일
+                              삭제 핸들러 생성
+                            </li>
+                            <li>
+                              <Text code>loadServerImageFiles</Text>: 서버에서
+                              이미지 파일 로드
+                            </li>
+                          </ul>
+                        </div>
+                      </Paragraph>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>📋 코드 예제</Title>
+                      <pre
+                        style={{
+                          background: "#f5f5f5",
+                          padding: "12px",
+                          borderRadius: "6px",
+                          fontSize: "11px",
+                          overflow: "auto",
+                        }}
+                      >
+                        {`import { PhotoUpload, createPhotoField } from "@components/ui/form";
+import type { UploadFile } from "antd";
+
+const [fileList, setFileList] = useState<UploadFile[]>([]);
+
+const handleFileChange = (info: any) => {
+  setFileList(info.fileList);
+};
+
+const handleUpload = async (options: any) => {
+  // 파일 업로드 로직
+  const formData = new FormData();
+  formData.append("file", options.file);
+  
+  try {
+    const response = await uploadFileApi(formData);
+    options.onSuccess(response);
+  } catch (error) {
+    options.onError(error);
+  }
+};
+
+// 사용 예제
+<PhotoUpload
+  fileList={fileList}
+  onFileChange={handleFileChange}
+  onUpload={handleUpload}
+  onRemove={() => setFileList([])}
+  mode="edit"
+  maxCount={1}
+  maxSizeInMB={5}
+  previewWidth={200}
+  previewHeight={200}
+/>
+
+// Form.Item과 함께 사용
+<Form.Item name="photo">
+  <PhotoUpload
+    fileList={fileList}
+    onFileChange={handleFileChange}
+    onUpload={handleUpload}
+  />
+</Form.Item>`}
+                      </pre>
+                    </Col>
+                  </Row>
+                </div>
+              ),
+            },
+            {
+              key: "attachment-drawer",
+              label: (
+                <Space>
+                  <Tag color="purple">AttachmentDrawer</Tag>
+                  <Text type="secondary">파일 관리 Drawer 컴포넌트</Text>
+                </Space>
+              ),
+              children: (
+                <div id="attachment-drawer">
+                  <Row gutter={24}>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>
+                        <BulbOutlined /> 사용 방법
+                      </Title>
+                      <Paragraph>
+                        <Text strong>개요:</Text>
+                        <ul>
+                          <li>
+                            모든 파일 타입을 관리할 수 있는 파일 관리
+                            시스템입니다
+                          </li>
+                          <li>
+                            Drawer, Modal, Inline 세 가지 표시 방식을 지원합니다
+                          </li>
+                          <li>파일 업로드, 다운로드, 삭제 기능을 제공합니다</li>
+                          <li>
+                            자동/수동 업로드 모드를 지원하여 다양한 사용
+                            시나리오에 대응합니다
+                          </li>
+                          <li>
+                            eatKey 기반으로 서버의 파일 목록을 자동으로
+                            관리합니다
+                          </li>
+                        </ul>
+
+                        <Text
+                          strong
+                          style={{ display: "block", marginTop: "16px" }}
+                        >
+                          주요 Props:
+                        </Text>
+                        <ul>
+                          <li>
+                            <Text code>open</Text>: Drawer 열림 상태 (필수)
+                          </li>
+                          <li>
+                            <Text code>onClose</Text>: Drawer 닫기 핸들러 (필수)
+                          </li>
+                          <li>
+                            <Text code>variant</Text>: 표시 방식 ('drawer' |
+                            'modal' | 'inline', 기본값: 'drawer')
+                          </li>
+                          <li>
+                            <Text code>eatKey</Text>: 파일 그룹 키 (number |
+                            string)
+                          </li>
+                          <li>
+                            <Text code>files</Text>: 파일 목록 (eatKey가 없을 때
+                            직접 전달)
+                          </li>
+                          <li>
+                            <Text code>autoUpload</Text>: 자동 업로드 여부
+                            (기본값: false - 수동 모드)
+                          </li>
+                          <li>
+                            <Text code>multiple</Text>: 다중 파일 업로드 가능
+                            여부 (기본값: true)
+                          </li>
+                          <li>
+                            <Text code>deletable</Text>: 파일 삭제 가능 여부
+                            (기본값: true)
+                          </li>
+                          <li>
+                            <Text code>downloadable</Text>: 파일 다운로드 가능
+                            여부 (기본값: true)
+                          </li>
+                          <li>
+                            <Text code>uploadable</Text>: 파일 업로드 가능 여부
+                            (기본값: true)
+                          </li>
+                          <li>
+                            <Text code>width</Text>: Drawer 너비 (기본값: 400)
+                          </li>
+                          <li>
+                            <Text code>title</Text>: 제목 (기본값: "첨부파일")
+                          </li>
+                        </ul>
+
+                        <Text
+                          strong
+                          style={{ display: "block", marginTop: "16px" }}
+                        >
+                          수동 모드 (autoUpload=false):
+                        </Text>
+                        <ul>
+                          <li>
+                            파일 선택 후 "저장" 버튼을 클릭해야 업로드/삭제가
+                            실행됩니다
+                          </li>
+                          <li>
+                            <Text code>externalPendingFiles</Text>: 외부에서
+                            관리하는 대기 파일 목록
+                          </li>
+                          <li>
+                            <Text code>onPendingFilesChange</Text>: 대기 파일
+                            목록 변경 콜백
+                          </li>
+                          <li>
+                            <Text code>onFilesSelected</Text>: 파일 선택 시 콜백
+                          </li>
+                        </ul>
+
+                        <Text
+                          strong
+                          style={{ display: "block", marginTop: "16px" }}
+                        >
+                          자동 모드 (autoUpload=true):
+                        </Text>
+                        <ul>
+                          <li>파일 선택 즉시 업로드되거나 삭제됩니다</li>
+                          <li>저장 버튼이 표시되지 않습니다</li>
+                        </ul>
+
+                        <div
+                          style={{
+                            background: "#eff6ff",
+                            padding: "12px",
+                            borderRadius: "6px",
+                            marginTop: "16px",
+                          }}
+                        >
+                          <Text strong style={{ fontSize: "13px" }}>
+                            💡 사용 팁:
+                          </Text>
+                          <ul style={{ marginTop: "8px", marginBottom: 0 }}>
+                            <li>
+                              <Text code>variant="inline"</Text>을 사용하면
+                              Modal이나 다른 컨테이너 안에서 직접 사용할 수
+                              있습니다
+                            </li>
+                            <li>
+                              <Text code>DataForm</Text>과 함께 사용할 때는{" "}
+                              <Text code>useAttachment</Text> 훅을 활용하면
+                              편리합니다
+                            </li>
+                            <li>
+                              수동 모드에서는{" "}
+                              <Text code>onPendingFilesChange</Text>로 대기 파일
+                              목록을 외부에서 관리할 수 있습니다
+                            </li>
+                            <li>
+                              <Text code>onSaveError</Text>를 제공하면 업로드
+                              실패 시 롤백 처리가 가능합니다
+                            </li>
+                          </ul>
+                        </div>
+                      </Paragraph>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>📋 코드 예제</Title>
+                      <pre
+                        style={{
+                          background: "#f5f5f5",
+                          padding: "12px",
+                          borderRadius: "6px",
+                          fontSize: "11px",
+                          overflow: "auto",
+                        }}
+                      >
+                        {`import { AttachmentDrawer } from "@components/ui/feedback";
+import type { AttachmentDrawerProps } from "@components/ui/feedback";
+import { useState } from "react";
+
+// 기본 사용법 (Drawer 모드)
+const [drawerOpen, setDrawerOpen] = useState(false);
+const [eatKey, setEatKey] = useState<number | undefined>(123);
+
+<AttachmentDrawer
+  open={drawerOpen}
+  onClose={() => setDrawerOpen(false)}
+  eatKey={eatKey}
+  title="첨부파일"
+  width={500}
+/>
+
+// 수동 모드 (저장 버튼 사용)
+const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+
+<AttachmentDrawer
+  open={drawerOpen}
+  onClose={() => setDrawerOpen(false)}
+  eatKey={eatKey}
+  autoUpload={false}
+  externalPendingFiles={pendingFiles}
+  onPendingFilesChange={setPendingFiles}
+  onUploadSuccess={() => {
+    console.log("업로드 완료");
+  }}
+/>
+
+// Modal 모드
+<AttachmentDrawer
+  open={drawerOpen}
+  onClose={() => setDrawerOpen(false)}
+  variant="modal"
+  eatKey={eatKey}
+  width={600}
+/>
+
+// Inline 모드 (Modal 안에서 사용)
+import { Modal } from "antd";
+
+<Modal open={modalOpen} onCancel={handleClose}>
+  <AttachmentDrawer
+    open={true}
+    onClose={handleClose}
+    variant="inline"
+    eatKey={eatKey}
+  />
+</Modal>
+
+// 파일 목록 직접 전달 (eatKey 없이)
+const files: AttachmentFile[] = [
+  {
+    id: "1",
+    name: "document.pdf",
+    type: "pdf",
+    size: 1024000,
+    eatKey: 123,
+    eatIdx: "1",
+  },
+];
+
+<AttachmentDrawer
+  open={drawerOpen}
+  onClose={() => setDrawerOpen(false)}
+  files={files}
+/>
+
+// DataForm과 함께 사용 (useAttachment 훅 활용)
+import { useAttachment } from "@hooks/useAttachment";
+import { FileOutlined } from "@ant-design/icons";
+
+const {
+  attachmentDrawerProps,
+  openAttachmentDrawer,
+  closeAttachmentDrawer,
+} = useAttachment({
+  eatKey: formData.id,
+  onUploadSuccess: () => {
+    // 업로드 성공 후 처리
+  },
+});
+
+// DataForm 내부에서 사용
+<DataForm
+  // ... other props
+  actionButtons={[
+    {
+      key: "attachment",
+      label: "첨부파일",
+      icon: <FileOutlined />,
+      onClick: openAttachmentDrawer,
+    },
+  ]}
+/>
+
+<AttachmentDrawer {...attachmentDrawerProps} />`}
+                      </pre>
+                      <div style={{ marginTop: "16px" }}>
+                        <Title level={5}>실제 예제</Title>
+                        <Space direction="vertical" style={{ width: "100%" }}>
+                          <Button
+                            type="primary"
+                            onClick={handleOpenAttachmentDrawer}
+                          >
+                            AttachmentDrawer 열기 (기본 모드)
+                          </Button>
+                          <Text type="secondary" style={{ fontSize: "12px" }}>
+                            💡 eatKey를 설정하면 서버에서 파일 목록을 자동으로
+                            불러옵니다
+                          </Text>
+                        </Space>
+                      </div>
+                    </Col>
+                  </Row>
+                  <AttachmentDrawer
+                    open={attachmentDrawerOpen}
+                    onClose={handleCloseAttachmentDrawer}
+                    eatKey={attachmentEatKey}
+                    title="첨부파일 예제"
+                    width={500}
+                    autoUpload={false}
+                    externalPendingFiles={attachmentPendingFiles}
+                    onPendingFilesChange={setAttachmentPendingFiles}
+                  />
+                </div>
+              ),
+            },
+            {
+              key: "data-form",
+              label: (
+                <Space>
+                  <Tag color="blue">DataForm</Tag>
+                  <Text type="secondary">테이블 형태의 폼 컴포넌트</Text>
+                </Space>
+              ),
+              children: (
+                <div id="data-form">
+                  <Row gutter={24}>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>
+                        <BulbOutlined /> 사용 방법
+                      </Title>
+                      <Paragraph>
+                        <Text strong>개요:</Text>
+                        <ul>
+                          <li>
+                            테이블 형태로 데이터를 표시하고 편집할 수 있는 폼
+                            컴포넌트입니다
+                          </li>
+                          <li>
+                            view/edit 모드를 지원하며, 필드별로 다른 입력
+                            컴포넌트를 사용할 수 있습니다
+                          </li>
+                          <li>
+                            colspan, rowspan을 지원하여 복잡한 레이아웃을 구성할
+                            수 있습니다
+                          </li>
+                          <li>
+                            액션 버튼 그룹과 파일 첨부 기능을 내장하고 있습니다
+                          </li>
+                        </ul>
+
+                        <Text
+                          strong
+                          style={{ display: "block", marginTop: "16px" }}
+                        >
+                          주요 Props:
+                        </Text>
+                        <ul>
+                          <li>
+                            <Text code>fields</Text>: 필드 설정 배열
+                            (TableField[])
+                          </li>
+                          <li>
+                            <Text code>data</Text>: 표시할 데이터 객체
+                          </li>
+                          <li>
+                            <Text code>mode</Text>: 표시 모드 (view/edit)
+                          </li>
+                          <li>
+                            <Text code>actionButtons</Text>: 액션 버튼 설정 배열
+                          </li>
+                          <li>
+                            <Text code>onDataChange</Text>: 데이터 변경 핸들러
+                          </li>
+                          <li>
+                            <Text code>form</Text>: Ant Design Form 인스턴스
+                          </li>
+                        </ul>
+
+                        <Text
+                          strong
+                          style={{ display: "block", marginTop: "16px" }}
+                        >
+                          TableField 주요 속성:
+                        </Text>
+                        <ul>
+                          <li>
+                            <Text code>key</Text>: 필드 키 (필수)
+                          </li>
+                          <li>
+                            <Text code>label</Text>: 필드 레이블
+                          </li>
+                          <li>
+                            <Text code>labelKey</Text>: 다국어 레이블 키
+                          </li>
+                          <li>
+                            <Text code>required</Text>: 필수 여부
+                          </li>
+                          <li>
+                            <Text code>inputComponent</Text>: 입력 컴포넌트
+                          </li>
+                          <li>
+                            <Text code>colspan</Text>: 열 병합 개수
+                          </li>
+                          <li>
+                            <Text code>rowspan</Text>: 행 병합 개수
+                          </li>
+                        </ul>
+                      </Paragraph>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>📋 코드 예제</Title>
+                      <pre
+                        style={{
+                          background: "#f5f5f5",
+                          padding: "12px",
+                          borderRadius: "6px",
+                          fontSize: "11px",
+                          overflow: "auto",
+                        }}
+                      >
+                        {`import { DataForm, FormInput, FormSelect } from "@components/ui/form";
+import { Form } from "antd";
+
+const [form] = Form.useForm();
+const [mode, setMode] = useState<"view" | "edit">("view");
+
+const fields = [
+  {
+    key: "name",
+    label: "이름",
+    required: true,
+    inputComponent: FormInput,
+  },
+  {
+    key: "status",
+    label: "상태",
+    inputComponent: FormSelect,
+    options: [
+      { value: "active", label: "활성" },
+      { value: "inactive", label: "비활성" },
+    ],
+  },
+  {
+    key: "description",
+    label: "설명",
+    colspan: 2,
+    inputComponent: FormTextArea,
+  },
+];
+
+const actionButtons = [
+  {
+    type: "edit",
+    onClick: () => setMode("edit"),
+  },
+  {
+    type: "save",
+    onClick: () => {
+      form.submit();
+    },
+  },
+];
+
+<DataForm
+  form={form}
+  fields={fields}
+  data={formData}
+  mode={mode}
+  actionButtons={actionButtons}
+  onDataChange={(key, value) => {
+    form.setFieldsValue({ [key]: value });
+  }}
+/>`}
+                      </pre>
+                    </Col>
+                  </Row>
+                </div>
+              ),
+            },
+            {
+              key: "card-grid-list",
+              label: (
+                <Space>
+                  <Tag color="blue">CardGridList</Tag>
+                  <Text type="secondary">카드/그리드 뷰 전환 컴포넌트</Text>
+                </Space>
+              ),
+              children: (
+                <div id="card-grid-list">
+                  <Row gutter={24}>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>
+                        <BulbOutlined /> 사용 방법
+                      </Title>
+                      <Paragraph>
+                        <Text strong>개요:</Text>
+                        <ul>
+                          <li>
+                            카드 뷰와 그리드 뷰를 전환할 수 있는 컴포넌트입니다
+                          </li>
+                          <li>
+                            같은 데이터를 카드 형태와 그리드 형태로 모두 표시할
+                            수 있습니다
+                          </li>
+                          <li>
+                            AG-Grid를 기반으로 하여 그리드 뷰의 모든 기능을
+                            사용할 수 있습니다
+                          </li>
+                        </ul>
+
+                        <Text
+                          strong
+                          style={{ display: "block", marginTop: "16px" }}
+                        >
+                          주요 Props:
+                        </Text>
+                        <ul>
+                          <li>
+                            <Text code>items</Text>: 표시할 데이터 배열 (필수)
+                          </li>
+                          <li>
+                            <Text code>totalCount</Text>: 전체 데이터 개수
+                          </li>
+                          <li>
+                            <Text code>initialView</Text>: 초기 뷰 모드
+                            (card/grid)
+                          </li>
+                          <li>
+                            <Text code>viewMode</Text>: 뷰 모드 설정
+                            (card/grid/both)
+                          </li>
+                          <li>
+                            <Text code>loading</Text>: 로딩 상태
+                          </li>
+                          <li>
+                            <Text code>onToggleView</Text>: 뷰 전환 핸들러
+                          </li>
+                          <li>
+                            <Text code>onSelect</Text>: 아이템 선택 핸들러
+                          </li>
+                          <li>
+                            <Text code>cardFields</Text>: 카드에 표시할 필드
+                            설정
+                          </li>
+                          <li>
+                            <Text code>columnDefs</Text>: 그리드 컬럼 정의
+                            (AG-Grid)
+                          </li>
+                        </ul>
+
+                        <div
+                          style={{
+                            background: "#eff6ff",
+                            padding: "12px",
+                            borderRadius: "6px",
+                            marginTop: "16px",
+                          }}
+                        >
+                          <Text strong style={{ fontSize: "13px" }}>
+                            💡 카드 필드 설정:
+                          </Text>
+                          <ul style={{ marginTop: "8px", marginBottom: 0 }}>
+                            <li>
+                              <Text code>headerLeft</Text>: 카드 헤더 왼쪽에
+                              표시할 필드
+                            </li>
+                            <li>
+                              <Text code>headerRight</Text>: 카드 헤더 오른쪽에
+                              표시할 필드
+                            </li>
+                            <li>
+                              <Text code>body</Text>: 카드 본문에 표시할 필드
+                            </li>
+                          </ul>
+                        </div>
+                      </Paragraph>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <Title level={4}>📋 코드 예제</Title>
+                      <pre
+                        style={{
+                          background: "#f5f5f5",
+                          padding: "12px",
+                          borderRadius: "6px",
+                          fontSize: "11px",
+                          overflow: "auto",
+                        }}
+                      >
+                        {`import { CardGridList } from "@components/ui/form";
+import type { ColDef } from "ag-grid-community";
+
+const items = [
+  {
+    id: 1,
+    title: "제목 1",
+    name: "이름 1",
+    status: "활성",
+    date: "2024-01-01",
+  },
+  {
+    id: 2,
+    title: "제목 2",
+    name: "이름 2",
+    status: "비활성",
+    date: "2024-01-02",
+  },
+];
+
+const columnDefs: ColDef[] = [
+  { headerName: "ID", field: "id", width: 80 },
+  { headerName: "제목", field: "title", flex: 1 },
+  { headerName: "이름", field: "name", flex: 1 },
+  { headerName: "상태", field: "status", width: 100 },
+  { headerName: "날짜", field: "date", width: 120 },
+];
+
+<CardGridList
+  items={items}
+  totalCount={items.length}
+  initialView="card"
+  viewMode="both"
+  loading={false}
+  onToggleView={(mode) => {
+    console.log("뷰 전환:", mode);
+  }}
+  onSelect={(item) => {
+    console.log("선택된 아이템:", item);
+  }}
+  cardFields={{
+    headerLeft: ["id", "status"],
+    headerRight: ["date"],
+    body: ["title", "name"],
+  }}
+  columnDefs={columnDefs}
+/>`}
+                      </pre>
+                    </Col>
+                  </Row>
                 </div>
               ),
             },
@@ -5595,6 +6715,12 @@ import { FormButton } from "@components/ui/form";
   FormTree,
   FormButton,
   FormAgGrid,
+  SearchForm,
+  FormLabel,
+  ActionButtonGroup,
+  PhotoUpload,
+  DataForm,
+  CardGridList,
   type AgGridStyleOptions,
 } from "@components/ui/form";`}
                     </pre>
@@ -6127,7 +7253,6 @@ const MyComponent = () => {
   formatDateKorean,
   createCheckboxColumn,
   createTextColumn,
-  createSelectColumn,
   createDateColumn,
   createNumberColumn,
   createTextAreaColumn,
@@ -6288,13 +7413,20 @@ const columnDefs: ColDef[] = [
                           </li>
                           <li>
                             <Text code>
-                              createSelectColumn&lt;T&gt;(field, headerName,
-                              options, width)
+                              직접 ColDef 작성 (agSelectCellEditor 사용)
                             </Text>
                             : 셀렉트 박스 컬럼 생성
                             <ul style={{ marginTop: "4px" }}>
                               <li>
-                                <Text code>options</Text>: 선택 옵션 배열
+                                <Text code>
+                                  cellEditor: "agSelectCellEditor"
+                                </Text>
+                              </li>
+                              <li>
+                                <Text code>
+                                  cellEditorParams: {"{ values: [...] }"}"
+                                </Text>
+                                : 선택 옵션 배열
                               </li>
                             </ul>
                           </li>
@@ -6372,12 +7504,17 @@ const columnDefs: ColDef<MyDataType>[] = [
   createTextColumn<MyDataType>("name", "이름", "이름을 입력하세요", 1),
   
   // 셀렉트 박스 컬럼
-  createSelectColumn<MyDataType>(
-    "status",
-    "상태",
-    ["대기", "진행중", "완료"],
-    120
-  ),
+  {
+    field: "status",
+    headerName: "상태",
+    width: 120,
+    editable: true,
+    cellEditor: "agSelectCellEditor",
+    cellEditorParams: {
+      values: ["대기", "진행중", "완료"],
+    },
+    filter: "agSetColumnFilter",
+  },
   
   // 날짜 선택 컬럼
   createDateColumn<MyDataType>(
@@ -6598,7 +7735,7 @@ const MyComponent = () => {
   // Render - Main Component with Tabs
   // --------------------------------------------------------------------------
   return (
-    <Tabs
+    <LayoutTabs
       defaultActiveKey="sample1"
       items={[
         {
@@ -6639,6 +7776,15 @@ const MyComponent = () => {
           children: (
             <Suspense fallback={null}>
               <Test2 />
+            </Suspense>
+          ),
+        },
+        {
+          key: "Authz",
+          label: "Authorization",
+          children: (
+            <Suspense fallback={null}>
+              <Authz />
             </Suspense>
           ),
         },

@@ -25,9 +25,11 @@ const AppWithLocale: React.FC<AppWithLocaleProps> = ({ children }) => {
     if (currentLang === "ko") {
       setLocale(ko_KR);
       dayjs.locale("ko");
+      window.document.documentElement.lang = "ko";
     } else if (currentLang === "en") {
       setLocale(en_US);
       dayjs.locale("en");
+      window.document.documentElement.lang = "en";
     }
   }, [i18n.language]);
 

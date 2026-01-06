@@ -5,13 +5,12 @@
 // - 2025.11.25 : ckkim (최초작성)
 
 import { useState, useEffect, useCallback } from "react";
-import { Button, Input, Space } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
+import { Button, Space } from "antd";
 import type { ColDef, GridReadyEvent, GridApi } from "ag-grid-enterprise";
 import AgGrid from "@components/ui/form/AgGrid/FormAgGrid";
 import { RoleUserGridStyles } from "./RoleUserGrid.styles";
 import type { RoleUserDto } from "@apis/system/permission/permissionApi";
-import type { CodeDetail } from "@/types/api.types";
+import type { CodeDetail } from "@/types/com/api/api.types";
 import { useTranslation } from "react-i18next";
 
 // ============================================================================
@@ -41,14 +40,18 @@ const RoleUserGrid: React.FC<RoleUserGridProps> = ({
 }) => {
   const { t } = useTranslation();
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
-  const [gridData, setGridData] = useState<(RoleUserDto & { id?: string })[]>([]);
+  const [gridData, setGridData] = useState<(RoleUserDto & { id?: string })[]>(
+    []
+  );
 
   useEffect(() => {
     if (roleUserList) {
       // id 필드 추가 (FormAgGrid 요구사항)
       const dataWithId = roleUserList.map((item, index) => ({
         ...item,
-        id: item.roleNo ? `${item.roleNo}_${item.typeId}_${index}` : `row_${index}`,
+        id: item.roleNo
+          ? `${item.roleNo}_${item.typeId}_${index}`
+          : `row_${index}`,
       }));
       setGridData(dataWithId);
     } else {
@@ -71,7 +74,9 @@ const RoleUserGrid: React.FC<RoleUserGridProps> = ({
   // 선택된 행 삭제
   const handleDelete = useCallback(() => {
     if (!gridApi) return;
-    const selectedRows = gridApi.getSelectedRows() as (RoleUserDto & { id?: string })[];
+    const selectedRows = gridApi.getSelectedRows() as (RoleUserDto & {
+      id?: string;
+    })[];
     if (selectedRows.length === 0) {
       return;
     }
@@ -111,14 +116,6 @@ const RoleUserGrid: React.FC<RoleUserGridProps> = ({
       filter: false,
     },
     {
-      headerName: t("상태"),
-      width: 80,
-      editable: false,
-      valueGetter: () => "", // 상태는 추후 구현
-      sortable: false,
-      filter: false,
-    },
-    {
       field: "typeId",
       headerName: t("ID"),
       width: 100,
@@ -129,12 +126,20 @@ const RoleUserGrid: React.FC<RoleUserGridProps> = ({
       headerName: t("NAME"),
       width: 120,
       editable: false,
+      cellStyle: { textAlign: "left" },
     },
   ];
 
   return (
     <RoleUserGridStyles className={className}>
-      <div style={{ marginBottom: "10px", display: "flex", gap: "5px", justifyContent: "space-between" }}>
+      <div
+        style={{
+          marginBottom: "10px",
+          display: "flex",
+          gap: "5px",
+          justifyContent: "space-between",
+        }}
+      >
         <Space>
           <Button onClick={onRestore}>{t("복구")}</Button>
           <Button onClick={onAddUser}>{t("추가")}</Button>
@@ -142,12 +147,6 @@ const RoleUserGrid: React.FC<RoleUserGridProps> = ({
             {t("삭제")}
           </Button>
         </Space>
-        <Space.Compact style={{ width: "200px" }}>
-          <Input
-            placeholder={t("검색")}
-            prefix={<SearchOutlined />}
-          />
-        </Space.Compact>
       </div>
       <AgGrid<RoleUserDto & { id?: string }>
         columnDefs={columnDefs}
@@ -155,6 +154,9 @@ const RoleUserGrid: React.FC<RoleUserGridProps> = ({
         onGridReady={handleGridReady}
         onCellValueChanged={handleCellValueChanged}
         rowSelection="multiple"
+        gridOptions={{
+          pagination: false,
+        }}
         defaultColDef={{
           resizable: true,
           sortable: true,
@@ -170,4 +172,3 @@ const RoleUserGrid: React.FC<RoleUserGridProps> = ({
 };
 
 export default RoleUserGrid;
-

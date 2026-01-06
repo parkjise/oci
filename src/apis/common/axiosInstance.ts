@@ -7,16 +7,16 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from "axios";
 import { getAccessToken, setAccessToken } from "@utils/tokenUtils";
-import type { ApiRequestConfig, ApiErrorResponse } from "@/types/axios.types";
+import type { ApiRequestConfig, ApiErrorResponse } from "@/types/com/api/axios.types";
 import { refreshTokenApi } from "../auth/authApi";
-import { useAuthStore } from "@store/authStore";
+import { useAuthStore } from "@store/com/auth/authStore";
 import { showError } from "@/components/ui/feedback/Message";
 import i18n from "@/i18n";
 
 // --------------------------------------------------------------------------
 // 상수
 // --------------------------------------------------------------------------
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+const BASE_URL = "/api";
 
 // --------------------------------------------------------------------------
 // 토큰 갱신 관련 상태 관리

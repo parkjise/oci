@@ -59,5 +59,3 @@ export const ButtonArea = styled.div`
   flex-shrink: 0;
 `;
 
-
-

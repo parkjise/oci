@@ -9,6 +9,11 @@ export const RightGridStyles = styled.div`
 
   .data-grid-panel {
     width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
     &__toolbar {
       ${mixins.flex("center", "space-between", "row")}
       margin-bottom: 10px;
@@ -31,4 +36,3 @@ export const RightGridStyles = styled.div`
     }
   }
 `;
-

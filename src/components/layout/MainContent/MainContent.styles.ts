@@ -105,3 +105,14 @@ export const StyledTabContent = styled.div`
   padding: 0;
   position: relative;
 `;
+
+export const StyledTabPanel = styled.div<{ $isActive: boolean }>`
+  display: ${(props) => (props.$isActive ? "block" : "none")};
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+`;

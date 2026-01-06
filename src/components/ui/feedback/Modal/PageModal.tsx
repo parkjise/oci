@@ -115,24 +115,22 @@ const getComponentByPath = <P extends AnyProps, R>(
       const relatedKeys = allKeys.filter(
         (key) => key.includes("sample/pageModal") || key.includes("pageModal")
       );
-      if (import.meta.env.DEV) {
-        console.error(
-          `[PageModal] 컴포넌트를 찾을 수 없습니다: ${path}`,
-          `\n정규화된 경로: ${normalizedPath}`,
-          `\n시도한 키:`,
-          [
-            relativePath,
-            moduleKeyTsx,
-            moduleKeyTs,
-            moduleKeyIndexTsx,
-            moduleKeyIndexTs,
-          ].filter(Boolean),
-          `\n관련 키들:`,
-          relatedKeys,
-          `\n모든 키 샘플 (처음 10개):`,
-          allKeys.slice(0, 10)
-        );
-      }
+      console.error(
+        `[PageModal] 컴포넌트를 찾을 수 없습니다: ${path}`,
+        `\n정규화된 경로: ${normalizedPath}`,
+        `\n시도한 키:`,
+        [
+          relativePath,
+          moduleKeyTsx,
+          moduleKeyTs,
+          moduleKeyIndexTsx,
+          moduleKeyIndexTs,
+        ].filter(Boolean),
+        `\n관련 키들:`,
+        relatedKeys,
+        `\n모든 키 샘플 (처음 10개):`,
+        allKeys.slice(0, 10)
+      );
     }
     return null;
   } catch (error) {
@@ -157,6 +155,8 @@ export interface AppPageModalProps<P extends AnyProps = {}, R = unknown> {
   pageProps?: P;
   width?: number | string;
   height?: number | string;
+  top?: number | string;
+  left?: number | string;
   footer?: React.ReactNode;
   destroyOnHidden?: boolean;
   modalProps?: Omit<
@@ -174,6 +174,29 @@ export interface AppPageModalProps<P extends AnyProps = {}, R = unknown> {
 
 const defaultFallback = <LoadingSpinner />;
 
+/**
+ * 높이/너비 값을 CSS 값으로 변환
+ * 숫자 → "500px", 숫자 문자열 "500" → "500px", "500px" → "500px", "50%" → "50%"
+ */
+const convertSizeValue = (
+  value: number | string | undefined
+): string | undefined => {
+  if (!value) return undefined;
+  if (typeof value === "number") {
+    return `${value}px`;
+  }
+  if (typeof value === "string") {
+    const numValue = parseFloat(value);
+    // 숫자 문자열인 경우 (예: "500") px 단위 추가
+    if (!isNaN(numValue) && value.trim() === String(numValue)) {
+      return `${numValue}px`;
+    }
+    // 이미 단위가 포함된 경우 (예: "500px", "50%")
+    return value;
+  }
+  return undefined;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 const AppPageModal = <P extends AnyProps = {}, R = unknown>({
   open,
@@ -185,6 +208,8 @@ const AppPageModal = <P extends AnyProps = {}, R = unknown>({
   pageProps = {} as P, // undefined 스프레드 방지
   width = "80%",
   height = "80%",
+  top,
+  left,
   footer = null,
   destroyOnHidden = true,
   modalProps,
@@ -209,6 +234,51 @@ const AppPageModal = <P extends AnyProps = {}, R = unknown>({
     onClose();
   };
 
+  // width 값을 변환 (숫자 문자열을 px로 변환)
+  const convertedWidth = useMemo(() => convertSizeValue(width), [width]);
+  const convertedHeight = useMemo(() => convertSizeValue(height), [height]);
+
+  // Modal 스타일 설정 (height, top, left 포함)
+  const modalStyle = useMemo(() => {
+    const baseStyle = modalProps?.style || {};
+    const style: React.CSSProperties = { ...baseStyle };
+
+    if (convertedHeight) {
+      style.height = convertedHeight;
+    }
+
+    // 위치 지정 (top, left)
+    if (top !== undefined) {
+      style.top = typeof top === "number" ? `${top}px` : top;
+      style.marginTop = 0; // centered와 충돌 방지
+    }
+
+    if (left !== undefined) {
+      style.left = typeof left === "number" ? `${left}px` : left;
+      style.marginLeft = 0; // centered와 충돌 방지
+    }
+
+    // 위치가 지정되면 transform 제거 (centered 효과 제거)
+    if (top !== undefined || left !== undefined) {
+      style.transform = "none";
+    }
+
+    return style;
+  }, [convertedHeight, top, left, modalProps?.style]);
+
+  // Modal body의 높이도 제어 (height가 설정된 경우)
+  const bodyStyle = useMemo(() => {
+    const baseBodyStyle = modalProps?.bodyStyle || {};
+    if (convertedHeight) {
+      return {
+        ...baseBodyStyle,
+        height: convertedHeight,
+        overflow: "auto", // 내용이 넘칠 경우 스크롤
+      };
+    }
+    return baseBodyStyle;
+  }, [convertedHeight, modalProps?.bodyStyle]);
+
   if (!LazyPage) {
     if (import.meta.env.DEV) {
       console.error("[PageModal] page 또는 pagePath prop이 필요합니다.");
@@ -221,11 +291,13 @@ const AppPageModal = <P extends AnyProps = {}, R = unknown>({
       title={title}
       open={open}
       onCancel={handleClose}
-      footer={footer}
-      width={width}
-      height={height}
+      footer={footer !== undefined ? footer : null}
+      width={convertedWidth}
+      style={modalStyle}
+      bodyStyle={bodyStyle}
       destroyOnHidden={destroyOnHidden}
       maskClosable={modalProps?.maskClosable ?? false}
+      className="modal-layout"
       {...modalProps}
     >
       <Suspense fallback={fallback}>

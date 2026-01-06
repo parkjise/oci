@@ -37,6 +37,12 @@ export {
   type ActionButtonGroupProps,
 } from "./Button";
 
+// AttachmentButton
+export {
+  AttachmentButton,
+  type AttachmentButtonProps,
+} from "./AttachmentButton";
+
 // SearchForm
 export {
   SearchForm,
@@ -68,3 +74,17 @@ export {
   type TableRow,
   type DataFormProps,
 } from "./DataForm";
+
+// PhotoUpload
+export {
+  PhotoUpload,
+  createPhotoField,
+  createFileUploadHandler,
+  createFileRemoveHandler,
+  loadServerImageFiles,
+  type PhotoUploadProps,
+  type CreatePhotoFieldOptions,
+  type CreateFileUploadHandlerOptions,
+  type CreateFileRemoveHandlerOptions,
+  type LoadServerImageFilesOptions,
+} from "./PhotoUpload";

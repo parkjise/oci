@@ -28,5 +28,6 @@ export const colors = {
   black: "#000",
   navy: "#35507D",
   darknavy: "#1A325B",
+  mdi: "#162B4D",
   error: "#CC1919",
 };

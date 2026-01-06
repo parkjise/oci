@@ -3,14 +3,16 @@
  *
  * 메뉴의 path나 pgmName을 기반으로 자동으로 아이콘을 매핑합니다.
  * 백엔드에서 icon 필드를 제공하지 않는 경우 이 매핑이 사용됩니다.
+ * 리믹스 아이콘 클래스명 형식을 사용합니다 (예: "ri-shopping-bag-line").
  */
+
 export const iconMapping: Record<string, string> = {
-  구매재고: "ShoppingOutlined",
-  재무회계: "AccountBookOutlined",
-  관리회계: "CalculatorOutlined",
-  자금관리: "DollarOutlined",
-  전자결재: "FileTextOutlined",
-  시스템관리: "SettingOutlined",
+  구매재고: "ri-instance-line",
+  재무회계: "ri-increase-decrease-line",
+  관리회계: "ri-calculator-line",
+  자금관리: "ri-bank-card-line",
+  전자결재: "ri-draft-line",
+  시스템관리: "ri-tv-2-line",
 };
 
 /**
@@ -24,7 +26,7 @@ export const iconMapping: Record<string, string> = {
  *
  * @param path - 메뉴 경로 (예: "/pages/users/Users.tsx")
  * @param name - 메뉴 이름 (pgmName, 예: "사용자관리", "구매재고")
- * @returns 아이콘 이름 또는 undefined
+ * @returns 아이콘 이름 (리믹스 아이콘 클래스명) 또는 undefined
  */
 export const findIconName = (
   path?: string,

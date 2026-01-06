@@ -2,7 +2,7 @@ import { useEffect, lazy } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ErrorBoundary } from "@components/providers";
 import { GlobalStyle } from "@/styles/globalStyles";
-import { useAuthStore } from "@store/authStore";
+import { useAuthStore } from "@store/com/auth/authStore";
 import { AuthRouteWrapper } from "@components/features";
 import "@ant-design/v5-patch-for-react-19";
 

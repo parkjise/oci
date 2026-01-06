@@ -2,13 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Space, Tag, Row, Col, Form } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import type { FormProps } from "antd";
-import type { GridApi, IRowNode } from "ag-grid-community";
+import type { GridApi, IRowNode, CellClickedEvent } from "ag-grid-community";
 import {
   createGridReadyHandler,
   getSelectedRows,
   formatCurrencyWon,
   createCheckboxColumn,
-  createSelectColumn,
   createNumberColumn,
   createDateColumn,
   createTextAreaColumn,
@@ -29,11 +28,13 @@ import {
   ActionButtonGroup,
   SearchActions,
 } from "@components/ui/form";
+import { createComboBoxColumn } from "@components/ui/form/AgGrid/columns";
 import type { ExtendedColDef } from "@components/ui/form/AgGrid/FormAgGrid";
 import { AppPageModal } from "@components/ui/feedback";
 import { usePageModal } from "@hooks/usePageModal";
 import { showSuccess, showError } from "@components/ui/feedback/Message";
 import { MenuButtonProvider } from "@/components/providers";
+import { useOpenTab } from "@utils/menuTabUtils";
 import { initialUserData, type UserData } from "./sample3Data";
 import SaveDataModal from "./SaveDataModal";
 import {
@@ -54,6 +55,9 @@ import {
   StyledActionButtonContainer,
   StyledDivider,
   StyledCardTitle,
+  StyledStatusTag,
+  StyledFormCardTitleSpace,
+  StyledFormContentContainer,
 } from "./Sample3.styles";
 import Mdi from "@/components/features/mdi/Mdi";
 
@@ -126,8 +130,6 @@ const OWNER_TYPE_OPTIONS = [
   { value: "법인", label: "법인" },
 ];
 
-const FORM_COLLAPSED_HEIGHT = "180px";
-
 const Sample3: React.FC = () => {
   const [form] = Form.useForm<SearchFormType>();
   const [addForm] = Form.useForm<AddFormType>();
@@ -147,7 +149,6 @@ const Sample3: React.FC = () => {
     React.lazy(() => import("@pages/sample/pageModal/ModalPopup")),
     {
       title: "이름 검색",
-      centered: true,
       width: 500,
       height: 300,
       destroyOnHidden: true,
@@ -295,9 +296,9 @@ const Sample3: React.FC = () => {
         const statusInfo = statusMap[params.value];
         if (!statusInfo) return null;
         return (
-          <Tag color={statusInfo.color} style={{ margin: 0 }}>
+          <StyledStatusTag color={statusInfo.color}>
             {statusInfo.text}
-          </Tag>
+          </StyledStatusTag>
         );
       },
       cellStyle: (params) => {
@@ -308,9 +309,17 @@ const Sample3: React.FC = () => {
       },
     },
     {
-      ...createCheckboxColumn<UserDataWithStatus>("id", "ID", 80, "left"),
+      ...createCheckboxColumn<UserDataWithStatus & Record<string, unknown>>(
+        "ID",
+        "id",
+        {
+          width: 80,
+          pinned: "left",
+          rowSelection: true, // 행 선택 모드 활성화
+        }
+      ),
       excludeFromExcel: true, // 엑셀 다운로드에서 제외
-    },
+    } as ExtendedColDef<UserDataWithStatus>,
     {
       headerClass: "required-header",
       field: "name",
@@ -336,10 +345,12 @@ const Sample3: React.FC = () => {
       headerClass: "required-header",
     },
     {
-      ...createSelectColumn<UserDataWithStatus>(
+      ...createComboBoxColumn<UserDataWithStatus>(
         "department",
         "부서",
-        DEPARTMENT_OPTIONS.map((opt) => opt.value),
+        {
+          options: DEPARTMENT_OPTIONS,
+        },
         120
       ),
       headerClass: "required-header",
@@ -356,26 +367,44 @@ const Sample3: React.FC = () => {
       },
     },
     {
-      ...createSelectColumn<UserDataWithStatus>(
+      ...createComboBoxColumn<UserDataWithStatus>(
         "status",
         "상태",
-        STATUS_OPTIONS.map((opt) => opt.value),
+        {
+          options: STATUS_OPTIONS,
+        },
         100
       ),
       headerClass: "required-header",
       cellRenderer: createStatusRenderer("green", "red", "활성"),
     },
     {
-      ...createSelectColumn<UserDataWithStatus>(
+      ...createComboBoxColumn<UserDataWithStatus>(
         "gender",
         "성별",
-        GENDER_OPTIONS.map((opt) => opt.value),
+        {
+          options: GENDER_OPTIONS,
+        },
         100
       ),
       cellRenderer: (params: { value: string }) => {
         if (!params.value) return "-";
         return <span>{params.value}</span>;
       },
+    },
+    {
+      ...createComboBoxColumn<UserDataWithStatus>(
+        "bankName",
+        "은행명",
+        {
+          comCodeParams: {
+            module: "GL",
+            type: "BNKCDE",
+          },
+          allOptionLabel: "전체",
+        },
+        120
+      ),
     },
     {
       field: "hobby",
@@ -660,10 +689,11 @@ const Sample3: React.FC = () => {
     setEditingId(userData.id);
   };
 
-  const handleCellClick = (params: {
-    colDef: { field?: string };
-    data: UserDataWithStatus;
-  }) => {
+  const handleCellClick = (params: CellClickedEvent<UserDataWithStatus>) => {
+    // 체크박스 컬럼 클릭은 무시
+    if (params.colDef.checkboxSelection) {
+      return;
+    }
     if (params.colDef.field === "name" && params.data) {
       handleRowClick({ data: params.data });
     }
@@ -808,11 +838,59 @@ const Sample3: React.FC = () => {
     await handleAddSubmit(values, true);
   };
 
+  // 탭 열기 훅 추가
+  const { openTabByPgmNo } = useOpenTab();
+
   return (
     <MenuButtonProvider>
+      {/* MDI 퍼블 추가 */}
+      <Mdi />
       <StyledPageContainer>
         <StyledHeaderContainer>
           <StyledTitle level={2}>사용자 관리 샘플</StyledTitle>
+          <Space>
+            <FormButton
+              type="primary"
+              size="small"
+              onClick={() => {
+                const selectedRows =
+                  getSelectedRows<UserDataWithStatus>(gridApi);
+                const selectedUser =
+                  selectedRows && selectedRows.length > 0
+                    ? selectedRows[0]
+                    : null;
+
+                const success = openTabByPgmNo("91906", {
+                  source: "Sample1",
+                  timestamp: new Date().toISOString(),
+                  message: "Sample3에서 Sample1을 열었습니다!",
+                  selectedUserId: selectedUser?.id,
+                  selectedUserName: selectedUser?.name,
+                  totalUsers: allData.length,
+                  filteredUsers: filteredData.length,
+                  searchValues: form.getFieldsValue(),
+                });
+
+                if (!success) {
+                  showError("탭을 열 수 없습니다. 메뉴 번호를 확인해주세요.");
+                }
+              }}
+            >
+              Sample1 탭 열기 (파라미터 포함)
+            </FormButton>
+            <FormButton
+              type="default"
+              size="small"
+              onClick={() => {
+                const success = openTabByPgmNo("91906");
+                if (!success) {
+                  showError("탭을 열 수 없습니다. 메뉴 번호를 확인해주세요.");
+                }
+              }}
+            >
+              Sample1 열기 (파라미터 없음)
+            </FormButton>
+          </Space>
         </StyledHeaderContainer>
 
         <StyledSearchCard
@@ -1099,6 +1177,37 @@ const Sample3: React.FC = () => {
                 >
                   커스텀 버튼 5
                 </FormButton>,
+                <FormButton
+                  key="open-sample1"
+                  size="small"
+                  onClick={() => {
+                    const selectedRows =
+                      getSelectedRows<UserDataWithStatus>(gridApi);
+                    const selectedUser =
+                      selectedRows && selectedRows.length > 0
+                        ? selectedRows[0]
+                        : null;
+
+                    const success = openTabByPgmNo("91905", {
+                      source: "Sample3",
+                      timestamp: new Date().toISOString(),
+                      message: "Sample3에서 Sample1을 열었습니다!",
+                      selectedUserId: selectedUser?.id,
+                      selectedUserName: selectedUser?.name,
+                      totalUsers: allData.length,
+                      filteredUsers: filteredData.length,
+                      searchValues: form.getFieldsValue(),
+                    });
+
+                    if (!success) {
+                      showError(
+                        "탭을 열 수 없습니다. 메뉴 번호를 확인해주세요."
+                      );
+                    }
+                  }}
+                >
+                  Sample1 탭 열기
+                </FormButton>,
               ]}
             />
           </StyledActionButtonContainer>
@@ -1107,10 +1216,7 @@ const Sample3: React.FC = () => {
         {showForm && (
           <StyledFormCard
             title={
-              <Space
-                size="small"
-                style={{ width: "100%", justifyContent: "space-between" }}
-              >
+              <StyledFormCardTitleSpace size="small">
                 <StyledCardTitle>
                   {editMode ? "사용자 수정" : "사용자 추가"}
                 </StyledCardTitle>
@@ -1122,7 +1228,7 @@ const Sample3: React.FC = () => {
                 >
                   {formMode === "view" ? "수정 모드" : "보기 모드"}
                 </FormButton>
-              </Space>
+              </StyledFormCardTitleSpace>
             }
           >
             <Form
@@ -1132,13 +1238,7 @@ const Sample3: React.FC = () => {
               autoComplete="off"
               id="add-edit-form"
             >
-              <div
-                style={{
-                  maxHeight: formExpanded ? "none" : FORM_COLLAPSED_HEIGHT,
-                  overflow: formExpanded ? "visible" : "hidden",
-                  transition: "max-height 0.3s ease",
-                }}
-              >
+              <StyledFormContentContainer $expanded={formExpanded}>
                 <Row gutter={[8, 2]}>
                   <Col xs={24} sm={12} md={6} lg={6}>
                     <FormInput
@@ -1399,7 +1499,7 @@ const Sample3: React.FC = () => {
                     />
                   </Col>
                 </Row>
-              </div>
+              </StyledFormContentContainer>
             </Form>
           </StyledFormCard>
         )}
@@ -1514,75 +1614,99 @@ const Sample3: React.FC = () => {
                   const selectedRows = params.api.getSelectedRows();
                   setSelectedRowCount(selectedRows.length);
                   if (selectedRows.length > 0) {
-                    console.log("선택된 행:", selectedRows[0]);
+                    // console.log("선택된 행:", selectedRows[0]);
                   }
                 }
               },
               onCellValueChanged: (params) => {
-                if (params.data) {
-                  const updatedUser = params.data as UserDataWithStatus;
-
-                  if (updatedUser.rowStatus === "D") {
-                    showError("삭제된 행은 편집할 수 없습니다.");
-                    if (gridApi) {
-                      gridApi.refreshCells({ rowNodes: [params.node] });
-                    }
-                    return;
-                  }
-
-                  setAllData((prev) =>
-                    prev.map((item) =>
-                      item.id === updatedUser.id
-                        ? {
-                            ...updatedUser,
-                            rowStatus:
-                              item.rowStatus === "C"
-                                ? ("C" as const)
-                                : ("U" as const),
-                          }
-                        : item
-                    )
-                  );
-
-                  setFilteredData((prev) =>
-                    prev.map((item) =>
-                      item.id === updatedUser.id
-                        ? {
-                            ...updatedUser,
-                            rowStatus:
-                              item.rowStatus === "C"
-                                ? ("C" as const)
-                                : ("U" as const),
-                          }
-                        : item
-                    )
-                  );
-
-                  setChangedData((prev) => {
-                    const filtered = prev.filter(
-                      (item) => item.id !== updatedUser.id
-                    );
-                    const existingItem = prev.find(
-                      (item) => item.id === updatedUser.id
-                    );
-                    const rowStatus =
-                      existingItem?.rowStatus === "C"
-                        ? ("C" as const)
-                        : ("U" as const);
-                    return [...filtered, { ...updatedUser, rowStatus }];
-                  });
+                if (!params.data || !params.colDef.field) {
+                  return;
                 }
 
+                const field = params.colDef.field;
+                const newValue = params.newValue;
+
+                // params.data는 이미 AG-Grid에서 업데이트된 상태
+                // 하지만 은행명 같은 공통코드 필드는 newValue를 명시적으로 사용
+                const updatedUser = {
+                  ...params.data,
+                  [field]:
+                    newValue !== undefined
+                      ? newValue
+                      : params.data[field as keyof UserDataWithStatus],
+                } as UserDataWithStatus;
+
+                if (updatedUser.rowStatus === "D") {
+                  showError("삭제된 행은 편집할 수 없습니다.");
+                  if (gridApi) {
+                    gridApi.refreshCells({ rowNodes: [params.node] });
+                  }
+                  return;
+                }
+
+                // rowStatus 업데이트 (기존 rowStatus가 "C"면 유지, 아니면 "U")
+                const prevItem = allData.find(
+                  (item) => item.id === updatedUser.id
+                );
+                updatedUser.rowStatus =
+                  prevItem?.rowStatus === "C" ? ("C" as const) : ("U" as const);
+
+                // 상태 업데이트 - trackDataChanges와의 충돌을 방지하기 위해 즉시 업데이트
+                setAllData((prev) =>
+                  prev.map((item) =>
+                    item.id === updatedUser.id ? updatedUser : item
+                  )
+                );
+
+                setFilteredData((prev) =>
+                  prev.map((item) =>
+                    item.id === updatedUser.id ? updatedUser : item
+                  )
+                );
+
+                setChangedData((prev) => {
+                  const filtered = prev.filter(
+                    (item) => item.id !== updatedUser.id
+                  );
+                  return [...filtered, updatedUser];
+                });
+
+                // 콤보박스 필드는 refreshCells를 호출하지 않음
+                // rowData가 filteredData로 설정되어 있어 상태 업데이트 시 자동으로 반영됨
+                const isComboBoxField =
+                  field === "bankName" ||
+                  field === "department" ||
+                  field === "status" ||
+                  field === "gender";
+
+                // 콤보박스가 아닌 필드만 refreshCells 호출 (상태 업데이트 후)
+                if (gridApi && params.node && !isComboBoxField) {
+                  // 상태 업데이트가 완료된 후 refreshCells 호출
+                  setTimeout(() => {
+                    if (gridApi && params.node) {
+                      gridApi.refreshCells({
+                        rowNodes: [params.node],
+                        columns: [field],
+                        force: true,
+                      });
+                    }
+                  }, 0);
+                }
+
+                const displayValue =
+                  params.newValue === "" ||
+                  params.newValue === null ||
+                  params.newValue === undefined
+                    ? "(전체)"
+                    : String(params.newValue);
                 showSuccess(
-                  `${params.colDef.headerName}이(가) "${params.newValue}"(으)로 변경되었습니다.`
+                  `${params.colDef.headerName}이(가) "${displayValue}"(으)로 변경되었습니다.`
                 );
               },
             }}
           />
         </StyledGridCard>
-        <div>
-          <Mdi />
-        </div>
+
         <SaveDataModal
           open={saveModalOpen}
           onClose={() => setSaveModalOpen(false)}

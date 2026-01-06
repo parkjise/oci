@@ -13,142 +13,23 @@ import { Dropdown, Badge } from "antd";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { SelectProps } from "antd";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@store/com/auth/authStore";
 import { clearAllTokens } from "@/utils/tokenUtils";
-import { useUiStore } from "@store/uiStore";
+import { useUiStore } from "@store/com/ui/uiStore";
 import { confirm } from "@/components/ui/feedback/Message";
-import { logoutApi } from "@apis/auth";
+import { logoutApi, updateEnvApi } from "@apis/auth";
 import { getMainInitDataApi } from "@apis/main";
-import type { MenuItem } from "@/types/api.types";
+import type { MenuItem } from "@/types/com/api/api.types";
 import { getMenuCache } from "@utils/menuCache";
-import type { RouteConfig } from "@/types/routes.types";
-import type { SearchableMenuItem } from "@/types/menu.types";
+import type { SearchableMenuItem } from "@/types/com/menu/menu.types";
 import { FormButton } from "@components/ui/form";
+import { openMenuTab, convertPathToRoute } from "@utils/menuTabUtils";
+import { AppPageModal } from "@components/ui/feedback";
+import { usePageModal } from "@hooks/usePageModal";
+import type { ChangePasswordResult } from "@/types/com/auth/auth.types";
 import eng from "@/assets/images/eng.svg";
 import kor from "@/assets/images/kor.svg";
 
-/**
- * 페이지 컴포넌트 모듈 매핑
- * 중앙 집중식으로 관리하여 경로 문제를 방지합니다.
- */
-import { pageModules } from "@utils/pageModules";
-
-/**
- * PATH로 컴포넌트 동적 로드
- * @param path - 파일 경로 (예: /pages/users/Users.tsx)
- * @returns Lazy 컴포넌트 또는 null
- */
-const getComponentByPath = (
-  path: string
-): React.LazyExoticComponent<React.ComponentType> | null => {
-  if (!path) return null;
-
-  try {
-    // PATH 정규화: 다양한 형식의 /components/pages를 /pages로 변환
-    // 1. /src/components/pages -> /pages
-    // 2. /components/pages -> /pages
-    // 3. src/components/pages -> pages
-    // 4. components/pages -> pages
-    // 5. /src/pages -> /pages (이미 올바른 형식)
-    let normalizedPath = path
-      .replace(/\/src\/components\/pages/gi, "/pages")
-      .replace(/\/components\/pages/gi, "/pages")
-      .replace(/^src\/components\/pages/gi, "pages")
-      .replace(/^components\/pages/gi, "pages")
-      .replace(/\/src\/pages/gi, "/pages")
-      .replace(/^src\/pages/gi, "pages");
-
-    // 앞뒤 공백 제거
-    normalizedPath = normalizedPath.trim();
-
-    // 정규화 후 /pages/ 포함 여부 확인
-    if (
-      !normalizedPath.includes("/pages/") &&
-      !normalizedPath.includes("pages/")
-    )
-      return null;
-
-    // PATH를 상대 경로로 변환
-    // import.meta.glob("../pages/**/*.{tsx,ts}")를 사용하면 (src/utils/pageModules.ts에서)
-    // 키는 ../pages/... 형식으로 저장됩니다
-    // 예: /pages/users/Users.tsx -> ../pages/users/Users.tsx
-    let relativePath = normalizedPath.startsWith("/")
-      ? `../${normalizedPath.slice(1)}`
-      : `../${normalizedPath}`;
-
-    // Windows 경로 구분자 처리 (백슬래시를 슬래시로 변환)
-    relativePath = relativePath.replace(/\\/g, "/");
-
-    // 매핑된 모듈 찾기
-    let moduleLoader = pageModules[relativePath];
-
-    // 정확히 매칭되지 않으면 대소문자 무시하여 찾기 시도
-    if (!moduleLoader) {
-      const lowerRelativePath = relativePath.toLowerCase();
-      for (const key in pageModules) {
-        if (key.toLowerCase() === lowerRelativePath) {
-          moduleLoader = pageModules[key];
-          if (import.meta.env.DEV) {
-            console.warn(
-              `[MainHeader] 대소문자 차이로 경로 매칭:`,
-              `\n  요청: ${relativePath}`,
-              `\n  실제: ${key}`
-            );
-          }
-          break;
-        }
-      }
-    }
-
-    // 확장자 없이도 찾기 시도
-    if (!moduleLoader) {
-      const pathWithoutExt = relativePath.replace(/\.(tsx|ts)$/, "");
-      for (const key in pageModules) {
-        const keyWithoutExt = key.replace(/\.(tsx|ts)$/, "");
-        if (
-          keyWithoutExt === pathWithoutExt ||
-          keyWithoutExt.toLowerCase() === pathWithoutExt.toLowerCase()
-        ) {
-          moduleLoader = pageModules[key];
-          if (import.meta.env.DEV) {
-            console.warn(
-              `[MainHeader] 확장자 제거 후 경로 매칭:`,
-              `\n  요청: ${relativePath}`,
-              `\n  실제: ${key}`
-            );
-          }
-          break;
-        }
-      }
-    }
-
-    if (!moduleLoader) {
-      // 디버깅: 개발 모드에서만 로그 출력
-      if (import.meta.env.DEV) {
-        const availableKeys = Object.keys(pageModules).slice(0, 5);
-        console.error(
-          `[MainHeader] 모듈을 찾을 수 없습니다.`,
-          `\n  요청 경로: ${relativePath}`,
-          `\n  원본 경로: ${path}`,
-          `\n  정규화된 경로: ${normalizedPath}`,
-          `\n  사용 가능한 경로 예시:`,
-          availableKeys.map((k) => `\n    - ${k}`).join("")
-        );
-      }
-      return null;
-    }
-
-    return React.lazy(async () => {
-      const module = await moduleLoader();
-      return { default: module.default };
-    });
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error(`[MainHeader] 컴포넌트 로드 실패: ${path}`, error);
-    }
-    return null;
-  }
-};
 import logoImage from "@/assets/images/logo.png";
 import {
   StyledHeader,
@@ -162,34 +43,6 @@ import {
   StyledSearchOptionLabel,
   StyledSearchOptionBreadcrumb,
 } from "./MainHeader.styles";
-
-/**
- * PATH를 라우트 경로로 변환
- *
- * 예: "/pages/users/Users.tsx" -> "/app/users"
- *
- * @param path - 파일 경로 (예: "/pages/users/Users.tsx")
- * @returns 라우트 경로 (예: "/app/users")
- */
-const convertPathToRoute = (path: string): string => {
-  // PATH 정규화: /components/pages를 /pages로 변환
-  // 모든 /components/pages 인스턴스를 /pages로 변환
-  const normalizedPath = path.replace(/\/components\/pages/g, "/pages");
-
-  if (
-    normalizedPath.includes("/pages/") &&
-    (normalizedPath.endsWith(".tsx") || normalizedPath.endsWith(".ts"))
-  ) {
-    const pathMatch = normalizedPath.match(/\/pages\/(.+)\/([^/]+)\.(tsx|ts)$/);
-    if (pathMatch) {
-      const [, dirPath] = pathMatch;
-      return `/app/${dirPath}`.replace(/\/+/g, "/");
-    }
-  }
-  return `/app${
-    normalizedPath.startsWith("/") ? "" : "/"
-  }${normalizedPath}`.replace(/\/+/g, "/");
-};
 
 /**
  * 메뉴를 평면화하여 검색 가능한 리스트로 변환
@@ -249,12 +102,52 @@ const flattenMenuItems = (
 };
 
 const MainHeader: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const logoutStore = useAuthStore((s) => s.logout);
+  const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
   const { addTab } = useUiStore();
   const [menus, setMenus] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState<string>(
+    user?.langType || i18n.language || "ko"
+  );
+
+  // 비밀번호 변경 모달 훅
+  const changePasswordModal = usePageModal<
+    Record<string, never>,
+    ChangePasswordResult
+  >(
+    React.lazy(() => import("@components/features/auth/ChangePasswordModal")),
+    {
+      title: "비밀번호 변경",
+      width: 480,
+      centered: true,
+      maskClosable: false,
+      footer: null, // 모달 내부에서 버튼 처리
+      onReturn: (result) => {
+        if (result.success) {
+          // 성공 처리 (이미 모달 내부에서 success 메시지 표시)
+          // returnValue 호출 시 usePageModal의 handleReturn에서 자동으로 모달이 닫힘
+        }
+      },
+    }
+  );
+
+  // 환경 설정 모달 훅
+  const environmentSettingsModal = usePageModal<Record<string, never>, void>(
+    React.lazy(
+      () => import("@components/features/auth/EnvironmentSettingsModal")
+    ),
+    {
+      title: "환경 설정",
+      width: 450,
+      centered: true,
+      maskClosable: false,
+      footer: null, // 모달 내부에서 버튼 처리
+    }
+  );
 
   /**
    * 메뉴 데이터 로드
@@ -278,10 +171,7 @@ const MainHeader: React.FC = () => {
         if (response.success && response.data?.menus) {
           setMenus(response.data.menus);
         }
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error("[MainHeader] 메뉴 로드 실패:", error);
-        }
+      } catch {
         // 에러 발생 시 캐시에서 가져오기 시도
         const cachedMenus = getMenuCache();
         if (cachedMenus) {
@@ -294,6 +184,69 @@ const MainHeader: React.FC = () => {
 
     loadMenus();
   }, []);
+
+  /**
+   * 현재 언어 감지 및 상태 업데이트
+   * user.langType이 변경되면 언어도 업데이트
+   */
+  useEffect(() => {
+    const handleLanguageChange = (lng: string) => {
+      setCurrentLanguage(lng);
+    };
+
+    // user.langType 우선 사용, 없으면 i18n.language 사용
+    const language = user?.langType || i18n.language || "ko";
+    setCurrentLanguage(language);
+
+    // i18n 언어도 동기화
+    if (user?.langType && user.langType !== i18n.language) {
+      i18n.changeLanguage(user.langType);
+    }
+
+    // 언어 변경 이벤트 리스너 등록
+    i18n.on("languageChanged", handleLanguageChange);
+
+    return () => {
+      i18n.off("languageChanged", handleLanguageChange);
+    };
+  }, [i18n, user?.langType]);
+
+  /**
+   * 언어 변경 핸들러
+   */
+  const handleLanguageChange = useCallback(
+    async (language: string) => {
+      try {
+        await i18n.changeLanguage(language);
+        setCurrentLanguage(language);
+
+        // 서버에 언어 설정 업데이트
+        if (user) {
+          try {
+            // 로그인 시 받은 사용자 정보를 유지하고 langType만 변경
+            const response = await updateEnvApi({
+              themeType: user.themeType as "light" | "dark" | undefined,
+              langType: language as "ko" | "en",
+              mainType: user.mainType,
+              emailReceiveYn: user.emailReceiveYn as "Y" | "N" | undefined,
+            });
+            if (response.success && response.data) {
+              // 사용자 정보 업데이트
+              setUser(response.data);
+            }
+          } catch (error) {
+            // API 호출 실패는 언어 변경에 영향을 주지 않음
+            if (import.meta.env.DEV) {
+              console.error("[Update Env Error]", error);
+            }
+          }
+        }
+      } catch {
+        // 언어 변경 실패 처리
+      }
+    },
+    [i18n, user, setUser]
+  );
 
   /**
    * 검색 가능한 메뉴 리스트 생성
@@ -317,10 +270,8 @@ const MainHeader: React.FC = () => {
           await logoutApi();
           logoutStore();
           navigate("/");
-        } catch (error) {
-          if (import.meta.env.DEV) {
-            console.error("[MainHeader] 로그아웃 실패:", error);
-          }
+        } catch {
+          // 로그아웃 실패 처리
         }
       },
     });
@@ -335,32 +286,15 @@ const MainHeader: React.FC = () => {
       const pgmNo = typeof value === "string" ? value : String(value);
       const menuItem = searchableMenuItems.find((item) => item.pgmNo === pgmNo);
       if (menuItem && menuItem.menu.path) {
-        // 컴포넌트 동적 로드
-        const Component = getComponentByPath(menuItem.menu.path);
+        // 유틸리티 함수 사용
+        const success = openMenuTab(menuItem.menu, addTab);
 
-        if (Component) {
-          // RouteConfig 형식으로 변환하여 탭 추가
-          const routeConfig: RouteConfig = {
-            path: menuItem.path,
-            element: Component,
-            meta: {
-              title: menuItem.label,
-              requiresAuth: true,
-              pgmNo: menuItem.pgmNo,
-            },
-          };
-          addTab(routeConfig);
+        if (success) {
           navigate(menuItem.path);
-        } else {
-          if (import.meta.env.DEV) {
-            console.warn(
-              `[MainHeader] 컴포넌트를 찾을 수 없습니다: ${menuItem.menu.path}`
-            );
-          }
         }
       }
     },
-    [searchableMenuItems, addTab, navigate]
+    [searchableMenuItems, addTab, t, navigate]
   );
 
   /**
@@ -400,170 +334,160 @@ const MainHeader: React.FC = () => {
     [searchableMenuItems]
   );
 
-  // const userMenuItems: MenuProps["items"] = [
-  //   {
-  //     key: "user",
-  //     icon: <UserOutlined />,
-  //     label: <>{user?.empName || t("user", "사용자")}</>,
-  //   },
-  //   {
-  //     key: "profile",
-  //     icon: <UserOutlined />,
-  //     label: t("profile", "프로필"),
-  //   },
-  //   {
-  //     key: "settings",
-  //     icon: <SettingOutlined />,
-  //     label: t("settings", "설정"),
-  //   },
-  //   {
-  //     type: "divider",
-  //   },
-  //   {
-  //     key: "logout",
-  //     icon: <LogoutOutlined />,
-  //     label: t("logout", "로그아웃"),
-  //   },
-  // ];
-
   return (
-    <StyledHeader className="header">
-      <StyledHeaderLeft className="header__left">
-        <StyledLogo $logoSrc={logoImage} />
-        <StyledSearchSelect
-          className="header__search-select"
-          showSearch
-          placeholder={t("search_menu", "메뉴 검색...")}
-          onSelect={handleSearchSelect}
-          filterOption={filterMenuOptions}
-          loading={loading}
-          notFoundContent={
-            loading
-              ? t("loading", "로딩 중...")
-              : t("no_results", "검색 결과가 없습니다")
-          }
-          optionRender={(option) => {
-            const menuItem = searchableMenuItems.find(
-              (item) => item.pgmNo === option.value
-            );
-            if (!menuItem) return option.label;
+    <>
+      <StyledHeader className="header">
+        <StyledHeaderLeft className="header__left">
+          <StyledLogo $logoSrc={logoImage} />
+          <StyledSearchSelect
+            className="header__search-select"
+            showSearch
+            placeholder={t("search_menu", "메뉴 검색...")}
+            onSelect={handleSearchSelect}
+            filterOption={filterMenuOptions}
+            loading={loading}
+            notFoundContent={
+              loading
+                ? t("loading", "로딩 중...")
+                : t("no_results", "검색 결과가 없습니다")
+            }
+            optionRender={(option) => {
+              const menuItem = searchableMenuItems.find(
+                (item) => item.pgmNo === option.value
+              );
+              if (!menuItem) return option.label;
 
-            return (
-              <StyledSearchOptionContainer className="header__search-option-container">
-                {menuItem.icon && (
-                  <StyledSearchOptionIcon>
-                    {menuItem.icon}
-                  </StyledSearchOptionIcon>
-                )}
-                <StyledSearchOptionText className="header__search-option-text">
-                  <StyledSearchOptionLabel className="header__search-option-label">
-                    {menuItem.label}
-                  </StyledSearchOptionLabel>
-                  {menuItem.breadcrumb !== menuItem.label && (
-                    <StyledSearchOptionBreadcrumb className="header__search-option-breadcrumb">
-                      {menuItem.breadcrumb}
-                    </StyledSearchOptionBreadcrumb>
+              return (
+                <StyledSearchOptionContainer className="header__search-option-container">
+                  {menuItem.icon && (
+                    <StyledSearchOptionIcon>
+                      {menuItem.icon}
+                    </StyledSearchOptionIcon>
                   )}
-                </StyledSearchOptionText>
-              </StyledSearchOptionContainer>
-            );
-          }}
-          options={searchableMenuItems.map((item) => ({
-            value: item.pgmNo,
-            label: item.label,
-          }))}
-        />
-      </StyledHeaderLeft>
-      <StyledHeaderRight className="header__right">
-        <FormButton
-          icon={<i className="ri-notification-2-line" />}
-          className="header__button header__button--notification"
-        >
-          <Badge count={85} />
-        </FormButton>
-        <Dropdown
-          placement="bottomCenter"
-          overlayClassName="language-switcher"
-          dropdownRender={() => (
-            <div className="header-dropdown language-switcher__menu">
-              <FormButton
-                type="link"
-                className="language-switcher__option  language-switcher__option--kor language-switcher__option--active"
-              >
-                <span className="language-switcher__flag">
-                  <img src={kor} alt="한국" />
-                </span>
-                <span className="language-switcher__label">KOR</span>
-              </FormButton>
-              <FormButton
-                type="link"
-                className="language-switcher__option  language-switcher__option--eng"
-              >
-                <span className="language-switcher__flag">
-                  <img src={eng} alt="미국" />
-                </span>
-                <span className="language-switcher__label">ENG</span>
-              </FormButton>
-            </div>
-          )}
-        >
-          <FormButton
-            icon={<i className="ri-global-line" />}
-            className="header__button header__button--language"
+                  <StyledSearchOptionText className="header__search-option-text">
+                    <StyledSearchOptionLabel className="header__search-option-label">
+                      {menuItem.label}
+                    </StyledSearchOptionLabel>
+                    {menuItem.breadcrumb !== menuItem.label && (
+                      <StyledSearchOptionBreadcrumb className="header__search-option-breadcrumb">
+                        {menuItem.breadcrumb}
+                      </StyledSearchOptionBreadcrumb>
+                    )}
+                  </StyledSearchOptionText>
+                </StyledSearchOptionContainer>
+              );
+            }}
+            options={searchableMenuItems.map((item) => ({
+              value: item.pgmNo,
+              label: item.label,
+            }))}
           />
-        </Dropdown>
-        <FormButton
-          icon={<i className="ri-sun-line" />}
-          className="header__button header__button--theme"
-        />
-        <FormButton
-          icon={<i className="ri-settings-3-line" />}
-          className="header__button header__button--setting"
-        />
-        <Dropdown
-          // menu={{ items: userMenuItems, onClick: handleMenuClick }}
-          placement="bottomRight"
-          overlayClassName="user-menu"
-          dropdownRender={() => (
-            <div className="header-dropdown user-menu__content">
-              <div className="user-menu__profile">
-                <div className="user-menu__name">홍길동</div>
-                <div className="user-menu__role">시스템 엔지니어</div>
-              </div>
-              <div className="user-menu__divider"></div>
-              <div className="user-menu__group">
-                <FormButton
-                  icon={<i className="ri-user-settings-line" />}
-                  className="user-menu__item user-menu__item--settings"
-                >
-                  환경설정
-                </FormButton>
-                <FormButton
-                  icon={<i className="ri-lock-line" />}
-                  className="user-menu__item user-menu__item--password"
-                >
-                  비밀번호 변경
-                </FormButton>
-              </div>
-              <div className="user-menu__divider"></div>
-              <div className="user-menu__group user-menu__group--logout">
-                <FormButton
-                  className="user-menu__item user-menu__item--logout"
-                  onClick={handleLogout}
-                >
-                  로그아웃
-                </FormButton>
-              </div>
-            </div>
-          )}
-        >
+        </StyledHeaderLeft>
+        <StyledHeaderRight className="header__right">
           <FormButton
-            icon={<i className="ri-user-line" />}
-            className="header__button header__button--user"
-          ></FormButton>
-        </Dropdown>
-      </StyledHeaderRight>
-    </StyledHeader>
+            icon={<i className="ri-notification-2-line" />}
+            className="header__button header__button--notification"
+          >
+            <Badge count={0} />
+          </FormButton>
+          <Dropdown
+            placement="bottomCenter"
+            overlayClassName="language-switcher"
+            dropdownRender={() => (
+              <div className="header-dropdown language-switcher__menu">
+                <FormButton
+                  type="link"
+                  onClick={() => handleLanguageChange("ko")}
+                  className={`language-switcher__option language-switcher__option--kor ${
+                    (user?.langType || currentLanguage) === "ko"
+                      ? "language-switcher__option--active"
+                      : ""
+                  }`}
+                >
+                  <span className="language-switcher__flag">
+                    <img src={kor} alt={"KR"} />
+                  </span>
+                  <span className="language-switcher__label">{"KR"}</span>
+                </FormButton>
+                <FormButton
+                  type="link"
+                  onClick={() => handleLanguageChange("en")}
+                  className={`language-switcher__option language-switcher__option--eng ${
+                    (user?.langType || currentLanguage) === "en"
+                      ? "language-switcher__option--active"
+                      : ""
+                  }`}
+                >
+                  <span className="language-switcher__flag">
+                    <img src={eng} alt={"EN"} />
+                  </span>
+                  <span className="language-switcher__label">{"EN"}</span>
+                </FormButton>
+              </div>
+            )}
+          >
+            <FormButton
+              icon={<i className="ri-global-line" />}
+              className="header__button header__button--language"
+            />
+          </Dropdown>
+          <FormButton
+            icon={<i className="ri-sun-line" />}
+            className="header__button header__button--theme"
+          />
+          <FormButton
+            icon={<i className="ri-settings-3-line" />}
+            className="header__button header__button--setting"
+          />
+          <Dropdown
+            // menu={{ items: userMenuItems, onClick: handleMenuClick }}
+            placement="bottomRight"
+            overlayClassName="user-menu"
+            dropdownRender={() => (
+              <div className="header-dropdown user-menu__content">
+                <div className="user-menu__profile">
+                  <div className="user-menu__name">{user?.empName || ""}</div>
+                  <div className="user-menu__role">{user?.deptName || ""}</div>
+                </div>
+                <div className="user-menu__divider"></div>
+                <div className="user-menu__group">
+                  <FormButton
+                    icon={<i className="ri-user-settings-line" />}
+                    className="user-menu__item user-menu__item--settings"
+                    onClick={() => environmentSettingsModal.openModal()}
+                  >
+                    환경설정
+                  </FormButton>
+                  <FormButton
+                    icon={<i className="ri-lock-line" />}
+                    className="user-menu__item user-menu__item--password"
+                    onClick={() => changePasswordModal.openModal()}
+                  >
+                    비밀번호 변경
+                  </FormButton>
+                </div>
+                <div className="user-menu__divider"></div>
+                <div className="user-menu__group user-menu__group--logout">
+                  <FormButton
+                    className="user-menu__item user-menu__item--logout"
+                    onClick={handleLogout}
+                  >
+                    로그아웃
+                  </FormButton>
+                </div>
+              </div>
+            )}
+          >
+            <FormButton
+              icon={<i className="ri-user-line" />}
+              className="header__button header__button--user"
+            ></FormButton>
+          </Dropdown>
+        </StyledHeaderRight>
+      </StyledHeader>
+      <AppPageModal {...changePasswordModal.modalProps} />
+      <AppPageModal {...environmentSettingsModal.modalProps} />
+    </>
   );
 };
 

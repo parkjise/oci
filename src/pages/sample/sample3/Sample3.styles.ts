@@ -1,5 +1,7 @@
 import styled from "styled-components";
-import { Card, Typography, Divider, Space } from "antd";
+import { Card, Typography, Divider, Space, Tag } from "antd";
+
+const FORM_COLLAPSED_HEIGHT = "180px";
 
 // 페이지 컨테이너
 export const StyledPageContainer = styled.div`
@@ -180,7 +182,9 @@ export const StyledModalEmpty = styled.div`
 `;
 
 // 모달 섹션 제목
-export const StyledModalSectionTitle = styled(Typography.Text)<{ color: string }>`
+export const StyledModalSectionTitle = styled(Typography.Text)<{
+  color: string;
+}>`
   font-size: 15px;
   color: ${(props) => props.color};
   font-weight: 600;
@@ -218,6 +222,26 @@ export const StyledJsonPre = styled.pre`
   white-space: pre-wrap;
 `;
 
+// 상태 태그 스타일 (margin 제거)
+export const StyledStatusTag = styled(Tag)`
+  margin: 0 !important;
+`;
+
+// 폼 카드 제목 영역
+export const StyledFormCardTitleSpace = styled(Space)`
+  width: 100%;
+  justify-content: space-between;
+`;
+
+// 폼 컨텐츠 컨테이너 (접기/펼치기)
+export const StyledFormContentContainer = styled.div<{
+  $expanded: boolean;
+}>`
+  max-height: ${(props) => (props.$expanded ? "none" : FORM_COLLAPSED_HEIGHT)};
+  overflow: ${(props) => (props.$expanded ? "visible" : "hidden")};
+  transition: max-height 0.3s ease;
+`;
+
 // 모달 스타일 객체
 export const modalStyles = {
   top: 20,
@@ -232,5 +256,3 @@ export const tableStyles = {
     showTotal: (total: number) => `총 ${total}건`,
   },
 };
-
-

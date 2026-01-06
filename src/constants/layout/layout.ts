@@ -11,7 +11,7 @@ export const HEADER_HEIGHT = 64;
 /**
  * 사이드바 기본 너비 (px)
  */
-export const SIDEBAR_DEFAULT_WIDTH = 250;
+export const SIDEBAR_DEFAULT_WIDTH = 200;
 
 /**
  * 사이드바 최대 너비 (px)
@@ -21,7 +21,7 @@ export const SIDEBAR_MAX_WIDTH = 400;
 /**
  * 사이드바 최소 너비 (px)
  */
-export const SIDEBAR_MIN_WIDTH = 64;
+export const SIDEBAR_MIN_WIDTH = 70;
 
 /**
  * 사이드바 헤더 높이 (px)
@@ -72,4 +72,3 @@ export const ICON_BUTTON_SIZE = 40;
  * 메뉴 항목 높이 (px)
  */
 export const MENU_ITEM_HEIGHT = 40;
-

@@ -19,7 +19,7 @@ export const StyledHeaderLeft = styled.div`
 `;
 
 export const StyledLogo = styled.div<{ $logoSrc?: string }>`
-  width: 199px;
+  width: 169px;
   height: 100%;
   background-image: url(${(props) => props.$logoSrc || ""});
   background-size: 80px 17px;
@@ -49,6 +49,7 @@ export const StyledSearchSelect = styled(Select)`
   text-align: left;
   box-sizing: border-box;
   border-radius: 2px;
+  line-height: 28px;
   border-color: ${({ theme }) => theme.colors.grey[200]};
   &:focus,
   &:hover {

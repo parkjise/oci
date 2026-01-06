@@ -5,7 +5,7 @@
 // - 2025.11.25 : ckkim (최초작성)
 
 import { get, post } from "@apis/common/api";
-import type { ApiResponse } from "@/types/axios.types";
+import type { ApiResponse } from "@/types/com/api/axios.types";
 
 // ============================================================================
 // Types
@@ -89,7 +89,7 @@ export interface SaveResponse {
 export const getCompanyListApi = async (params: {
   officeId: string;
 }): Promise<ApiResponse<CompanyDto[]>> => {
-  return post<CompanyDto[]>("/system/common/list/office", params);
+  return get<CompanyDto[]>("/system/common/list/office", { params });
 };
 
 /**
@@ -122,3 +122,4 @@ export const saveCompanyUserDetailListApi = async (
 ): Promise<ApiResponse<SaveResponse>> => {
   return post<SaveResponse>("/system/org/companyuser/details", request);
 };
+

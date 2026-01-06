@@ -3,7 +3,7 @@ import type {
   DemoGridData,
   SummaryGridData,
   MultiEditGridData,
-} from "@/types/sample.types";
+} from "@/types/com/sample/sample.types";
 
 /**
  * Sample1 페이지에서 사용하는 초기 그리드 데이터

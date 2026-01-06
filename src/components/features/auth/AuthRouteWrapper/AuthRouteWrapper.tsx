@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Navigate } from "react-router-dom";
-import type { RouteConfig } from "@/types/routes.types";
-import { useAuthStore } from "@store/authStore";
+import type { RouteConfig } from "@/types/com/routes/routes.types";
+import { useAuthStore } from "@store/com/auth/authStore";
 import LoadingSpinner from "@components/ui/feedback/Loading/LoadingSpinner";
 
 interface AuthRouteWrapperProps {
